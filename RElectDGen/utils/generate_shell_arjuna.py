@@ -60,7 +60,7 @@ def shell_from_config(config):
                 "source /home/spack/.spack/opt/spack/linux-centos7-broadwell/gcc-11.2.0/miniconda3-4.9.2-et7ujxrrzevxewx65fnmzqkftwwkrsyc/etc/profile.d/conda.sh",
                 'conda activate nequip',
                 'rm results/processed*/ -r',
-                'REDGEN-combine-datasets $2 $3',
+                'REDGEN-combine-datasets --config_file $2 --MLP_config_file $3',
                 # 'python ${1}scripts/'+f'{branch}/combine_datasets.py --config_file $2 --MLP_config_file $3',
                 # 'nequip-train $3',
                 'REDGEN-train-NN --config_file $2 --MLP_config_file $3',

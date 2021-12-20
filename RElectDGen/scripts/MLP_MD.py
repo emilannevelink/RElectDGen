@@ -1,27 +1,27 @@
 import h5py, uuid, json, pdb, ase, os, argparse, time
-from datetime import datetime
-import matplotlib.pyplot as plt
+# from datetime import datetime
+# import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
 from ase.io.trajectory import Trajectory
-from ase.io import read
+from ase.io import read, write
 from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
 from ase.md.verlet import VelocityVerlet
 from ase import units
 from ase.md import MDLogger
 
 import torch
-from nequip.data import AtomicData, AtomicDataDict
-from nequip.ase.nequip_calculator import NequIPCalculator
-from nequip.utils import Config
+# from nequip.data import AtomicData, AtomicDataDict
+# from nequip.ase.nequip_calculator import NequIPCalculator
+# from nequip.utils import Config
 
 # home_directory = '/Users/emil/Google Drive/'
 from e3nn_networks.utils.train_val import latent_distance_uncertainty_Nequip
 from e3nn_networks.utils.data_helpers import *
 
 from ..calculate.calculator import nn_from_results
-from ..structure.structure import clusters_from_traj
+from ..structure.segment import clusters_from_traj
 
 
 parser = argparse.ArgumentParser()
@@ -129,7 +129,7 @@ uncertainty = uncertainty[:max_index]
 print('isolating uncertain clusters', flush=True)
 clusters, cluster_uncertainties = clusters_from_traj(traj,uncertainty,uncertainty_thresholds, max_cluster_size=config.get('max_cluster_size',50),cutoff=config.get('cluster_cutoff'),vacuum_size=config.get('molecule_vacuum'),config=config, sorted=sorted)
 
-from ase.io import write
+
 cluster_file = os.path.join(config.get('directory'),config.get('GPAW_MD_dump_file').split('.log')[0]+'_clusters.xyz')
 write(cluster_file,clusters)
 

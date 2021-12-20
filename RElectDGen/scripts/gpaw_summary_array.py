@@ -5,9 +5,6 @@ from ase.io.trajectory import Trajectory
 
 from ase.parallel import world
 
-from RElectDGen.calculate.recalculate import recalculate_traj_energies
-from RElectDGen.calculate.calculator import oracle_from_config
-
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--config_file', dest='config',
@@ -22,7 +19,7 @@ import yaml
 with open(args.config,'r') as fl:
     config = yaml.load(fl,yaml.FullLoader)
 
-hdf5_file = os.path.join(config.get('data_directory'),config.get('hdf5_file'))
+# hdf5_file = os.path.join(config.get('data_directory'),config.get('hdf5_file'))
 trajectory_file = os.path.join(config.get('data_directory'),config.get('trajectory_file'))
 active_learning_calc = os.path.join(config.get('data_directory'),config.get('active_learning_calc'))
 active_learning_configs = os.path.join(config.get('data_directory'),config.get('active_learning_configs'))
