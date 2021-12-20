@@ -2,6 +2,7 @@ import argparse, subprocess
 from ase.parallel import world
 import operator
 import numpy as np
+import yaml
 
 def parse_command_line(args):
     parser = argparse.ArgumentParser()
@@ -11,12 +12,12 @@ def parse_command_line(args):
                         help='Nequip configuration file', type=str)
     args = parser.parse_args()
 
-    import yaml
+    
 
     with open(args.config,'r') as fl:
         config = yaml.load(fl,yaml.FullLoader)
 
-    return config
+    return config, args.config
 
 def read_file(file, keyword, value, operation):
     with open(file,'r') as fl:
@@ -32,7 +33,7 @@ def read_file(file, keyword, value, operation):
 
 def main(args = None):
 
-    config = parse_command_line(args)
+    config, filename_config = parse_command_line(args)
 
     job_info = config.get('job_info')
     job_ids = job_info['job_ids']
@@ -65,11 +66,10 @@ def main(args = None):
     print('termination conditions', termination_conditions)
     if not np.any(termination_conditions):
         config['i_temperature_sweep']+=1
-        with open(args.config,'w') as fl:
+        with open(filename_config,'w') as fl:
             yaml.dump(config, fl)
         
-        python_file = 'start_active_learning.py'
-        commands = ['python', python_file, '--config', args.config]
+        commands = ['REDGEN-start', filename_config]
         process = subprocess.run(commands,capture_output=True)
         print('Job ids',process.stdout)
 
