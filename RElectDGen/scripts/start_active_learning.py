@@ -31,7 +31,9 @@ assert dataset_filename in MLP_config.get('dataset_file_name'), f'Dataset wrong 
 print(config.get('machine'),flush=True)
 
 generate_shell_command = ['REDGEN-generate-shell', '--config_file', active_learning_config]
-process = subprocess.run(generate_shell_command, check=True,capture_output=True)
+process = subprocess.run(generate_shell_command, check=False,capture_output=True)
+print(process.stdout)
+print(process.stderr)
 
 filenames = config.get('shell_filenames')
 job_ids = []
