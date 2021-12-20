@@ -129,69 +129,81 @@ uncertainty = uncertainty[:max_index]
 print('isolating uncertain clusters', flush=True)
 clusters, cluster_uncertainties = clusters_from_traj(traj,uncertainty,uncertainty_thresholds, max_cluster_size=config.get('max_cluster_size',50),cutoff=config.get('cluster_cutoff'),vacuum_size=config.get('molecule_vacuum'),config=config, sorted=sorted)
 
-
-cluster_file = os.path.join(config.get('directory'),config.get('GPAW_MD_dump_file').split('.log')[0]+'_clusters.xyz')
-write(cluster_file,clusters)
-
-uncertainties, cluster_embeddings = UQ.predict_from_traj(clusters,max=True)
-if sorted:
-    mask = torch.logical_and(uncertainties>min_sigma,uncertainties<max_sigma)
+if len(clusters) == 0:
+    print('No clusters to calculate', flush=True)
 else:
-    mask = uncertainties>min_sigma
+    cluster_file = os.path.join(config.get('directory'),config.get('GPAW_MD_dump_file').split('.log')[0]+'_clusters.xyz')
+    write(cluster_file,clusters)
 
-print(sum(mask),flush=True)
+    uncertainties, cluster_embeddings = UQ.predict_from_traj(clusters,max=True)
+    if sorted:
+        mask = torch.logical_and(uncertainties>min_sigma,uncertainties<max_sigma)
+    else:
+        mask = uncertainties>min_sigma
 
-cluster_uncertainties = cluster_uncertainties[mask.detach().numpy()]
-clusters = [atoms for bool, atoms in zip(mask,clusters) if bool]
-cluster_embeddings = [embed for bool, embed in zip(mask,cluster_embeddings) if bool]
+    print(sum(mask),flush=True)
 
-print('writing uncertain clusters', flush=True)
-calc_inds = []
-for i, (traj_ind, atom_ind, uncert) in enumerate(cluster_uncertainties.values):
-        embedding_all = cluster_embeddings[i]
-        try:
-            ind = np.argwhere(clusters[i].arrays['cluster_indices']==atom_ind).flatten()[0]
-            embeddingi = embedding_all[ind].numpy()
-        except:
-            embeddingi = embeddings[int(traj_ind), int(atom_ind)].detach().numpy()
-        if i == 0:
-            keep_embeddings = embedding_all
-            calc_inds.append(i)
-        elif len(calc_inds) < config.get('max_samples'):
-            UQ_dist = np.linalg.norm(keep_embeddings-embeddingi,axis=1).min()*UQ.sigmas[1]
-            if UQ_dist>2*config.get('UQ_min_uncertainty'):
-                keep_embeddings = np.concatenate([keep_embeddings,embedding_all])
+    cluster_uncertainties = cluster_uncertainties[mask.detach().numpy()]
+    clusters = [atoms for bool, atoms in zip(mask,clusters) if bool]
+    cluster_embeddings = [embed for bool, embed in zip(mask,cluster_embeddings) if bool]
+
+    print('writing uncertain clusters', flush=True)
+    calc_inds = []
+    embedding_distances = []
+    for i, (traj_ind, atom_ind, uncert) in enumerate(cluster_uncertainties.values):
+            embedding_all = cluster_embeddings[i]
+            try:
+                ind = np.argwhere(clusters[i].arrays['cluster_indices']==atom_ind).flatten()[0]
+                embeddingi_cluster = embedding_all[ind].numpy()
+                embeddingi_total = embeddings[int(traj_ind), int(atom_ind)].detach().numpy()
+            except:
+                embeddingi_cluster = embeddings[int(traj_ind), int(atom_ind)].detach().numpy()
+                embeddingi_total = embeddings[int(traj_ind), int(atom_ind)].detach().numpy()
+            
+            embedding_distance = np.round(np.linalg.norm(embeddingi_total-embeddingi_total),4)#*UQ.sigmas[1]
+            
+            if i == 0:
+                keep_embeddings = embedding_all
                 calc_inds.append(i)
-        else:
-            break
+                embedding_distances.append(embedding_distance)
 
-if len(calc_inds)>0:
-    # calc_inds = [ind_sorted[0]]
-    # for ind in ind_sorted[1:]:
-    #     if not torch.any(torch.isclose(torch.tensor(calc_inds),torch.tensor(ind),atol=config.get('UQ_sampling_distance'))):
-    #         calc_inds.append(ind) 
-    #     if len(calc_inds) >= config.get('max_samples'):
-    #         break
-    # print(len(calc_inds), calc_inds)
+            elif len(calc_inds) < config.get('max_samples'):
+                UQ_dist = np.linalg.norm(keep_embeddings-embeddingi_total,axis=1).min()*UQ.sigmas[1]
+                if UQ_dist>2*config.get('UQ_min_uncertainty'):
+                    keep_embeddings = np.concatenate([keep_embeddings,embedding_all])
+                    calc_inds.append(i)
+                    embedding_distances.append(embedding_distance)
+            else:
+                break
 
-    traj_calc = [clusters[i] for i in torch.tensor(calc_inds).tolist()]
-    
-    active_learning_configs = os.path.join(config.get('data_directory'),config.get('active_learning_configs'))
-    traj_write = Trajectory(active_learning_configs,mode='w')
-    [traj_write.write(atoms) for atoms in traj_calc]
+    if len(calc_inds)>0:
+        print('Embedding distances: ', embedding_distances, flush=True)
+        # calc_inds = [ind_sorted[0]]
+        # for ind in ind_sorted[1:]:
+        #     if not torch.any(torch.isclose(torch.tensor(calc_inds),torch.tensor(ind),atol=config.get('UQ_sampling_distance'))):
+        #         calc_inds.append(ind) 
+        #     if len(calc_inds) >= config.get('max_samples'):
+        #         break
+        # print(len(calc_inds), calc_inds)
 
-    print(len(calc_inds), calc_inds)
-    checks.append(False)
-else:
-    print('No uncertain data points')
-    checks.append(True)
+        traj_calc = [clusters[i] for i in torch.tensor(calc_inds).tolist()]
+        
+        active_learning_configs = os.path.join(config.get('data_directory'),config.get('active_learning_configs'))
+        traj_write = Trajectory(active_learning_configs,mode='w')
+        [traj_write.write(atoms) for atoms in traj_calc]
 
-print('checks: ', checks)
+        print(len(calc_inds), calc_inds)
+        checks.append(False)
+    else:
+        print('No uncertain data points')
+        checks.append(True)
 
-if config.get('checks') is not None:
-    config['checks'].append(checks)
-else:
-    config['checks'] = [checks]
+    print('checks: ', checks)
 
-with open(args.config,'w') as fl:
-    yaml.dump(config, fl)
+    if config.get('checks') is not None:
+        config['checks'].append(checks)
+    else:
+        config['checks'] = [checks]
+
+    with open(args.config,'w') as fl:
+        yaml.dump(config, fl)

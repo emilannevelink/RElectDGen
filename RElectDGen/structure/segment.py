@@ -191,7 +191,7 @@ class segment_atoms():
                     else:
 
                         if self.segment_type == 'uncertain':
-                            # get neighbor atom with the lowest index in uncertain indices
+                            # get neighbor atom with the lowest index in uncertain indices (uncertain indices are sorted low to high)
                             neigh_uncertain = [np.argwhere(neigh_ind == np.array(uncertain_indices))[0,0] for neigh_ind in neighbor_atoms if neigh_ind in uncertain_indices]
                             if len(neigh_uncertain)>0:
                                 atom_ind = neighbor_atoms[np.argmin(neigh_uncertain)]
@@ -201,7 +201,13 @@ class segment_atoms():
                                 indices_add = [ i for i in range(len(self.component_list_natural)) if self.component_list_natural[i] == molIdx_add ]
                             else:
                                 indices_add = []
-                        
+                        elif self.segment_type == 'distance':
+                            # get the neighbor atom with that is closest
+                            Di = self.atoms.get_distances(neighbor_atoms,idx, mic=True)
+                            atom_ind = neighbor_atoms[np.argmin(Di)]
+                            molIdx_add = self.component_list_natural[atom_ind]
+                            indices_add = [ i for i in range(len(self.component_list_natural)) if self.component_list_natural[i] == molIdx_add ]
+                            
                         
                         if len(indices_add)>0:
                             slab_add, mixture_add = self.segment_slab_mixture(indices_add)
@@ -331,9 +337,10 @@ class segment_atoms():
         for ind in range(len(atoms)):
             Di = atoms.get_distances(np.arange(len(atoms)),ind, mic=True,vector=True)
             Df = atoms.get_distances(np.arange(len(atoms)),ind, mic=False,vector=True)
-            bools.append(np.all(np.isclose(Di,Df),axis=0))
+            greater_cutoff = np.logical_and(np.abs(Di)>2*self.cutoff,np.abs(Df)>2*self.cutoff)
+            bools.append(np.all(np.logical_or(np.isclose(Di,Df),greater_cutoff),axis=0))
 
-        bools = np.array(bools).sum(axis=0)>len(atoms)*0.6
+        bools = np.all(bools,axis=0)#np.array(bools).sum(axis=0)>len(atoms)*0.6
         # np.any([np.isclose(Di,Df),np.isclose(Di+Df,atoms.cell.diagonal())])
         # bools = np.all([bools, np.all(np.isclose(Di,Df),axis=0)],axis=0)
 
