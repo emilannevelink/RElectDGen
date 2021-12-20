@@ -29,10 +29,8 @@ dataset_filename = os.path.join(config.get('data_directory'), config.get('combin
 assert dataset_filename in MLP_config.get('dataset_file_name'), f'Dataset wrong in MLP.yaml, include {dataset_filename}'
 
 print(config.get('machine'),flush=True)
-machine = config.get('machine', 'arjuna')
-generate_shell_file = os.path.join(config.get('directory'),config.get('scripts_path'),f'generate_shell_{machine}.py')
 
-generate_shell_command = ['python', generate_shell_file, '--config_file', active_learning_config]
+generate_shell_command = ['REDGEN-generate-shell', '--config_file', active_learning_config]
 process = subprocess.run(generate_shell_command, check=True,capture_output=True)
 
 filenames = config.get('shell_filenames')

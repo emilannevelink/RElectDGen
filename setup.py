@@ -18,6 +18,7 @@ setup(
         # make the scripts available as command line scripts
         "console_scripts": [
             "REDGEN-start = RElectDGen.scripts.start_active_learning:main",
+            "REDGEN-generate-shell = RElectDGen.scripts.generate_shell:main",
             "REDGEN-combine-datasets = RElectDGen.scripts.combine_datasets:main",
             "REDGEN-gpaw-MD = RElectDGen.scripts.gpaw_MD:main",
             "REDGEN-train-NN = RElectDGen.scripts.train_NN:main",
