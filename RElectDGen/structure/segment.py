@@ -569,6 +569,7 @@ def clusters_from_traj(
     max_volume_per_atom: int = 150,
     max_clusters: int = 10,
     vacuum: float = 2.0,
+    **kwargs,
 ):
 
     ncores = mp.cpu_count()
