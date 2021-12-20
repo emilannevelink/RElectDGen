@@ -93,7 +93,8 @@ def shell_from_config(config):
                 slurm_config['--ntasks'] = 1
                 slurm_config['--cpus-per-task'] = python_cores
             elif 'MD' in file:
-                commands += [f'srun -n {gpaw_cores}' + ' gpaw REDGEN-gpaw-MD --config_file $2 --MLP_config_file $3']
+                file = os.path.join(config.get('scripts_path'),'gpaw_MD.py')
+                commands += [f'srun -n {gpaw_cores}' + f' gpaw python {file} --config_file $2 --MLP_config_file $3']
                 # commands += [f'srun -n {gpaw_cores}' + ' gpaw python ${1}scripts/'+f'{branch}/slabmol_gpaw_MD.py --config_file $2 --MLP_config_file $3']
                 slurm_config['n'] = gpaw_cores
                 slurm_config['N'] = gpaw_nodes

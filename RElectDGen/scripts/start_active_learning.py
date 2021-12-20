@@ -20,6 +20,7 @@ def main(args=None):
 
     config= parse_command_line(args)
     print(os.path.dirname(os.path.abspath(__file__)), flush=True)
+    config['scripts_path'] = os.path.dirname(os.path.abspath(__file__)
 
     config['data_directory'] = os.path.join(os.environ.get('PROJECT',os.environ.get('HOME')),config.get('directory'))
     config['directory'] = os.path.join(os.environ.get('HOME'),config.get('directory'))
