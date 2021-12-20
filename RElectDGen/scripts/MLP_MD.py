@@ -125,9 +125,10 @@ else:
     
 traj = traj[:max_index]
 uncertainty = uncertainty[:max_index]
+config['sorted'] = sorted
 
 print('isolating uncertain clusters', flush=True)
-clusters, cluster_uncertainties = clusters_from_traj(traj,uncertainty,uncertainty_thresholds, max_cluster_size=config.get('max_cluster_size',50),cutoff=config.get('cluster_cutoff'),vacuum_size=config.get('molecule_vacuum'),config=config, sorted=sorted)
+clusters, cluster_uncertainties = clusters_from_traj(traj,uncertainty, **config)
 
 if len(clusters) == 0:
     print('No clusters to calculate', flush=True)
