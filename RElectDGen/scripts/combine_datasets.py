@@ -14,11 +14,11 @@ def parse_command_line(args):
     with open(args.config,'r') as fl:
         config = yaml.load(fl,yaml.FullLoader)
 
-    return config
+    return config, args.MLP_config
 
 def main(args=None):
 
-    config = parse_command_line(args)
+    config, filename_MLP_config = parse_command_line(args)
     trajectory_file = os.path.join(config.get('data_directory'),config.get('trajectory_file'))
     combined_trajectory = os.path.join(config.get('data_directory'),config.get('combined_trajectory'))
 
@@ -39,7 +39,7 @@ def main(args=None):
     for atoms in traj:
         writer.write(atoms)
 
-    update_config_trainval(config,args.MLP_config)
+    update_config_trainval(config,filename_MLP_config)
 
 if __name__ == "__main__":
     main()

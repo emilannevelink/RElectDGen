@@ -38,12 +38,12 @@ def parse_command_line(args):
     with open(args.config,'r') as fl:
         config = yaml.load(fl,yaml.FullLoader)
 
-    return config
+    return config, args.config, args.loop_learning_count
 
 def main(args=None):
 
-    config = parse_command_line(args)
-    MD_temperature = config.get('MLP_MD_temperature') + (args.loop_learning_count-1)*config.get('MLP_MD_dT')
+    config, filename_config, loop_learning_count = parse_command_line(args)
+    MD_temperature = config.get('MLP_MD_temperature') + (loop_learning_count-1)*config.get('MLP_MD_dT')
     structure_file = os.path.join(config.get('data_directory'),config.get('structure_file'))
     supercell = read(structure_file)
     #Delete Bondlength constraints
@@ -212,7 +212,7 @@ def main(args=None):
         else:
             config['checks'] = [checks]
 
-        with open(args.config,'w') as fl:
+        with open(filename_config,'w') as fl:
             yaml.dump(config, fl)
 
 if __name__ == "__main__":
