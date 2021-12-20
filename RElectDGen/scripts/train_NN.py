@@ -9,8 +9,8 @@ from nequip.data.transforms import TypeMapper
 
 from e3nn_networks.utils.train_val import latent_distance_uncertainty_Nequip
 
-from RElectDGen.calculate.calculator import nn_from_results
-from RElectDGen.utils.save import check_NN_parameters
+from ..calculate.calculator import nn_from_results
+from ..utils.save import check_NN_parameters
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--config_file', dest='config',

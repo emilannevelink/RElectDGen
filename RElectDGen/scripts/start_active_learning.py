@@ -3,8 +3,10 @@ import subprocess
 import os, yaml
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--config_file', dest='config', default='runs/test_python_run/active_learning.yaml',
-                    help='active_learning configuration file', type=str)
+# parser.add_argument('--config_file', dest='config', default='runs/test_python_run/active_learning.yaml',
+#                     help='active_learning configuration file', type=str)
+parser.add_argument('config', metavar='config_file', type=str,
+                    help='active_learning configuration file')
 args = parser.parse_args()
 
 

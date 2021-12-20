@@ -20,8 +20,8 @@ from nequip.utils import Config
 from e3nn_networks.utils.train_val import latent_distance_uncertainty_Nequip
 from e3nn_networks.utils.data_helpers import *
 
-from RElectDGen.calculate.calculator import nn_from_results
-from RElectDGen.structure.structure import clusters_from_traj
+from ..calculate.calculator import nn_from_results
+from ..structure.structure import clusters_from_traj
 
 
 parser = argparse.ArgumentParser()

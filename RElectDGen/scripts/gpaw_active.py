@@ -5,8 +5,8 @@ from ase.io.trajectory import Trajectory
 
 from ase.parallel import world
 
-from RElectDGen.calculate.recalculate import recalculate_traj_energies
-from RElectDGen.calculate.calculator import oracle_from_config
+from ..calculate.recalculate import recalculate_traj_energies
+from ..calculate.calculator import oracle_from_config
 
 
 parser = argparse.ArgumentParser()

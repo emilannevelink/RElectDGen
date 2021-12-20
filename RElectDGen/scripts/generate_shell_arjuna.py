@@ -80,9 +80,11 @@ for file in filenames:
             "source /home/spack/.spack/opt/spack/linux-centos7-broadwell/gcc-11.2.0/miniconda3-4.9.2-et7ujxrrzevxewx65fnmzqkftwwkrsyc/etc/profile.d/conda.sh",
             'conda activate nequip',
             'rm results/processed*/ -r',
-            'python ${1}scripts/'+f'{branch}/combine_datasets.py --config_file $2 --MLP_config_file $3',
+            'REDGEN-combine-datasets $2 $3',
+            # 'python ${1}scripts/'+f'{branch}/combine_datasets.py --config_file $2 --MLP_config_file $3',
             # 'nequip-train $3',
-            'python ${1}scripts/'+f'{branch}/train_NN.py --config_file $2 --MLP_config_file $3',
+            'REDGEN-train-NN --config_file $2 --MLP_config_file $3',
+            # 'python ${1}scripts/'+f'{branch}/train_NN.py --config_file $2 --MLP_config_file $3',
         ]
         slurm_config['n'] = python_cores
         slurm_config['N'] = python_nodes
@@ -93,7 +95,8 @@ for file in filenames:
             "spack unload -a",
             "source /home/spack/.spack/opt/spack/linux-centos7-broadwell/gcc-11.2.0/miniconda3-4.9.2-et7ujxrrzevxewx65fnmzqkftwwkrsyc/etc/profile.d/conda.sh",
             'conda activate nequip',
-            'python ${1}scripts/'+f'{branch}/restart.py --config_file $2 --MLP_config_file $3',
+            'REDGEN-restart --config_file $2 --MLP_config_file $3'
+            # 'python ${1}scripts/'+f'{branch}/restart.py --config_file $2 --MLP_config_file $3',
         ]
         slurm_config['n'] = python_cores
         slurm_config['N'] = python_nodes
@@ -103,25 +106,30 @@ for file in filenames:
         commands = ['spack load -r py-gpaw']
 
         if 'MLP' in file:
-            commands += ['python3 ${1}scripts/'+f'{branch}/slabmol_MLP_MD.py --config_file $2  --MLP_config_file $3 --loop_learning_count $4']
+            commands += ['REDGEN-MLP-MD --config_file $2  --MLP_config_file $3 --loop_learning_count $4']
+            # commands += ['python3 ${1}scripts/'+f'{branch}/slabmol_MLP_MD.py --config_file $2  --MLP_config_file $3 --loop_learning_count $4']
             slurm_config['n'] = python_cores
             slurm_config['N'] = python_nodes
             slurm_config['--ntasks'] = 1
             slurm_config['--cpus-per-task'] = python_cores
         elif 'MD' in file:
-            commands += [f'srun -n {gpaw_cores}' + ' gpaw python ${1}scripts/'+f'{branch}/slabmol_gpaw_MD.py --config_file $2 --MLP_config_file $3']
+            commands += [f'srun -n {gpaw_cores}' + ' gpaw REDGEN-gpaw-MD --config_file $2 --MLP_config_file $3']
+            # commands += [f'srun -n {gpaw_cores}' + ' gpaw python ${1}scripts/'+f'{branch}/slabmol_gpaw_MD.py --config_file $2 --MLP_config_file $3']
             slurm_config['n'] = gpaw_cores
             slurm_config['N'] = gpaw_nodes
         elif 'active' in file:
-            commands += [f'srun -n {gpaw_cores}' + ' gpaw python ${1}scripts/'+f'{branch}/slabmol_gpaw_active.py --config_file $2 --MLP_config_file $3 --loop_learning_count $4']
+            commands += [f'srun -n {gpaw_cores}' + ' gpaw REDGEN-gpaw-active --config_file $2 --MLP_config_file $3 --loop_learning_count $4']
+            # commands += [f'srun -n {gpaw_cores}' + ' gpaw python ${1}scripts/'+f'{branch}/slabmol_gpaw_active.py --config_file $2 --MLP_config_file $3 --loop_learning_count $4']
             slurm_config['n'] = gpaw_cores
             slurm_config['N'] = gpaw_nodes
         elif 'array' in file:
-            commands += [f'srun -n {gpaw_cores}' + ' gpaw python ${1}scripts/'+f'{branch}/gpaw_active_array.py --config_file $2 --MLP_config_file $3 --loop_learning_count $4' + " --array_index ${SLURM_ARRAY_TASK_ID}"]
+            commands += [f'srun -n {gpaw_cores}' + ' gpaw REDGEN-gpaw-active-array --config_file $2 --MLP_config_file $3 --loop_learning_count $4' + " --array_index ${SLURM_ARRAY_TASK_ID}"]
+            # commands += [f'srun -n {gpaw_cores}' + ' gpaw python ${1}scripts/'+f'{branch}/gpaw_active_array.py --config_file $2 --MLP_config_file $3 --loop_learning_count $4' + " --array_index ${SLURM_ARRAY_TASK_ID}"]
             slurm_config['n'] = gpaw_cores
             slurm_config['N'] = gpaw_nodes
         elif 'summary' in file:
-            commands += [f'srun -n {gpaw_cores}' + ' gpaw python ${1}scripts/'+f'{branch}/gpaw_summary_array.py --config_file $2 --MLP_config_file $3 --loop_learning_count $4']
+            commands += [f'srun -n {gpaw_cores}' + ' gpaw REDGEN-gpaw-summary --config_file $2 --MLP_config_file $3 --loop_learning_count $4']
+            # commands += [f'srun -n {gpaw_cores}' + ' gpaw python ${1}scripts/'+f'{branch}/gpaw_summary_array.py --config_file $2 --MLP_config_file $3 --loop_learning_count $4']
             slurm_config['n'] = gpaw_cores
             slurm_config['N'] = gpaw_nodes
         

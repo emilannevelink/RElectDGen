@@ -9,8 +9,8 @@ from ase import units
 
 from e3nn_networks.utils.input_output import load_learning_data, write_learning_data, extract_traj_data
 
-from RElectDGen.calculate.calculator import oracle_from_config
-from RElectDGen.structure.structure import structure_from_config
+from ..calculate.calculator import oracle_from_config
+from ..structure.structure import structure_from_config
 
 # from scripts.unified.structure import structure_from_config
 # from scripts.unified.calculator import oracle_from_config

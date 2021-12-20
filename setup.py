@@ -18,6 +18,14 @@ setup(
         # make the scripts available as command line scripts
         "console_scripts": [
             "REDGEN-start = RElectDGen.scripts.start_active_learning:main",
+            "REDGEN-combine-datasets = RElectDGen.scripts.combine_datasets:main",
+            "REDGEN-gpaw-MD = RElectDGen.scripts.gpaw_MD:main",
+            "REDGEN-train-NN = RElectDGen.scripts.train_NN:main",
+            "REDGEN-MLP-MD = RElectDGen.scripts.MLP_MD:main",
+            "REDGEN-gpaw-active = RElectDGen.scripts.MLP_MD:main",
+            "REDGEN-gpaw-active-array = RElectDGen.scripts.MLP_MD:main",
+            "REDGEN-gpaw-summary = RElectDGen.scripts.MLP_MD:main",
+            "REDGEN-restart = RElectDGen.scripts.MLP_MD:main",
         ]
     },
     install_requires=[
@@ -25,7 +33,7 @@ setup(
         "ase",
         "h5py",
         "uuid",
-        "pandas"
+        "pandas",
         "torch>=1.8",
         "e3nn>=0.3.3",
         "pyyaml",

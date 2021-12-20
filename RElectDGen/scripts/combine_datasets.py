@@ -1,7 +1,7 @@
 import argparse
 import yaml, os
-from ase.io import read, Trajectory, trajectory
-from .save import update_config_trainval
+from ase.io import read, Trajectory
+from ..utils.save import update_config_trainval
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--config_file', dest='config',
