@@ -16,96 +16,44 @@ import multiprocessing as mp
 import copy
 
 from .build import create_slab
-
-def findclusters(
-    atoms: ase.Atoms,
-    cutoff = None,
-):
-
-    if cutoff is None:
-        cutoff = 1.1*neighborlist.natural_cutoffs(atoms)
-    elif isinstance(cutoff,float) or isinstance(cutoff,int):
-        cutoff = [cutoff for _ in atoms]
-    elif isinstance(cutoff,list):
-        assert len(cutoff) == len(atoms)
-
-
-    nblist = neighborlist.NeighborList(cutoff,skin=0,self_interaction=False,bothways=True)
-    nblist.update(atoms)
-
-    matrix = nblist.get_connectivity_matrix()
-
-    n_components, component_list = sparse.csgraph.connected_components(matrix)
-
-    return n_components, component_list
-
-def clusterstocalculate(
-    atoms: ase.Atoms,
-    uncertain_indices: list,
-    n_components: int,
-    component_list: list,
-    max_cluster_size: int = 40,
-    vacuum_size: float = 2.0
-):
-
-    if len(atoms)<=max_cluster_size:
-        if len(uncertain_indices)>0:
-            atoms.wrap()
-            return [[atoms], [0]]
-        else:
-            return [[],[]]
-    
-    n_components_natural, component_list_natural = findclusters(atoms)
-
-    molecules = []
-    clusters = []
-    atom_indices = []
-    for idx in uncertain_indices:
-        if idx < len(atoms):
-            molIdx = component_list[idx]
-            if molIdx not in molecules:
-                molecule = atoms[[ i for i in range(len(component_list)) if component_list[i] == molIdx ]]
-                atoms1 = molecule.copy()
-                arg = np.argwhere(atoms1.positions.std(axis=0)>atoms1.cell.diagonal()/4)
-                if arg.shape[0]>0:
-                    arg = arg[0]
-                    atoms1.positions[:,arg]+=atoms1.cell.diagonal()[arg]/2
-                    atoms1.wrap()
-                atoms1.center(vacuum=vacuum_size)
-                if np.any(molecule.cell<atoms1.cell):
-                    molecule.wrap()
-                else:
-                    molecule = atoms1
-                del atoms1
-                # molecule.center()#vacuum=vacuum_size)
-                if len(molecule)>max_cluster_size:
-                    print(f'Cluster {molIdx} has {len(molecule)} atoms greater than max cluster size of {max_cluster_size}',flush=True)
-
-                    molIdx_natural = component_list_natural[idx]
-
-                else:
-                    clusters.append(molecule)
-                    atom_indices.append(idx)
-                molecules.append(molIdx)
-
-    return clusters, atom_indices
-
+from ..calculate.calculator import nn_from_results
+from nequip.data import AtomicData
+from nequip.data.transforms import TypeMapper
 
 class segment_atoms():
     def __init__(self, 
-        atoms: ase.Atoms, 
-        cutoff = None,
-        config = None) -> None:
+        atoms: ase.Atoms,
+        slab_config: dict, 
+        main_supercell_size: list,
+        cutoff: float = 2.0,
+        segment_type: str = 'uncertain',
+        max_volume_per_atom: int = 150,
+        min_cluster_size: int = 20,
+        max_cluster_size: int = 50,
+        max_clusters: int = 10,
+        vacuum: float = 2.0,
+        ) -> None:
         
         self.atoms = atoms
         self.cutoff = cutoff
-        self.config = config
+        self.segment_type = segment_type
+        self.max_volume_per_atom = max_volume_per_atom
+        self.min_cluster_size = min_cluster_size
+        self.max_cluster_size = max_cluster_size
+        self.max_clusters = max_clusters
+        self.slab_config = slab_config
+        self.main_supercell_size = main_supercell_size
+        self.vacuum = vacuum
 
-        self.segment_type = config.get('segment_type','uncertain')
         self.n_components_natural, self.component_list_natural, self.matrix_natural = self.findclusters()
 
         self.n_components, self.component_list, self.matrix = self.findclusters(cutoff=self.cutoff)
         
+        if self.segment_type == 'embedding':
+            calc_nn, model_load, MLP_config = nn_from_results()
+            self.model = model_load
+            self.transform = TypeMapper(chemical_symbol_to_type=MLP_config.get('chemical_symbol_to_type'))
+            self.r_max = MLP_config.get('r_max')
 
     def findclusters(self,
         cutoff = None,
@@ -131,13 +79,9 @@ class segment_atoms():
 
     def clusterstocalculate(self,
         uncertain_indices: list,
-        min_cluster_size: int = 20,
-        max_cluster_size: int = 40,
-        vacuum_size: float = 2.0,
     ):
 
-        max_volume_per_atom = self.config.get('max_volume_per_atom',150)
-        if len(self.atoms)<=max_cluster_size:
+        if len(self.atoms)<=self.max_cluster_size:
             if len(uncertain_indices)>0:
                 self.atoms.wrap()
                 atoms = Atoms(self.atoms)
@@ -165,7 +109,7 @@ class segment_atoms():
                 if idx in mixture_add:
                     cluster_indices = list(mixture_add)
                     slab_indices = []
-                    if len(slab_add)>0 and (len(cluster_indices)) <= max_cluster_size / 2:
+                    if len(slab_add)>0 and (len(cluster_indices)) <= self.max_cluster_size / 2:
                         add_slab = True
                         slab_indices += list(slab_add)
                 elif idx in slab_add:
@@ -196,7 +140,7 @@ class segment_atoms():
                             if len(neigh_uncertain)>0:
                                 atom_ind = neighbor_atoms[np.argmin(neigh_uncertain)]
                                 molIdx_add = self.component_list_natural[atom_ind]
-                            
+                                print(idx,molIdx_add)
                                 # add natural molecule that atom is in to cluster indices                             
                                 indices_add = [ i for i in range(len(self.component_list_natural)) if self.component_list_natural[i] == molIdx_add ]
                             else:
@@ -206,8 +150,40 @@ class segment_atoms():
                             Di = self.atoms.get_distances(neighbor_atoms,idx, mic=True)
                             atom_ind = neighbor_atoms[np.argmin(Di)]
                             molIdx_add = self.component_list_natural[atom_ind]
+                            print(idx,molIdx_add)
                             indices_add = [ i for i in range(len(self.component_list_natural)) if self.component_list_natural[i] == molIdx_add ]
+
+                        elif self.segment_type == 'embedding':
+                            data = self.transform(AtomicData.from_ase(atoms=self.atoms,r_max=self.r_max))
+                            out = self.model(AtomicData.to_AtomicDataDict(data))
                             
+                            embeddingi = out['node_features'][idx].detach().numpy()
+                            
+                            embed_dist = []
+                            #get possible added molecules
+                            close_clusters = np.unique(self.component_list_natural[neighbor_atoms])
+                            for cc in close_clusters:
+                                indices_add = [ i for i in range(len(self.component_list_natural)) if self.component_list_natural[i] == cc ]
+                                ind_tmp = cluster_indices + indices_add
+                                cluster_tmp = self.atoms[ind_tmp]
+                                
+                                data = self.transform(AtomicData.from_ase(atoms=cluster_tmp,r_max=self.r_max))
+                                out = self.model(AtomicData.to_AtomicDataDict(data))
+                                
+                                tmp_idx = np.argwhere(ind_tmp==idx)[0,0]
+                                embeddingj = out['node_features'][tmp_idx].detach().numpy()
+                                embed_dist.append(np.linalg.norm(embeddingi-embeddingj))
+                            
+                            molIdx_add = close_clusters[np.argmin(embed_dist)]
+                            print(idx,molIdx_add)
+                            neigh_mol_indices = np.array(neighbor_atoms)[np.argwhere(self.component_list_natural[neighbor_atoms]==molIdx_add).flatten()]
+                            Di = self.atoms.get_distances(neigh_mol_indices,idx, mic=True)
+                            if len(Di)>0:
+                                atom_ind = neigh_mol_indices[np.argmin(Di)]
+                            else:
+                                print('test')
+                            
+                            indices_add = [ i for i in range(len(self.component_list_natural)) if self.component_list_natural[i] == molIdx_add ]
                         
                         if len(indices_add)>0:
                             slab_add, mixture_add = self.segment_slab_mixture(indices_add)
@@ -216,13 +192,13 @@ class segment_atoms():
                             if len(lithium_ind)>500:
                                 print('wrong')
 
-                            if (len(cluster_indices) + len(mixture_add)) > max_cluster_size / (2  - (not add_slab)):
+                            if (len(cluster_indices) + len(mixture_add)) > self.max_cluster_size / (2  - (not add_slab)):
                                 build = False
                             elif atom_ind in mixture_add:
                                 cluster_indices += list(mixture_add)
                                 molecules.append(molIdx_add)
 
-                                if len(slab_add)>0 and (len(cluster_indices)) <= max_cluster_size / 2:
+                                if len(slab_add)>0 and (len(cluster_indices)) <= self.max_cluster_size / 2:
                                     add_slab = True
                                     slab_indices += list(slab_add)
                             elif atom_ind in slab_add:
@@ -231,7 +207,7 @@ class segment_atoms():
                                     cluster, cluster_indices = self.segment_bulk(slab_add,atom_ind)
                                     build = False
                                     add_bulk = True
-                                elif (len(cluster_indices)) <= max_cluster_size / 2:
+                                elif (len(cluster_indices)) <= self.max_cluster_size / 2:
                                     add_slab = True
                                     slab_indices += list(slab_add)
                                     molecules.append(molIdx_add)
@@ -255,7 +231,7 @@ class segment_atoms():
                 elif add_bulk:
                     cluster.pbc = True
                 else:
-                    cluster = self.reduce_mixture_size(cluster,vacuum_size)
+                    cluster = self.reduce_mixture_size(cluster)
                     cluster.pbc = True
 
                 lithium_ind = np.argwhere(cluster.get_atomic_numbers()==3).flatten()
@@ -270,7 +246,7 @@ class segment_atoms():
                     #     print(e)
                     #     save = False
 
-                    if len(cluster)>1 and cluster.get_volume()/len(cluster)<max_volume_per_atom:
+                    if len(cluster)>1 and cluster.get_volume()/len(cluster)<self.max_volume_per_atom:
                         cluster.arrays['cluster_indices'] = np.array(cluster_indices,dtype=int)
                         clusters.append(cluster)
                         atom_indices.append(idx)
@@ -278,17 +254,17 @@ class segment_atoms():
                     else:
                         if len(cluster)==1:
                             print(f'wrong, not enough atoms around {idx}',flush=True)
-                        elif cluster.get_volume()/len(cluster)>max_volume_per_atom:
+                        elif cluster.get_volume()/len(cluster)>self.max_volume_per_atom:
                             print(f'wrong, cluster volume too large volume/atom: {cluster.get_volume()/len(cluster)}',flush=True)
                         # elif not save:
                         #     print(f'problem with AtomicData {idx}',flush=True)
                         #     save = True
-            if len(clusters)>=self.config.get('max_clusters',10):
+            if len(clusters)>=self.max_clusters:
                 break
 
         return clusters, atom_indices
 
-    def reduce_mixture_size(self,cluster,vacuum_size):
+    def reduce_mixture_size(self,cluster):
 
         atoms1 = cluster.copy()
         divisor = 2
@@ -313,7 +289,7 @@ class segment_atoms():
         #         break
         
         atoms2 = atoms1.copy()
-        atoms1.center(vacuum=vacuum_size)
+        atoms1.center(vacuum=self.vacuum)
         shrink_ind = np.argwhere(np.any(cluster.cell>atoms1.cell,axis=1)).flatten()
         # atoms1.center(vacuum=vacuum_size,axis=shrink_ind)
         
@@ -325,7 +301,7 @@ class segment_atoms():
             # adjust_inds = [i for i in [0,1,2] if i not in shrink_ind]
             # atoms1.cell[adjust_inds] = cluster.cell[adjust_inds]
             # atoms1.center(vacuum=vacuum_size,axis=shrink_ind)
-            atoms2.center(vacuum_size,axis=shrink_ind)
+            atoms2.center(self.vacuum,axis=shrink_ind)
             cluster = atoms2
         
         del atoms1, atoms2
@@ -352,7 +328,7 @@ class segment_atoms():
         cluster = self.atoms[cluster_indices]
 
         lithium_ind = np.argwhere(cluster.get_atomic_numbers()==3).flatten()
-        if len(lithium_ind)>5 and self.config.get('slab_config') is not None:
+        if len(lithium_ind)>5 and self.slab_config is not None:
 
             lithium_cluster = cluster[lithium_ind]
 
@@ -403,16 +379,16 @@ class segment_atoms():
 
         D = slab.get_distances(np.arange(len(slab)),slab_seed, mic=True,vector=True)
         
-        pure_slab = create_slab(self.config.get('slab_config'))
+        pure_slab = create_slab(self.slab_config)
         cell = pure_slab.cell.diagonal()
 
         
-        for i, n_planes in enumerate(self.config.get('slab_config')['supercell_size']):
-            hist, bin_edges = np.histogram(D[:,i],bins=self.config.get('supercell_size')[i]*10)
+        for i, n_planes in enumerate(self.slab_config['supercell_size']):
+            hist, bin_edges = np.histogram(D[:,i],bins=self.main_supercell_size[i]*10)
             
             bin_indices, bin_centers = self.coarsen_histogram(D[:,i],hist, bin_edges)
 
-            n_basis = max([1,int(np.round(len(bin_indices)/self.config.get('supercell_size')[i],0))])
+            n_basis = max([1,int(np.round(len(bin_indices)/self.main_supercell_size[i],0))])
             n_planes *= n_basis
             
             bin_seed_ind = np.argsort(np.abs(bin_centers))[:n_planes]
@@ -428,7 +404,7 @@ class segment_atoms():
         reduced_slab_cluster = slab_keep + self.atoms[cluster_indices]
 
         cell_new = pure_slab.get_cell()
-        cell_new[2,2] += 2*self.config.get('vacuum')
+        cell_new[2,2] += 2*self.vacuum_size
         reduced_slab_cluster.set_cell(cell_new)
         reduced_slab_cluster.center()
 
@@ -515,7 +491,7 @@ class segment_atoms():
 
     def segment_bulk(self,slab_indices, atom_ind):
 
-        config = self.config.get('slab_config').copy()
+        config = self.slab_config.copy()
         config['vacuum'] = 0
         config['zperiodic'] = True
         pure_slab = create_slab(config)
@@ -525,7 +501,7 @@ class segment_atoms():
         slab_seed = int(np.argwhere(slab_indices==atom_ind))
         D = slab.get_distances(np.arange(len(slab)),slab_seed, mic=True,vector=True)
 
-        for i, n_planes in enumerate(self.config.get('slab_config')['supercell_size']):
+        for i, n_planes in enumerate(self.slab_config['supercell_size']):
             hist, bin_edges = np.histogram(D[:,i],bins=self.config.get('supercell_size')[i]*10)
             
             bin_indices, bin_centers = self.coarsen_histogram(D[:,i],hist, bin_edges)
@@ -578,21 +554,25 @@ class segment_atoms():
         return bulk_keep, keep_indices
 
 
-
 def clusters_from_traj(
     traj,
     uncertainties,
-    uncertainty_thresholds: list,
-    cutoff = None,
+    uncertainty_thresholds: list = [0.2,0.01],
+    slab_config: dict = {},
+    supercell_size: list = [1,1,1],
+    cutoff: float = 2.0,
     min_cluster_size: int = 20,
     max_cluster_size: int = 40,
-    vacuum_size: float = 2.0,
     sorted: bool = True,
-    config = None,
+    cores: int = 1,
+    segment_type: str = 'uncertain',
+    max_volume_per_atom: int = 150,
+    max_clusters: int = 10,
+    vacuum: float = 2.0,
 ):
 
     ncores = mp.cpu_count()
-    cores = int(config.get('cores',ncores))
+    
     traj_cores = max(int(cores/4),1) # int(config.get('trajectory_cores',cores))
     print(traj_cores, ncores, flush=True)
 
@@ -601,7 +581,9 @@ def clusters_from_traj(
     write(traj_filename,traj)
     del traj
 
-    generator = ((traj_filename, i, cutoff, config, uncertainties[i], uncertainty_thresholds, min_cluster_size, max_cluster_size, vacuum_size) 
+    generator = ((traj_filename, i, uncertainties[i], uncertainty_thresholds,
+                    slab_config, supercell_size, cutoff, segment_type, max_volume_per_atom,
+                    min_cluster_size, max_cluster_size, max_clusters, vacuum) 
                 for i in range(natoms))
     
     
@@ -630,17 +612,17 @@ def clusters_from_traj(
     return clusters_all, df_ind
 
 def cluster_from_atoms(args):
-    traj_filename, i, cutoff, config, uncertainty, uncertainty_thresholds, min_cluster_size, max_cluster_size, vacuum_size = args
+    traj_filename, i, uncertainty, uncertainty_thresholds = args[:4]
 
     atoms = read(traj_filename,index=i)
     max_uncertainty, min_uncertainty = uncertainty_thresholds
     
     process = psutil.Process(os.getpid())
     print(i,f'used {psutil.virtual_memory().used/1024**3} GB', f'total {psutil.virtual_memory().total/1024**3} GB', psutil.virtual_memory().percent, flush=True)
-    segment = segment_atoms(atoms,cutoff,config)
+    segment = segment_atoms(atoms,*args[4:])
 
     uncertain_indices = np.where(np.logical_and(uncertainty>min_uncertainty,uncertainty<max_uncertainty))[0]
-    uncertain_indices = uncertain_indices[np.argsort(uncertainty[uncertain_indices]).flipud()]
+    uncertain_indices = uncertain_indices[np.flipud(np.argsort(uncertainty[uncertain_indices]))]
 
 
     if not isinstance(uncertain_indices,np.ndarray):
@@ -648,7 +630,7 @@ def cluster_from_atoms(args):
 
     # clusters, atom_indices = clusterstocalculate(atoms,uncertain_indices,n_components,component_list,max_cluster_size,vacuum_size)
 
-    clusters, atom_indices = segment.clusterstocalculate(uncertain_indices,min_cluster_size,max_cluster_size,vacuum_size)
+    clusters, atom_indices = segment.clusterstocalculate(uncertain_indices)
 
     cluster_uncertainties = uncertainty[atom_indices]
 
