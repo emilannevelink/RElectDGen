@@ -87,5 +87,6 @@ if train:
         
     process = subprocess.run(commands,capture_output=True)
     print(process)
-    print(process.stderr)
-    print(process.stderr.decode('ascii'))
+    [print(line) for line in process.stderr.split(b'\n')]
+
+    # print(process.stderr.decode('ascii'))
