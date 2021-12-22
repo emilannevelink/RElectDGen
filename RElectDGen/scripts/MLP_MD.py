@@ -162,14 +162,11 @@ def main(args=None):
             keep_embeddings[key] = torch.empty((0,cluster_embeddings[0].shape[-1]))
         for i, (traj_ind, atom_ind, uncert) in enumerate(cluster_uncertainties.values):
                 embedding_all = cluster_embeddings[i]
-                try:
-                    ind = np.argwhere(clusters[i].arrays['cluster_indices']==atom_ind).flatten()[0]
-                    embeddingi_cluster = embedding_all[ind].numpy()
-                    embeddingi_total = embeddings[int(traj_ind), int(atom_ind)].detach().numpy()
-                except:
-                    embeddingi_cluster = embeddings[int(traj_ind), int(atom_ind)].detach().numpy()
-                    embeddingi_total = embeddings[int(traj_ind), int(atom_ind)].detach().numpy()
-                
+               
+                ind = np.argwhere(clusters[i].arrays['cluster_indices']==atom_ind).flatten()[0]
+                embeddingi_cluster = embedding_all[ind].numpy()
+                embeddingi_total = embeddings[int(traj_ind), int(atom_ind)].detach().numpy()
+               
                 embedding_distance = np.round(np.linalg.norm(embeddingi_total-embeddingi_cluster),4)#*UQ.sigmas[1]
                 
                 if i == 0:
