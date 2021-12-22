@@ -35,10 +35,10 @@ def structure_from_config(config):
             tolerance=config.get('molecule_separation'),
             packmolpath=packmolpath)
 
-        atomspath = os.path.join(config.get('data_directory'),'data/molecules/atoms')
+        atomspath = os.path.join(config.get('data_directory'),config.get('atomspath','data/molecules/atoms'))
         molecule_charges = getchargesforpackmol(config.get('molecule'),
                                                 config.get('nmolecules'),
-                                                atomspath=config.get('atomspath',atomspath))
+                                                atomspath=atomspath)
         
         
         supercell.set_initial_charges([0]*len(supercell))
@@ -88,10 +88,10 @@ def structure_from_config(config):
             tolerance=config.get('molecule_separation'),
             packmolpath=packmolpath)
 
-        atomspath = os.path.join(config.get('directory'),'data/molecules/atoms')
+        atomspath = os.path.join(config.get('data_directory'),config.get('atomspath','data/molecules/atoms'))
         molecule_charges = getchargesforpackmol(config.get('molecule'),
                                                 config.get('nmolecules'),
-                                                atomspath=config.get('atomspath',atomspath))
+                                                atomspath=atomspath)
 
         supercell.set_initial_charges(molecule_charges)
 
