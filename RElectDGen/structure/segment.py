@@ -148,7 +148,7 @@ class segment_atoms():
                                 build = False
                             elif atom_ind in mixture_add:
                                 cluster_indices += list(mixture_add)
-                                molecules.append(molIdx_add)
+                                # molecules.append(molIdx_add)
 
                                 if len(slab_add)>0 and (len(cluster_indices)) <= self.max_cluster_size / 2:
                                     add_slab = True
@@ -162,7 +162,7 @@ class segment_atoms():
                                 elif (len(cluster_indices)) <= self.max_cluster_size / 2:
                                     add_slab = True
                                     slab_indices += list(slab_add)
-                                    molecules.append(molIdx_add)
+                                    # molecules.append(molIdx_add)
                                 else:
                                     build = False
 
@@ -194,7 +194,9 @@ class segment_atoms():
                     #     print(e)
                     #     save = False
 
-                    if len(cluster)>1 and cluster.get_volume()/len(cluster)<self.max_volume_per_atom:
+                    if (len(cluster)>1 and 
+                        cluster.get_volume()/len(cluster)<self.max_volume_per_atom and
+                        np.isclose(cluster.get_initial_charges().sum().round(),cluster.get_initial_charges().sum().round(2))):
                         cluster.arrays['cluster_indices'] = np.array(cluster_indices,dtype=int)
                         clusters.append(cluster)
                         atom_indices.append(idx)
@@ -206,6 +208,8 @@ class segment_atoms():
                             print(f'wrong, not enough atoms around {idx}',flush=True)
                         elif cluster.get_volume()/len(cluster)>self.max_volume_per_atom:
                             print(f'wrong, cluster volume too large volume/atom: {cluster.get_volume()/len(cluster)}',flush=True)
+                        elif not np.isclose(cluster.get_initial_charges().sum().round(),cluster.get_initial_charges().sum().round(2)):
+                            print(f'wrong, cluster doesnt have whole number charge')
                         # elif not save:
                         #     print(f'problem with AtomicData {idx}',flush=True)
                         #     save = True
