@@ -241,7 +241,7 @@ class segment_atoms():
             data = self.transform(AtomicData.from_ase(atoms=self.atoms,r_max=self.r_max))
             print('transformed data',data, flush=True)
             print('loaded model', self.model, flush=True)
-            model = self.model.copy()
+            model = copy.copy(self.model)
             print('copied model',model, flush=True)
             out = model(AtomicData.to_AtomicDataDict(data))
             print('calculated model', out, flush=True)
@@ -596,8 +596,12 @@ def clusters_from_traj(
                     min_cluster_size, max_cluster_size, max_clusters, vacuum) 
                 for i in range(natoms))
     
-    
-    results = send_to_multiprocessing(cluster_from_atoms, generator, traj_cores)
+    if segment_type == 'embedding':
+        results = []
+        for gen in generator:
+            results.append(cluster_from_atoms(gen))
+    else:
+        results = send_to_multiprocessing(cluster_from_atoms, generator, traj_cores)
 
     os.remove(traj_filename)
 
