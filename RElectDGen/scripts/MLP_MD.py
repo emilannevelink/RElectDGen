@@ -1,3 +1,4 @@
+import shutil
 import h5py, uuid, json, pdb, ase, os, argparse, time
 # from datetime import datetime
 # import matplotlib.pyplot as plt
@@ -71,6 +72,9 @@ def main(args=None):
     ### Run MLP MD
     dyn = VelocityVerlet(supercell, timestep=config.get('MLP_MD_timestep') * units.fs)
     MLP_MD_dump_file = os.path.join(config.get('data_directory'),config.get('MLP_MD_dump_file'))
+    #MDLogger only has append, delete log file
+    if os.path.isfile(MLP_MD_dump_file):
+        os.remove(MLP_MD_dump_file)
     dyn.attach(MDLogger(dyn,supercell,MLP_MD_dump_file,mode='w'),interval=1)
     traj = Trajectory(trajectory_file, 'w', supercell)
     dyn.attach(traj.write, interval=1)
