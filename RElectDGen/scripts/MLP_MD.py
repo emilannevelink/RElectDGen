@@ -139,7 +139,7 @@ def main(args=None):
     if len(clusters) == 0:
         print('No clusters to calculate', flush=True)
     else:
-        cluster_file = os.path.join(config.get('directory'),config.get('GPAW_MD_dump_file').split('.log')[0]+'_clusters.xyz')
+        cluster_file = os.path.join(config.get('data_directory'),config.get('GPAW_MD_dump_file').split('.log')[0]+'_clusters.xyz')
         write(cluster_file,clusters)
 
         uncertainties, cluster_embeddings = UQ.predict_from_traj(clusters,max=True)
