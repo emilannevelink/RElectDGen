@@ -54,6 +54,7 @@ class segment_atoms():
             self.model = model_load
             self.transform = TypeMapper(chemical_symbol_to_type=MLP_config.get('chemical_symbol_to_type'))
             self.r_max = MLP_config.get('r_max')
+            print('loaded model',self.model, flush=True)
 
     def findclusters(self,
         cutoff = None,
@@ -239,6 +240,7 @@ class segment_atoms():
             print('in embedding', flush=True)
             data = self.transform(AtomicData.from_ase(atoms=self.atoms,r_max=self.r_max))
             print('transformed data',data, flush=True)
+            print('loaded model', self.model, flush=True)
             model = self.model.copy()
             print('copied model',model, flush=True)
             out = model(AtomicData.to_AtomicDataDict(data))
