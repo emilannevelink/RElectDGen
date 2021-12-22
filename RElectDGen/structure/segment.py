@@ -30,7 +30,7 @@ class segment_atoms():
         max_volume_per_atom: int = 150,
         min_cluster_size: int = 20,
         max_cluster_size: int = 50,
-        max_clusters: int = 10,
+        max_samples: int = 10,
         vacuum: float = 2.0,
         ) -> None:
         
@@ -40,7 +40,7 @@ class segment_atoms():
         self.max_volume_per_atom = max_volume_per_atom
         self.min_cluster_size = min_cluster_size
         self.max_cluster_size = max_cluster_size
-        self.max_clusters = max_clusters
+        self.max_samples = max_samples
         self.slab_config = slab_config
         self.main_supercell_size = main_supercell_size
         self.vacuum = vacuum
@@ -209,13 +209,13 @@ class segment_atoms():
                         # elif not save:
                         #     print(f'problem with AtomicData {idx}',flush=True)
                         #     save = True
-            if len(clusters)>=self.max_clusters:
+            if len(clusters)>=self.max_samples:
                 break
 
         return clusters, atom_indices
 
     def next_cluster(self,idx,neighbor_atoms,cluster_indices,uncertain_indices):
-        print('getting next cluster', self.segment_type,flush=True)
+        # print('getting next cluster', self.segment_type,flush=True)
         if self.segment_type == 'uncertain':
             # get neighbor atom with the lowest index in uncertain indices (uncertain indices are sorted low to high)
             neigh_uncertain = [np.argwhere(neigh_ind == np.array(uncertain_indices))[0,0] for neigh_ind in neighbor_atoms if neigh_ind in uncertain_indices]
@@ -574,7 +574,7 @@ def clusters_from_traj(
     cores: int = 1,
     segment_type: str = 'uncertain',
     max_volume_per_atom: int = 150,
-    max_clusters: int = 10,
+    max_samples: int = 10,
     vacuum: float = 2.0,
     **kwargs,
 ):
@@ -591,7 +591,7 @@ def clusters_from_traj(
 
     generator = ((traj_filename, i, uncertainties[i], uncertainty_thresholds,
                     slab_config, supercell_size, cutoff, segment_type, max_volume_per_atom,
-                    min_cluster_size, max_cluster_size, max_clusters, vacuum) 
+                    min_cluster_size, max_cluster_size, max_samples, vacuum) 
                 for i in range(natoms))
     
     if segment_type == 'embedding':

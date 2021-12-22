@@ -24,15 +24,15 @@ from e3nn_networks.utils.data_helpers import *
 from ..calculate.calculator import nn_from_results
 from ..structure.segment import clusters_from_traj
 
-def parse_command_line(args):
+def parse_command_line(argsin):
     parser = argparse.ArgumentParser()
     parser.add_argument('--config_file', dest='config',
                         help='active_learning configuration file', type=str)
     parser.add_argument('--MLP_config_file', dest='MLP_config',
                         help='Nequip configuration file', type=str)
-    parser.add_argument('--loop_learning_count', dest='loop_learning_count', default=0,
+    parser.add_argument('--loop_learning_count', dest='loop_learning_count', default=1,
                         help='active_learning_loop', type=int)
-    args = parser.parse_args()
+    args = parser.parse_args(argsin)
 
     
     with open(args.config,'r') as fl:
@@ -148,7 +148,7 @@ def main(args=None):
         else:
             mask = uncertainties>min_sigma
 
-        print(sum(mask),flush=True)
+        print(len(clusters),sum(mask),flush=True)
 
         cluster_uncertainties = cluster_uncertainties[mask.detach().numpy()]
         clusters = [atoms for bool, atoms in zip(mask,clusters) if bool]
@@ -157,6 +157,9 @@ def main(args=None):
         print('writing uncertain clusters', flush=True)
         calc_inds = []
         embedding_distances = []
+        keep_embeddings = {}
+        for key in MLP_config.get('chemical_symbol_to_type'): 
+            keep_embeddings[key] = torch.empty((0,cluster_embeddings[0].shape[-1]))
         for i, (traj_ind, atom_ind, uncert) in enumerate(cluster_uncertainties.values):
                 embedding_all = cluster_embeddings[i]
                 try:
@@ -170,14 +173,19 @@ def main(args=None):
                 embedding_distance = np.round(np.linalg.norm(embeddingi_total-embeddingi_cluster),4)#*UQ.sigmas[1]
                 
                 if i == 0:
-                    keep_embeddings = embedding_all
+                    for key in MLP_config.get('chemical_symbol_to_type'):
+                        mask = np.array(clusters[i].get_chemical_symbols()) == key
+                        keep_embeddings[key] = torch.cat([keep_embeddings[key],embedding_all[mask]])
                     calc_inds.append(i)
                     embedding_distances.append(embedding_distance)
 
                 elif len(calc_inds) < config.get('max_samples'):
-                    UQ_dist = np.linalg.norm(keep_embeddings-embeddingi_cluster,axis=1).min()*UQ.sigmas[1]
+                    key = clusters[i].get_chemical_symbols()[ind]
+                    UQ_dist = np.linalg.norm(keep_embeddings[key]-embeddingi_cluster,axis=1).min()*UQ.params[key][1]
                     if UQ_dist>2*config.get('UQ_min_uncertainty'):
-                        keep_embeddings = np.concatenate([keep_embeddings,embedding_all])
+                        for key in MLP_config.get('chemical_symbol_to_type'):
+                            mask = np.array(clusters[i].get_chemical_symbols()) == key
+                            keep_embeddings[key] = torch.cat([keep_embeddings[key],embedding_all[mask]])
                         calc_inds.append(i)
                         embedding_distances.append(embedding_distance)
                 else:
