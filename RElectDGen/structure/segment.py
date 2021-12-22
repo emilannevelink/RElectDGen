@@ -632,7 +632,7 @@ def cluster_from_atoms(args):
         uncertain_indices = np.array([uncertain_indices])
 
     # clusters, atom_indices = clusterstocalculate(atoms,uncertain_indices,n_components,component_list,max_cluster_size,vacuum_size)
-
+    print('finding clusters to calculate', flush=True)
     clusters, atom_indices = segment.clusterstocalculate(uncertain_indices)
 
     cluster_uncertainties = uncertainty[atom_indices]
