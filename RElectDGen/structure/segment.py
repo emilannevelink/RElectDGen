@@ -240,18 +240,19 @@ class segment_atoms():
             out = self.model(AtomicData.to_AtomicDataDict(data))
             
             embeddingi = out['node_features'][idx].detach().numpy()
-            
+            print('got node embedding')
             embed_dist = []
             #get possible added molecules
             close_clusters = np.unique(self.component_list_natural[neighbor_atoms])
-            for cc in close_clusters:
+            for i, cc in enumerate(close_clusters):
+                print('going through close clusters', i)
                 indices_add = [ i for i in range(len(self.component_list_natural)) if self.component_list_natural[i] == cc ]
                 ind_tmp = cluster_indices + indices_add
                 cluster_tmp = self.atoms[ind_tmp]
                 
                 data = self.transform(AtomicData.from_ase(atoms=cluster_tmp,r_max=self.r_max))
                 out = self.model(AtomicData.to_AtomicDataDict(data))
-                
+                print('got node embedding')
                 tmp_idx = np.argwhere(ind_tmp==idx)[0,0]
                 embeddingj = out['node_features'][tmp_idx].detach().numpy()
                 embed_dist.append(np.linalg.norm(embeddingi-embeddingj))
