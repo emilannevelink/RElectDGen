@@ -239,7 +239,9 @@ class segment_atoms():
             print('in embedding', flush=True)
             data = self.transform(AtomicData.from_ase(atoms=self.atoms,r_max=self.r_max))
             print('transformed data',data, flush=True)
-            out = self.model(AtomicData.to_AtomicDataDict(data))
+            model = self.model.copy()
+            print('copied model',model, flush=True)
+            out = model(AtomicData.to_AtomicDataDict(data))
             print('calculated model', out, flush=True)
             embeddingi = out['node_features'][idx].detach().numpy()
             print('got node embedding', flush=True)
@@ -253,7 +255,7 @@ class segment_atoms():
                 cluster_tmp = self.atoms[ind_tmp]
                 
                 data = self.transform(AtomicData.from_ase(atoms=cluster_tmp,r_max=self.r_max))
-                out = self.model(AtomicData.to_AtomicDataDict(data))
+                out = model(AtomicData.to_AtomicDataDict(data))
                 print('got node embedding', flush=True)
                 tmp_idx = np.argwhere(ind_tmp==idx)[0,0]
                 embeddingj = out['node_features'][tmp_idx].detach().numpy()
