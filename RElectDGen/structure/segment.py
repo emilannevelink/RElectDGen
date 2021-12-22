@@ -51,7 +51,7 @@ class segment_atoms():
         
         if self.segment_type == 'embedding':
             calc_nn, model_load, MLP_config = nn_from_results()
-            self.model = model_load
+            self.model = copy.copy(model_load)
             self.transform = TypeMapper(chemical_symbol_to_type=MLP_config.get('chemical_symbol_to_type'))
             self.r_max = MLP_config.get('r_max')
             print('loaded model',self.model, flush=True)
@@ -237,28 +237,26 @@ class segment_atoms():
             indices_add = [ i for i in range(len(self.component_list_natural)) if self.component_list_natural[i] == molIdx_add ]
 
         elif self.segment_type == 'embedding':
-            print('in embedding', flush=True)
+            # print('in embedding', flush=True)
             data = self.transform(AtomicData.from_ase(atoms=self.atoms,r_max=self.r_max))
-            print('transformed data',data, flush=True)
-            print('loaded model', self.model, flush=True)
-            model = copy.copy(self.model)
-            print('copied model',model, flush=True)
-            out = model(AtomicData.to_AtomicDataDict(data))
-            print('calculated model', out, flush=True)
+            # print('transformed data',data, flush=True)
+            print('loaded model', flush=True)
+            out = self.model(AtomicData.to_AtomicDataDict(data))
+            print('calculated model', flush=True)
             embeddingi = out['node_features'][idx].detach().numpy()
-            print('got node embedding', flush=True)
+            # print('got node embedding', flush=True)
             embed_dist = []
             #get possible added molecules
             close_clusters = np.unique(self.component_list_natural[neighbor_atoms])
             for i, cc in enumerate(close_clusters):
-                print('going through close clusters', i, flush=True)
+                # print('going through close clusters', i, flush=True)
                 indices_add = [ i for i in range(len(self.component_list_natural)) if self.component_list_natural[i] == cc ]
                 ind_tmp = cluster_indices + indices_add
                 cluster_tmp = self.atoms[ind_tmp]
                 
                 data = self.transform(AtomicData.from_ase(atoms=cluster_tmp,r_max=self.r_max))
-                out = model(AtomicData.to_AtomicDataDict(data))
-                print('got node embedding', flush=True)
+                out = self.model(AtomicData.to_AtomicDataDict(data))
+                # print('got node embedding', flush=True)
                 tmp_idx = np.argwhere(ind_tmp==idx)[0,0]
                 embeddingj = out['node_features'][tmp_idx].detach().numpy()
                 embed_dist.append(np.linalg.norm(embeddingi-embeddingj))
