@@ -214,7 +214,7 @@ class segment_atoms():
         return clusters, atom_indices
 
     def next_cluster(self,idx,neighbor_atoms,cluster_indices,uncertain_indices):
-        print('getting next cluster',flush=True)
+        print('getting next cluster', self.segment_type,flush=True)
         if self.segment_type == 'uncertain':
             # get neighbor atom with the lowest index in uncertain indices (uncertain indices are sorted low to high)
             neigh_uncertain = [np.argwhere(neigh_ind == np.array(uncertain_indices))[0,0] for neigh_ind in neighbor_atoms if neigh_ind in uncertain_indices]
@@ -236,23 +236,24 @@ class segment_atoms():
             indices_add = [ i for i in range(len(self.component_list_natural)) if self.component_list_natural[i] == molIdx_add ]
 
         elif self.segment_type == 'embedding':
+            print('in embedding', flush=True)
             data = self.transform(AtomicData.from_ase(atoms=self.atoms,r_max=self.r_max))
             out = self.model(AtomicData.to_AtomicDataDict(data))
             
             embeddingi = out['node_features'][idx].detach().numpy()
-            print('got node embedding')
+            print('got node embedding', flush=True)
             embed_dist = []
             #get possible added molecules
             close_clusters = np.unique(self.component_list_natural[neighbor_atoms])
             for i, cc in enumerate(close_clusters):
-                print('going through close clusters', i)
+                print('going through close clusters', i, flush=True)
                 indices_add = [ i for i in range(len(self.component_list_natural)) if self.component_list_natural[i] == cc ]
                 ind_tmp = cluster_indices + indices_add
                 cluster_tmp = self.atoms[ind_tmp]
                 
                 data = self.transform(AtomicData.from_ase(atoms=cluster_tmp,r_max=self.r_max))
                 out = self.model(AtomicData.to_AtomicDataDict(data))
-                print('got node embedding')
+                print('got node embedding', flush=True)
                 tmp_idx = np.argwhere(ind_tmp==idx)[0,0]
                 embeddingj = out['node_features'][tmp_idx].detach().numpy()
                 embed_dist.append(np.linalg.norm(embeddingi-embeddingj))

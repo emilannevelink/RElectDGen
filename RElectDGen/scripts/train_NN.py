@@ -62,7 +62,7 @@ if not train:
         UQ.calibrate()
 
         
-        uncertainty = UQ.predict_from_traj(traj)
+        uncertainty, embedding = UQ.predict_from_traj(traj)
         
         uncertain_data = np.argwhere(np.array(uncertainty.detach())>config.get('UQ_min_uncertainty')).flatten()
 
