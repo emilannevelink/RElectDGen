@@ -106,6 +106,8 @@ class segment_atoms():
                 add_slab = False
                 add_bulk = False
                 build_ind = 0
+                idx_add = [idx]
+                mol_add = [molIdx]
                 if idx in mixture_add:
                     cluster_indices = list(mixture_add)
                     slab_indices = []
@@ -133,64 +135,13 @@ class segment_atoms():
                     if len(neighbor_atoms) == 0:
                         build = False
                     else:
-
-                        if self.segment_type == 'uncertain':
-                            # get neighbor atom with the lowest index in uncertain indices (uncertain indices are sorted low to high)
-                            neigh_uncertain = [np.argwhere(neigh_ind == np.array(uncertain_indices))[0,0] for neigh_ind in neighbor_atoms if neigh_ind in uncertain_indices]
-                            if len(neigh_uncertain)>0:
-                                atom_ind = neighbor_atoms[np.argmin(neigh_uncertain)]
-                                molIdx_add = self.component_list_natural[atom_ind]
-                                print(idx,molIdx_add)
-                                # add natural molecule that atom is in to cluster indices                             
-                                indices_add = [ i for i in range(len(self.component_list_natural)) if self.component_list_natural[i] == molIdx_add ]
-                            else:
-                                indices_add = []
-                        elif self.segment_type == 'distance':
-                            # get the neighbor atom with that is closest
-                            Di = self.atoms.get_distances(neighbor_atoms,idx, mic=True)
-                            atom_ind = neighbor_atoms[np.argmin(Di)]
-                            molIdx_add = self.component_list_natural[atom_ind]
-                            print(idx,molIdx_add)
-                            indices_add = [ i for i in range(len(self.component_list_natural)) if self.component_list_natural[i] == molIdx_add ]
-
-                        elif self.segment_type == 'embedding':
-                            data = self.transform(AtomicData.from_ase(atoms=self.atoms,r_max=self.r_max))
-                            out = self.model(AtomicData.to_AtomicDataDict(data))
-                            
-                            embeddingi = out['node_features'][idx].detach().numpy()
-                            
-                            embed_dist = []
-                            #get possible added molecules
-                            close_clusters = np.unique(self.component_list_natural[neighbor_atoms])
-                            for cc in close_clusters:
-                                indices_add = [ i for i in range(len(self.component_list_natural)) if self.component_list_natural[i] == cc ]
-                                ind_tmp = cluster_indices + indices_add
-                                cluster_tmp = self.atoms[ind_tmp]
-                                
-                                data = self.transform(AtomicData.from_ase(atoms=cluster_tmp,r_max=self.r_max))
-                                out = self.model(AtomicData.to_AtomicDataDict(data))
-                                
-                                tmp_idx = np.argwhere(ind_tmp==idx)[0,0]
-                                embeddingj = out['node_features'][tmp_idx].detach().numpy()
-                                embed_dist.append(np.linalg.norm(embeddingi-embeddingj))
-                            
-                            molIdx_add = close_clusters[np.argmin(embed_dist)]
-                            print(idx,molIdx_add)
-                            neigh_mol_indices = np.array(neighbor_atoms)[np.argwhere(self.component_list_natural[neighbor_atoms]==molIdx_add).flatten()]
-                            Di = self.atoms.get_distances(neigh_mol_indices,idx, mic=True)
-                            if len(Di)>0:
-                                atom_ind = neigh_mol_indices[np.argmin(Di)]
-                            else:
-                                print('test')
-                            
-                            indices_add = [ i for i in range(len(self.component_list_natural)) if self.component_list_natural[i] == molIdx_add ]
                         
+                        indices_add, atom_ind, molIdx_add = self.next_cluster(idx,neighbor_atoms,cluster_indices,uncertain_indices)
+                        idx_add.append(atom_ind)
+                        mol_add.append(molIdx_add)
+
                         if len(indices_add)>0:
                             slab_add, mixture_add = self.segment_slab_mixture(indices_add)
-                            
-                            lithium_ind = np.argwhere(self.atoms[mixture_add].get_atomic_numbers()==3).flatten()
-                            if len(lithium_ind)>500:
-                                print('wrong')
 
                             if (len(cluster_indices) + len(mixture_add)) > self.max_cluster_size / (2  - (not add_slab)):
                                 build = False
@@ -213,10 +164,6 @@ class segment_atoms():
                                     molecules.append(molIdx_add)
                                 else:
                                     build = False
-
-                            lithium_ind = np.argwhere(self.atoms[cluster_indices].get_atomic_numbers()==3).flatten()
-                            if len(lithium_ind)>500:
-                                print('wrong')
 
                         else:
                             build = False
@@ -251,6 +198,8 @@ class segment_atoms():
                         clusters.append(cluster)
                         atom_indices.append(idx)
                         molecules.append(molIdx)
+                        print('Added atoms', idx_add)
+                        print('Added molecules', mol_add)
                     else:
                         if len(cluster)==1:
                             print(f'wrong, not enough atoms around {idx}',flush=True)
@@ -263,6 +212,59 @@ class segment_atoms():
                 break
 
         return clusters, atom_indices
+
+    def next_cluster(self,idx,neighbor_atoms,cluster_indices,uncertain_indices):
+        print('getting next cluster',flush=True)
+        if self.segment_type == 'uncertain':
+            # get neighbor atom with the lowest index in uncertain indices (uncertain indices are sorted low to high)
+            neigh_uncertain = [np.argwhere(neigh_ind == np.array(uncertain_indices))[0,0] for neigh_ind in neighbor_atoms if neigh_ind in uncertain_indices]
+            if len(neigh_uncertain)>0:
+                atom_ind = neighbor_atoms[np.argmin(neigh_uncertain)]
+                molIdx_add = self.component_list_natural[atom_ind]
+                
+                # add natural molecule that atom is in to cluster indices                             
+                indices_add = [ i for i in range(len(self.component_list_natural)) if self.component_list_natural[i] == molIdx_add ]
+            else:
+                indices_add = []
+        
+        elif self.segment_type == 'distance':
+            # get the neighbor atom that is closest
+            Di = self.atoms.get_distances(neighbor_atoms,idx, mic=True)
+            atom_ind = neighbor_atoms[np.argmin(Di)]
+            molIdx_add = self.component_list_natural[atom_ind]
+            
+            indices_add = [ i for i in range(len(self.component_list_natural)) if self.component_list_natural[i] == molIdx_add ]
+
+        elif self.segment_type == 'embedding':
+            data = self.transform(AtomicData.from_ase(atoms=self.atoms,r_max=self.r_max))
+            out = self.model(AtomicData.to_AtomicDataDict(data))
+            
+            embeddingi = out['node_features'][idx].detach().numpy()
+            
+            embed_dist = []
+            #get possible added molecules
+            close_clusters = np.unique(self.component_list_natural[neighbor_atoms])
+            for cc in close_clusters:
+                indices_add = [ i for i in range(len(self.component_list_natural)) if self.component_list_natural[i] == cc ]
+                ind_tmp = cluster_indices + indices_add
+                cluster_tmp = self.atoms[ind_tmp]
+                
+                data = self.transform(AtomicData.from_ase(atoms=cluster_tmp,r_max=self.r_max))
+                out = self.model(AtomicData.to_AtomicDataDict(data))
+                
+                tmp_idx = np.argwhere(ind_tmp==idx)[0,0]
+                embeddingj = out['node_features'][tmp_idx].detach().numpy()
+                embed_dist.append(np.linalg.norm(embeddingi-embeddingj))
+            
+            molIdx_add = close_clusters[np.argmin(embed_dist)]
+            
+            neigh_mol_indices = np.array(neighbor_atoms)[np.argwhere(self.component_list_natural[neighbor_atoms]==molIdx_add).flatten()]
+            Di = self.atoms.get_distances(neigh_mol_indices,idx, mic=True)
+            atom_ind = neigh_mol_indices[np.argmin(Di)]
+            
+            indices_add = [ i for i in range(len(self.component_list_natural)) if self.component_list_natural[i] == molIdx_add ]
+
+        return indices_add, atom_ind, molIdx_add
 
     def reduce_mixture_size(self,cluster):
 
@@ -654,6 +656,7 @@ def send_to_multiprocessing(func, gen, ncores):
     def consume(semaphore):#, result, results):
         semaphore.release()
 
+    # ncores = 1
     pool = mp.Pool(ncores)
     print('memory error doesnt occurs when creating pool',flush=True)    
     # results = pool.imap_unordered(cluster_from_atoms, generator)

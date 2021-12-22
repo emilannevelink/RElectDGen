@@ -167,7 +167,7 @@ def main(args=None):
                     embeddingi_cluster = embeddings[int(traj_ind), int(atom_ind)].detach().numpy()
                     embeddingi_total = embeddings[int(traj_ind), int(atom_ind)].detach().numpy()
                 
-                embedding_distance = np.round(np.linalg.norm(embeddingi_total-embeddingi_total),4)#*UQ.sigmas[1]
+                embedding_distance = np.round(np.linalg.norm(embeddingi_total-embeddingi_cluster),4)#*UQ.sigmas[1]
                 
                 if i == 0:
                     keep_embeddings = embedding_all
@@ -175,7 +175,7 @@ def main(args=None):
                     embedding_distances.append(embedding_distance)
 
                 elif len(calc_inds) < config.get('max_samples'):
-                    UQ_dist = np.linalg.norm(keep_embeddings-embeddingi_total,axis=1).min()*UQ.sigmas[1]
+                    UQ_dist = np.linalg.norm(keep_embeddings-embeddingi_cluster,axis=1).min()*UQ.sigmas[1]
                     if UQ_dist>2*config.get('UQ_min_uncertainty'):
                         keep_embeddings = np.concatenate([keep_embeddings,embedding_all])
                         calc_inds.append(i)
