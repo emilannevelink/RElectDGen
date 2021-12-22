@@ -48,6 +48,7 @@ def shell_from_config(config):
             commands = [
                 "module load anaconda3",
                 'conda activate nequip',
+                'export LD_LIBRARY_PATH=/opt/packages/anaconda3/lib:$LD_LIBRARY_PATH',
                 'rm results/processed*/ -r',
                 # 'python ${1}scripts/'+f'{branch}/combine_datasets.py --config_file $2 --MLP_config_file $3',
                 # 'nequip-train $3',
@@ -63,6 +64,7 @@ def shell_from_config(config):
             commands = [
                 "module load anaconda3",
                 'conda activate nequip',
+                'export LD_LIBRARY_PATH=/opt/packages/anaconda3/lib:$LD_LIBRARY_PATH',
                 # 'python ${1}scripts/'+f'{branch}/restart.py --config_file $2 --MLP_config_file $3',
                 'REDGEN-restart --config_file $2 --MLP_config_file $3'
             ]
@@ -71,7 +73,7 @@ def shell_from_config(config):
             slurm_config['--ntasks'] = 1
             slurm_config['--cpus-per-task'] = python_cores
         else:
-            commands = ["module load anaconda3", "conda activate nequip"]
+            commands = ["module load anaconda3", "conda activate nequip",'export LD_LIBRARY_PATH=/opt/packages/anaconda3/lib:$LD_LIBRARY_PATH']
 
             if 'MLP' in file:
                 commands += ['REDGEN-MLP-MD --config_file $2  --MLP_config_file $3 --loop_learning_count $4']
