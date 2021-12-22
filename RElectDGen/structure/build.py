@@ -35,7 +35,7 @@ def structure_from_config(config):
             tolerance=config.get('molecule_separation'),
             packmolpath=packmolpath)
 
-        atomspath = os.path.join(config.get('directory'),'data/molecules/atoms')
+        atomspath = os.path.join(config.get('data_directory'),'data/molecules/atoms')
         molecule_charges = getchargesforpackmol(config.get('molecule'),
                                                 config.get('nmolecules'),
                                                 atomspath=config.get('atomspath',atomspath))
