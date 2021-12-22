@@ -238,8 +238,9 @@ class segment_atoms():
         elif self.segment_type == 'embedding':
             print('in embedding', flush=True)
             data = self.transform(AtomicData.from_ase(atoms=self.atoms,r_max=self.r_max))
+            print('transformed data',data, flush=True)
             out = self.model(AtomicData.to_AtomicDataDict(data))
-            
+            print('calculated model', out, flush=True)
             embeddingi = out['node_features'][idx].detach().numpy()
             print('got node embedding', flush=True)
             embed_dist = []
