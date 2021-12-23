@@ -25,7 +25,7 @@ setup(
             "REDGEN-MLP-MD = RElectDGen.scripts.MLP_MD:main",
             "REDGEN-gpaw-active = RElectDGen.scripts.gpaw_active:main",
             "REDGEN-gpaw-active-array = RElectDGen.scripts.gpaw_active_array:main",
-            "REDGEN-gpaw-summary = RElectDGen.scripts.gpaw_summary:main",
+            "REDGEN-gpaw-summary = RElectDGen.scripts.gpaw_summary_array:main",
             "REDGEN-restart = RElectDGen.scripts.restart:main",
         ]
     },
