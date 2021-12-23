@@ -170,25 +170,21 @@ def main(args=None):
         for i, (traj_ind, atom_ind, uncert) in enumerate(cluster_uncertainties.values):
                 embedding_all = cluster_embeddings[i]
 
-                try:
-                    ind = np.argwhere(clusters[i].arrays['cluster_indices']==atom_ind).flatten()[0]
-                except:
-                    print(clusters[i].arrays,flush=True)
-                    print(i,flush=True)
+                ind = np.argwhere(clusters[i].arrays['cluster_indices']==atom_ind).flatten()[0]
+                
                 embeddingi_cluster = embedding_all[ind].numpy()
                 embeddingi_total = embeddings[int(traj_ind), int(atom_ind)].detach().numpy()
                
                 embedding_distance = np.round(np.linalg.norm(embeddingi_total-embeddingi_cluster),4)
-                
-                if i == 0:
+
+                key = clusters[i].get_chemical_symbols()[ind]
+                if len(keep_embeddings[key])==0:
                     for key in MLP_config.get('chemical_symbol_to_type'):
                         mask = np.array(clusters[i].get_chemical_symbols()) == key
                         keep_embeddings[key] = torch.cat([keep_embeddings[key],embedding_all[mask]])
                     calc_inds.append(i)
                     embedding_distances.append(embedding_distance)
-
-                elif len(calc_inds) < config.get('max_samples'):
-                    key = clusters[i].get_chemical_symbols()[ind]
+                else:
                     UQ_dist = np.linalg.norm(keep_embeddings[key]-embeddingi_cluster,axis=1).min()*UQ.params[key][1]
                     if UQ_dist>2*config.get('UQ_min_uncertainty'):
                         for key in MLP_config.get('chemical_symbol_to_type'):
@@ -196,7 +192,8 @@ def main(args=None):
                             keep_embeddings[key] = torch.cat([keep_embeddings[key],embedding_all[mask]])
                         calc_inds.append(i)
                         embedding_distances.append(embedding_distance)
-                else:
+                
+                if len(calc_inds) >= config.get('max_samples'):
                     break
 
         if len(calc_inds)>0:
