@@ -4,6 +4,7 @@ from nequip.utils import Config
 from nequip.ase.nequip_calculator import NequIPCalculator
 from nequip.data.transforms import TypeMapper
 import numpy as np
+from ase.parallel import world
 
 def oracle_from_config(config,atoms=None):
 
@@ -20,6 +21,12 @@ def oracle_from_config(config,atoms=None):
     if atoms is not None:
         config['cell'] = atoms.cell
         config['pbc'] = atoms.pbc
+        charge = atoms.get_initial_charges().sum().round()
+    else:
+        charge = 0
+    
+    if world.rank == 0:
+        print('Charge: ', charge)
 
     if config.get('kxl') is not None and config.get('cell') is not None:
         if len(np.shape(config.get('cell'))) == 2:
@@ -43,15 +50,10 @@ def oracle_from_config(config,atoms=None):
                 # maxiter=333,
                 txt=GPAW_dump_file)
 
+    calculator.set(charge=charge)
+
     if not config.get('pbc')[-1]:
         calculator.set(poissonsolver={'dipolelayer': 'xy'})
-
-    if atoms is not None:
-        try:
-            total_charge = atoms.get_initial_charges().sum()
-            print(f'Total charge: {total_charge}',flush=True)
-        except:
-            pass
 
     return calculator
 
