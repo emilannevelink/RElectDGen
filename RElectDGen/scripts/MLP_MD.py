@@ -59,15 +59,17 @@ def main(args=None):
     UQ.calibrate()
     print(UQ.params,flush=True)
     for key in UQ.params:
+        print(key, UQ.params[key],flush=True) 
         if UQ.params[key][1] < config.get('mininmum_uncertainty_scaling',0):
             UQ.params[key][1] = config.get('mininmum_uncertainty_scaling')
             print('change sigma to minimum',flush=True)
-            print(key, UQ.params[key],flush=True)
+            print(key, UQ.params[key],flush=True) 
+            
 
 
     ### e3nn trajectory
     trajectory_file = os.path.join(config.get('data_directory'),config.get('MLP_trajectory_file'))
-    print(MD_temperature)
+    print(MD_temperature,flush=True)
 
 
     ### Run MLP MD
