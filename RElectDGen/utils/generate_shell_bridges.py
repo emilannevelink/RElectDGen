@@ -17,11 +17,11 @@ def shell_from_config(config):
     
     MLP_cores = config.get('MLP_cores',config.get('cores'))
     MLP_nodes = config.get('MLP_nodes',config.get('nodes',1))
-    MLP_queue = config.get('python_queue',config.get('queue','RM-shared'))
+    MLP_queue = config.get('MLP_queue',config.get('queue','RM-shared'))
 
     gpaw_cores = config.get('gpaw_cores',config.get('cores'))
     gpaw_nodes = config.get('gpaw_nodes',config.get('nodes',1))
-    gpaw_queue = config.get('python_queue',config.get('queue','RM-shared'))
+    gpaw_queue = config.get('gpaw_queue',config.get('queue','RM-shared'))
 
     for file in filenames:
         fname = os.path.join(location,file)
