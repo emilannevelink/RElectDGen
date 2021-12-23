@@ -57,11 +57,12 @@ def main(args=None):
     ### Calibrate Uncertainty Quantification
     UQ = latent_distance_uncertainty_Nequip(model, MLP_config)
     UQ.calibrate()
-    print(UQ.sigmas,flush=True)
-    if UQ.sigmas[1] < config.get('mininmum_uncertainty_scaling',0):
-        UQ.sigmas[1] = config.get('mininmum_uncertainty_scaling')
-        print('change sigma to minimum',flush=True)
-        print(UQ.sigmas,flush=True)
+    print(UQ.params,flush=True)
+    for key in UQ.params:
+        if UQ.params[key][1] < config.get('mininmum_uncertainty_scaling',0):
+            UQ.params[key][1] = config.get('mininmum_uncertainty_scaling')
+            print('change sigma to minimum',flush=True)
+            print(key, UQ.params[key],flush=True)
 
 
     ### e3nn trajectory
@@ -124,7 +125,7 @@ def main(args=None):
             max_index = int(config.get('MLP_MD_steps')+1)
         print(f'max index not high enough resetting to {max_index}', flush=True)
         sorted = False
-        uncertainty_thresholds[0] = UQ.sigmas[0]
+        uncertainty_thresholds[0] = max([UQ.params[key][0]+UQ.params[key][1] for key in UQ.params])
         print(f'reset uncertainty thresholds now max: {uncertainty_thresholds[0]}, min: {uncertainty_thresholds[1]}')
         # print('max index not high enough, adding 5 and 10')
         # traj_indices = [5,10]
@@ -175,7 +176,7 @@ def main(args=None):
                 embeddingi_cluster = embedding_all[ind].numpy()
                 embeddingi_total = embeddings[int(traj_ind), int(atom_ind)].detach().numpy()
                
-                embedding_distance = np.round(np.linalg.norm(embeddingi_total-embeddingi_cluster),4)#*UQ.sigmas[1]
+                embedding_distance = np.round(np.linalg.norm(embeddingi_total-embeddingi_cluster),4)
                 
                 if i == 0:
                     for key in MLP_config.get('chemical_symbol_to_type'):
