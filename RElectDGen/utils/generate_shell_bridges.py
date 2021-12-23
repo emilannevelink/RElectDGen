@@ -14,15 +14,14 @@ def shell_from_config(config):
 
     filenames = config.get('shell_filenames')
 
-    if config.get('gpaw_cores') is not None:
-        gpaw_cores = config.get('gpaw_cores')
-        gpaw_nodes = config.get('gpaw_nodes',1)
-    else:
-        gpaw_cores = config.get('cores')
-        gpaw_nodes = config.get('nodes',1)
+    
+    MLP_cores = config.get('MLP_cores',config.get('cores'))
+    MLP_nodes = config.get('MLP_nodes',config.get('nodes',1))
+    MLP_queue = config.get('python_queue',config.get('queue','RM-shared'))
 
-    python_cores = config.get('cores')
-    python_nodes = config.get('nodes',1)
+    gpaw_cores = config.get('gpaw_cores',config.get('cores'))
+    gpaw_nodes = config.get('gpaw_nodes',config.get('nodes',1))
+    gpaw_queue = config.get('python_queue',config.get('queue','RM-shared'))
 
     for file in filenames:
         fname = os.path.join(location,file)
@@ -37,11 +36,6 @@ def shell_from_config(config):
             'o': 'logs/output.%j',
             'e': 'logs/error.%j'
         }
-
-        if config.get('queue') == 'RM-shared':
-            slurm_config['p'] = 'RM-shared'
-
-
         
 
         if 'train' in file:
@@ -56,10 +50,11 @@ def shell_from_config(config):
                 'REDGEN-combine-datasets --config_file $2 --MLP_config_file $3',
                 'REDGEN-train-NN --config_file $2 --MLP_config_file $3',
             ]
-            slurm_config['n'] = python_cores
-            slurm_config['N'] = python_nodes
+            slurm_config['n'] = MLP_cores
+            slurm_config['N'] = MLP_nodes
+            slurm_config['p'] = MLP_queue
             slurm_config['--ntasks'] = 1
-            slurm_config['--cpus-per-task'] = python_cores
+            slurm_config['--cpus-per-task'] = MLP_cores
         elif 'restart' in file:
             commands = [
                 "module load anaconda3",
@@ -68,39 +63,48 @@ def shell_from_config(config):
                 # 'python ${1}scripts/'+f'{branch}/restart.py --config_file $2 --MLP_config_file $3',
                 'REDGEN-restart --config_file $2 --MLP_config_file $3'
             ]
-            slurm_config['n'] = python_cores
-            slurm_config['N'] = python_nodes
+            slurm_config['n'] = MLP_cores
+            slurm_config['N'] = MLP_nodes
+            slurm_config['p'] = MLP_queue
             slurm_config['--ntasks'] = 1
-            slurm_config['--cpus-per-task'] = python_cores
+            slurm_config['--cpus-per-task'] = MLP_cores
         else:
             commands = ["module load anaconda3", "conda activate nequip",'export LD_LIBRARY_PATH=/opt/packages/anaconda3/lib:$LD_LIBRARY_PATH']
 
             if 'MLP' in file:
                 commands += ['REDGEN-MLP-MD --config_file $2  --MLP_config_file $3 --loop_learning_count $4']
-                slurm_config['n'] = python_cores
-                slurm_config['N'] = python_nodes
+                slurm_config['n'] = MLP_cores
+                slurm_config['N'] = MLP_nodes
+                slurm_config['p'] = MLP_queue
                 slurm_config['--ntasks'] = 1
-                slurm_config['--cpus-per-task'] = python_cores
+                slurm_config['--cpus-per-task'] = MLP_cores
             elif 'MD' in file:
                 file = os.path.join(config.get('scripts_path'),'gpaw_MD.py')
                 commands += [f'mpiexec -n {gpaw_cores}' + f' gpaw python {file} --config_file $2 --MLP_config_file $3']
                 slurm_config['n'] = gpaw_cores
                 slurm_config['N'] = gpaw_nodes
+                slurm_config['p'] = gpaw_queue
             elif 'active' in file:
                 file = os.path.join(config.get('scripts_path'),'gpaw_active.py')
                 commands += [f'mpiexec -n {gpaw_cores}' + f' gpaw python {file} --config_file $2 --MLP_config_file $3 --loop_learning_count $4']
                 slurm_config['n'] = gpaw_cores
                 slurm_config['N'] = gpaw_nodes
+                slurm_config['p'] = gpaw_queue
             elif 'array' in file:
                 file = os.path.join(config.get('scripts_path'),'gpaw_active_array.py')
                 commands += [f'mpiexec -n {gpaw_cores}' + f' gpaw python {file} --config_file $2 --MLP_config_file $3 --loop_learning_count $4' + " --array_index ${SLURM_ARRAY_TASK_ID}"]
                 slurm_config['n'] = gpaw_cores
                 slurm_config['N'] = gpaw_nodes
+                slurm_config['p'] = gpaw_queue
             elif 'summary' in file:
                 file = os.path.join(config.get('scripts_path'),'gpaw_summary_array.py')
-                commands += [f'mpiexec -n {gpaw_cores}' + f' gpaw python {file} --config_file $2 --MLP_config_file $3 --loop_learning_count $4']
-                slurm_config['n'] = gpaw_cores
-                slurm_config['N'] = gpaw_nodes
+                # commands += [f'mpiexec -n {gpaw_cores}' + f' gpaw python {file} --config_file $2 --MLP_config_file $3 --loop_learning_count $4']
+                commands += ['REDGEN-gpaw-summary --config_file $2  --MLP_config_file $3 --loop_learning_count $4']
+                slurm_config['n'] = MLP_cores
+                slurm_config['N'] = MLP_nodes
+                slurm_config['p'] = MLP_queue
+                slurm_config['--ntasks'] = 1
+                slurm_config['--cpus-per-task'] = MLP_cores
             
         if 'array' in file:
             gen_job_array(commands,'',slurm_config,fname=fname)
