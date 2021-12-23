@@ -88,7 +88,7 @@ class segment_atoms():
                 atoms = Atoms(self.atoms)
                 atoms.calc = None
                 atoms.arrays['cluster_indices'] = np.array(range(len(atoms)),dtype=int)
-                return [[atoms], [0]]
+                return [[atoms], [uncertain_indices[0]]]
             else:
                 return [[],[]]
 
