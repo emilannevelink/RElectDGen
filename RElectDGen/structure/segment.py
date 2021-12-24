@@ -586,7 +586,7 @@ def clusters_from_traj(
 
     ncores = mp.cpu_count()
     
-    traj_cores = max(int(cores/4),1) # int(config.get('trajectory_cores',cores))
+    traj_cores = 1 # max(int(cores/16),1) # int(config.get('trajectory_cores',cores))
     print(traj_cores, ncores, flush=True)
 
     traj_filename = f'tmp.{uuid.uuid4().hex}.traj'
@@ -599,7 +599,7 @@ def clusters_from_traj(
                     min_cluster_size, max_cluster_size, max_samples, vacuum) 
                 for i in range(natoms))
     
-    if segment_type == 'embedding':
+    if segment_type == 'embedding' or traj_cores==1:
         results = []
         for gen in generator:
             results.append(cluster_from_atoms(gen))
