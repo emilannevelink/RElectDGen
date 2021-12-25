@@ -28,7 +28,7 @@ def shell_from_config(config):
         
         slurm_config = {
             'n': 18,
-            't': '01-00:00',
+            't': '02-00:00',
             '--mem-per-cpu': 2000,
             'p': 'RM-shared',
             'A': False,
