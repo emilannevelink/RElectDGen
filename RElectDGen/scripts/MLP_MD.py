@@ -24,6 +24,8 @@ from e3nn_networks.utils.data_helpers import *
 
 from ..calculate.calculator import nn_from_results
 from ..structure.segment import clusters_from_traj
+import time
+
 
 def parse_command_line(argsin):
     parser = argparse.ArgumentParser()
@@ -42,6 +44,8 @@ def parse_command_line(argsin):
     return config, args.config, args.loop_learning_count
 
 def main(args=None):
+    print('Starting timer', flush=True)
+    start = time.time()
 
     config, filename_config, loop_learning_count = parse_command_line(args)
     MD_temperature = config.get('MLP_MD_temperature') + (loop_learning_count-1)*config.get('MLP_MD_dT')
@@ -54,6 +58,9 @@ def main(args=None):
     calc_nn, model, MLP_config = nn_from_results()
     supercell.calc = calc_nn
 
+    tmp0 = time.time()
+    print('Time to initialize', tmp0-start)
+
     ### Calibrate Uncertainty Quantification
     UQ = latent_distance_uncertainty_Nequip(model, MLP_config)
     UQ.calibrate()
@@ -65,7 +72,9 @@ def main(args=None):
             print('change sigma to minimum',flush=True)
             print(key, UQ.params[key],flush=True) 
             
-
+    tmp1 = time.time()
+    print('Time to calibrate UQ ', tmp1-tmp0, 'Elapsed time ', tmp1-start, flush=True)
+    tmp0 = tmp1
 
     ### e3nn trajectory
     trajectory_file = os.path.join(config.get('data_directory'),config.get('MLP_trajectory_file'))
@@ -87,15 +96,22 @@ def main(args=None):
         print('Value Error: MLP isnt good enough for current number of steps')
     traj.close()
 
-    print('Done with MD', flush = True)
+    tmp1 = time.time()
+    print('Time to run MD', tmp1-tmp0, 'Elapsed time ', tmp1-start, flush=True)
+    tmp0 = tmp1
+
+    # print('Done with MD', flush = True)
     traj = Trajectory(trajectory_file)
 
     max_traj_len = config.get('max_atoms_to_segment',1001)
 
     if len(traj) > max_traj_len:
         reduction_factor = np.ceil(len(traj)/max_traj_len).astype(int)
+        expected_max_index = np.ceil(len(traj)/reduction_factor)
         traj = traj[::reduction_factor]
-        print(f'reduced length of trajectory by {reduction_factor}, new length {len(traj)}', flush=True)
+        print(f'reduced length of trajectory by {reduction_factor}, new length {len(traj)}, new max_index {expected_max_index}', flush=True)
+    else:
+        expected_max_index = config.get('MLP_MD_steps')+1
 
     uncertainty, embeddings = UQ.predict_from_traj(traj,max=False)
 
@@ -142,6 +158,10 @@ def main(args=None):
 
     print('isolating uncertain clusters', flush=True)
     clusters, cluster_uncertainties = clusters_from_traj(traj,uncertainty, **config)
+
+    tmp1 = time.time()
+    print('Time to segment clusters', tmp1-tmp0, 'Elapsed time ', tmp1-start, flush=True)
+    tmp0 = tmp1
 
     if len(clusters) == 0:
         print('No clusters to calculate', flush=True)
@@ -227,6 +247,10 @@ def main(args=None):
 
         with open(filename_config,'w') as fl:
             yaml.dump(config, fl)
+
+        tmp1 = time.time()
+        print('Time to finish', tmp1-tmp0, 'Elapsed time ', tmp1-start, flush=True)
+        tmp0 = tmp1
 
 if __name__ == "__main__":
     main()
