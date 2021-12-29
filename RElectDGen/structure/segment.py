@@ -372,7 +372,7 @@ class segment_atoms():
     
     def segment_slab(self, cluster, cluster_indices, slab_indices):
 
-        cluster_reduce = self.reduce_mixture_size(cluster,1)
+        cluster_reduce = self.reduce_mixture_size(cluster)
 
         if np.any(cluster_reduce.cell<cluster.cell):
             reduce_centerofmass = cluster_reduce.get_positions().mean(axis=0)
