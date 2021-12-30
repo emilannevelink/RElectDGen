@@ -416,7 +416,7 @@ class segment_atoms():
         reduced_slab_cluster = slab_keep + self.atoms[cluster_indices]
 
         cell_new = pure_slab.get_cell()
-        cell_new[2,2] += 2*self.vacuum_size
+        cell_new[2,2] += 2*self.vacuum
         reduced_slab_cluster.set_cell(cell_new)
         reduced_slab_cluster.center()
 
