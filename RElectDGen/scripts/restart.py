@@ -4,13 +4,13 @@ import operator
 import numpy as np
 import yaml
 
-def parse_command_line(args):
+def parse_command_line(argsin):
     parser = argparse.ArgumentParser()
     parser.add_argument('--config_file', dest='config',
                         help='active_learning configuration file', type=str)
     parser.add_argument('--MLP_config_file', dest='MLP_config',
                         help='Nequip configuration file', type=str)
-    args = parser.parse_args()
+    args = parser.parse_args(argsin)
 
     
 
@@ -40,29 +40,40 @@ def main(args = None):
     job_types = job_info['job_types']
     print(job_ids,flush=True)
 
-    MLP_MD_inds = [i for i, job_type in enumerate(job_types) if 'MLP_MD' in job_type]
+    # MLP_MD_inds = [i for i, job_type in enumerate(job_types) if 'MLP_MD' in job_type]
 
-    final_MLP = f'logs/output.{job_ids[MLP_MD_inds[-1]]}'
+    # final_MLP = f'logs/output.{job_ids[MLP_MD_inds[-1]]}'
 
-    checks = []
-    checks.append(read_file(final_MLP,'error value',config.get('UQ_min_uncertainty'), operator.lt))
-    checks.append(read_file(final_MLP,'error std',config.get('UQ_min_uncertainty')/2, operator.lt))
+    
+    checks = np.array(config.get('checks'))
+    config['checks'] = []
+    # except:
+    #     checks = []
+    #     checks.append(read_file(final_MLP,'error value',config.get('UQ_min_uncertainty'), operator.lt))
+    #     checks.append(read_file(final_MLP,'error std',config.get('UQ_min_uncertainty')/2, operator.lt))
     # checks.append(read_file(final_MLP,'max index',config.get('MLP_MD_steps')+1, operator.eq))
 
     final_temperature = config['MLP_MD_temperature'] + config['n_temperature_sweep']*config['MLP_MD_dT']
 
     termination_conditions = [
         config.get('i_temperature_sweep')>=config.get('max_temperature_sweep'),
-        final_temperature>=config.get('max_MLP_temperature')
+        final_temperature>=config.get('max_MLP_temperature'),
+        config.get('UQ_min_uncertainty')<=config.get('UQ_terminal_accuracy',.01)
     ]
 
     print('checks', checks)
-    if np.all(checks):
+    if np.all(checks[:,:2]):
         config['MLP_MD_temperature']*=2
         config['MLP_MD_dT']*=2
+    if np.all(checks[:,2]):
         config['MLP_MD_steps']*=2
-        config['n_temperature_sweep']+=1
+    if np.all(checks[:,3]):
+        config['UQ_min_uncertainty']/=2
+        # config['n_temperature_sweep']+=1
 
+    checks_history = config.get('checks_history',[])
+    checks_history.append(np.all(checks,axis=0).tolist())
+    config['checks_history'] = checks_history
     print('termination conditions', termination_conditions)
     if not np.any(termination_conditions):
         config['i_temperature_sweep']+=1
