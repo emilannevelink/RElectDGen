@@ -3,13 +3,13 @@ import yaml, os
 from ase.io import read, Trajectory
 from ..utils.save import update_config_trainval
 
-def parse_command_line(args):
+def parse_command_line(argsin):
     parser = argparse.ArgumentParser()
     parser.add_argument('--config_file', dest='config',
                         help='active_learning configuration file', type=str)
     parser.add_argument('--MLP_config_file', dest='MLP_config',
                         help='Nequip configuration file', type=str)
-    args = parser.parse_args()
+    args = parser.parse_args(argsin)
 
     with open(args.config,'r') as fl:
         config = yaml.load(fl,yaml.FullLoader)
@@ -22,17 +22,19 @@ def main(args=None):
     trajectory_file = os.path.join(config.get('data_directory'),config.get('trajectory_file'))
     combined_trajectory = os.path.join(config.get('data_directory'),config.get('combined_trajectory'))
 
-    try:
-        traj = read(trajectory_file,index=':')
-    except:
-        traj = []
-
-    print(len(traj))
-
+    
+    traj = []
     for filename in config.get('pretraining_data',[]):
         traj += read(os.path.join(config.get('data_directory'),filename), index=':')
 
         print(len(traj))
+
+    try:
+        traj += read(trajectory_file,index=':')
+    except:
+        print('Trajectory file couldnt be appended', flush=True)
+
+    print(len(traj))
 
     print(combined_trajectory,flush=True)
     writer = Trajectory(combined_trajectory,'w')
