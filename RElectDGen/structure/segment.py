@@ -32,6 +32,7 @@ class segment_atoms():
         max_cluster_size: int = 50,
         max_samples: int = 10,
         vacuum: float = 2.0,
+        overlap_radius: float = 0.5,
         ) -> None:
         
         self.atoms = atoms
@@ -44,6 +45,7 @@ class segment_atoms():
         self.slab_config = slab_config
         self.main_supercell_size = main_supercell_size
         self.vacuum = vacuum
+        self.overlap_radius = overlap_radius
 
         self.n_components_natural, self.component_list_natural, self.matrix_natural = self.findclusters()
 
@@ -421,13 +423,12 @@ class segment_atoms():
         reduced_slab_cluster.center()
 
         #remove overlapping atoms
-        overlap = self.config.get('overlap_radius',0.5)
         edge_vec = []
 
         keep_indices = list(keep_indices)
         while len(edge_vec)>0:
             delete_indices = []
-            src, dst, edge_vec = neighborlist.neighbor_list('ijD',reduced_slab_cluster,overlap)
+            src, dst, edge_vec = neighborlist.neighbor_list('ijD',reduced_slab_cluster,self.overlap_radius)
             if len(edge_vec)>0:
                 print('Check that deleting overlaping atoms is working properly', flush=True)
             for i, (src_i, dst_i, vec) in enumerate(zip(src,dst,edge_vec)):
@@ -514,11 +515,11 @@ class segment_atoms():
         D = slab.get_distances(np.arange(len(slab)),slab_seed, mic=True,vector=True)
 
         for i, n_planes in enumerate(self.slab_config['supercell_size']):
-            hist, bin_edges = np.histogram(D[:,i],bins=self.config.get('supercell_size')[i]*10)
+            hist, bin_edges = np.histogram(D[:,i],bins=self.main_supercell_size[i]*10)
             
             bin_indices, bin_centers = self.coarsen_histogram(D[:,i],hist, bin_edges)
 
-            n_basis = max([1,int(np.round(len(bin_indices)/self.config.get('supercell_size')[i],0))])
+            n_basis = max([1,int(np.round(len(bin_indices)/self.main_supercell_size[i],0))])
             n_planes *= n_basis
             bin_seed_ind = np.argsort(np.abs(bin_centers))[:n_planes]
 
@@ -544,12 +545,11 @@ class segment_atoms():
         bulk_keep.wrap()
 
         #remove overlapping atoms
-        overlap = self.config.get('overlap_radius',0.5)
         edge_vec = []
 
         while len(edge_vec)>0:
             delete_indices = []
-            src, dst, edge_vec = neighborlist.neighbor_list('ijD',bulk_keep,overlap)
+            src, dst, edge_vec = neighborlist.neighbor_list('ijD',bulk_keep,self.overlap_radius)
             if len(edge_vec)>0:
                 print('Check that deleting overlaping atoms is working properly', flush=True)
             for i, (src_i, dst_i, vec) in enumerate(zip(src,dst,edge_vec)):
