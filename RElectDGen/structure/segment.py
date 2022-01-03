@@ -47,10 +47,13 @@ class segment_atoms():
         self.vacuum = vacuum
         self.overlap_radius = overlap_radius
 
-        self.n_components_natural, self.component_list_natural, self.matrix_natural = self.findclusters()
+        self.n_components_natural, self.component_list_natural, self.matrix_natural = self.findclusters(natural = True)
 
         self.n_components, self.component_list, self.matrix = self.findclusters(cutoff=self.cutoff)
+        self.matrixnonzero = self.matrix.nonzero()
         
+        self.nlithiums = (self.atoms.get_atomic_numbers()==3).sum()
+
         if self.segment_type == 'embedding':
             calc_nn, model_load, MLP_config = nn_from_results()
             self.model = copy.copy(model_load)
@@ -59,10 +62,15 @@ class segment_atoms():
             print('loaded model',self.model, flush=True)
 
     def findclusters(self,
+        atoms = None,
         cutoff = None,
+        nlithium = 4,
+        natural = False,
     ):
-
-        atoms = self.atoms#.copy()
+        if atoms is None:
+            atoms = self.atoms#.copy()
+        
+        
         if cutoff is None:
             cutoff = np.array(neighborlist.natural_cutoffs(atoms))*1.2
         elif isinstance(cutoff,float) or isinstance(cutoff,int):
@@ -77,13 +85,72 @@ class segment_atoms():
         matrix = nblist.get_connectivity_matrix()
 
         n_components, component_list = sparse.csgraph.connected_components(matrix)
+        
+        if natural:
+            clusters_to_check = [(atoms[component_list ==i].get_atomic_numbers()==3).sum()>nlithium for i in np.arange(n_components)]
+            
+            for cluster_index, check in enumerate(clusters_to_check):
+                if check:
+                    matrix = self.separate_cluster(cluster_index, matrix, n_components, component_list, atoms, cutoff)
+
+            n_components, component_list = sparse.csgraph.connected_components(matrix)
 
         return n_components, component_list, matrix
+
+    def separate_cluster(self,
+        cluster_index,
+        matrix,
+        n_components,
+        component_list,
+        atoms,
+        cutoff):
+
+        cluster_indices = np.argwhere(component_list==cluster_index).flatten()
+
+        slab_indices, mixture_indices = self.segment_slab_mixture(cluster_indices)
+
+        if len(slab_indices)>0 and len(mixture_indices)>0:
+            slab_nblist = neighborlist.NeighborList(cutoff[slab_indices],skin=0,self_interaction=False,bothways=True)
+            slab = atoms[slab_indices]
+            slab_nblist.update(slab)
+            slab_matrix = slab_nblist.get_connectivity_matrix()
+            for src in range(len(slab_indices)):
+                # src, dst = list(slab_matrix[i].keys())[0]
+                # print(src)
+                # original = list(matrix[slab_indices[src]].keys()).copy()
+                matrix[slab_indices[src]] = 0
+                # print(matrix[slab_indices[src]].keys())
+                for _, dst in list(slab_matrix[src].keys()):
+                    matrix[slab_indices[src],slab_indices[dst]] = 1
+                    
+                # if original != list(matrix[slab_indices[src]].keys()):
+                #     print('matrix altered')
+
+            mixture_nblist = neighborlist.NeighborList(cutoff[mixture_indices],skin=0,self_interaction=False,bothways=True)
+            mixture = atoms[mixture_indices]
+            mixture_nblist.update(mixture)
+            mixture_matrix = mixture_nblist.get_connectivity_matrix()
+
+            for src in range(len(mixture_indices)):
+                # src, dst = list(slab_matrix[i].keys())[0]
+                # print(src)
+                # original = list(matrix[mixture_indices[src]].keys()).copy()
+                matrix[mixture_indices[src]] = 0
+                # print(matrix[mixture_indices[src]].keys())
+                for _, dst in list(mixture_matrix[src].keys()):
+                    matrix[mixture_indices[src],mixture_indices[dst]] = 1
+                    
+                # if original != list(matrix[mixture_indices[src]].keys()):
+                #     print('matrix altered')
+
+
+        return matrix #, n_components, component_list
+
 
     def clusterstocalculate(self,
         uncertain_indices: list,
     ):
-
+        
         if len(self.atoms)<=self.max_cluster_size:
             if len(uncertain_indices)>0:
                 self.atoms.wrap()
@@ -98,10 +165,14 @@ class segment_atoms():
         molecules = []
         clusters = []
         atom_indices = []
+
         for idx in uncertain_indices:
+            start_time = time.time()
+
             molIdx = self.component_list_natural[idx]
 
             if molIdx not in molecules:
+                
                 indices_add = [ i for i in range(len(self.component_list_natural)) if self.component_list_natural[i] == molIdx ]
                 slab_add, mixture_add = self.segment_slab_mixture(indices_add)
                 
@@ -113,27 +184,27 @@ class segment_atoms():
                 idx_add = [idx]
                 mol_add = [molIdx]
                 if idx in mixture_add:
+                    
                     cluster_indices = list(mixture_add)
-                    slab_indices = []
-                    if len(slab_add)>0 and (len(cluster_indices)) <= self.max_cluster_size / 2:
-                        add_slab = True
-                        slab_indices += list(slab_add)
+                    slab_indices = list(slab_add)
+                    if len(slab_indices)>0:
+                        print('weird')
+                        
                 elif idx in slab_add:
-                    print('check segment bulk', flush = True)
-                    cluster, cluster_indices = self.segment_bulk(slab_add,idx)
-                    build = False
-                    add_bulk = True
+                    cluster_indices = list(mixture_add)
+                    slab_indices = list(slab_add)
+                    add_slab = True
+                    if len(cluster_indices)>0:
+                        print('weird')
                 
-                lithium_ind = np.argwhere(self.atoms[cluster_indices].get_atomic_numbers()==3).flatten()
-                if len(lithium_ind)>500:
-                    print('wrong')
-
+                
                 while build: #len(cluster_indices) < min_cluster_size and build:
                     if build_ind>100:
                         print(build_ind,flush=True)
                     build_ind+=1
                     total_indices = cluster_indices + slab_indices
-                    neighbor_atoms = np.unique(np.concatenate([self.matrix.getcol(i).nonzero()[0] for i in cluster_indices]))
+                    neighbor_list_i = [self.matrixnonzero[0][self.matrixnonzero[1]==i] for i in total_indices]
+                    neighbor_atoms = np.unique(np.concatenate(neighbor_list_i))
                     neighbor_atoms = [ind for ind in neighbor_atoms if ind not in total_indices]
 
                     if len(neighbor_atoms) == 0:
@@ -150,38 +221,53 @@ class segment_atoms():
                             if (len(cluster_indices) + len(mixture_add)) > self.max_cluster_size / (2  - (not add_slab)):
                                 build = False
                             elif atom_ind in mixture_add:
-                                cluster_indices += list(mixture_add)
+                                
                                 # molecules.append(molIdx_add)
+                                if len(slab_add)>0:
+                                    print('does this even happen???')
+                                    ind_mixture = np.argwhere(mixture_add==idx)[0,0]
 
-                                if len(slab_add)>0 and (len(cluster_indices)) <= self.max_cluster_size / 2:
-                                    add_slab = True
-                                    slab_indices += list(slab_add)
-                            elif atom_ind in slab_add:
-                                if len(cluster_indices)==0:
-                                    print('check segment bulk', flush = True)
-                                    cluster, cluster_indices = self.segment_bulk(slab_add,atom_ind)
-                                    build = False
-                                    add_bulk = True
-                                elif (len(cluster_indices)) <= self.max_cluster_size / 2:
-                                    add_slab = True
-                                    slab_indices += list(slab_add)
-                                    # molecules.append(molIdx_add)
+                                    n_components, component_list, matrix = self.findclusters(atoms=self.atoms[mixture_add])
+                                    mol_mixture = component_list[ind_mixture]
+                                    mol_indices = [ i for i in range(len(component_list)) if component_list[i] == mol_mixture ]
+                                    cluster_indices += list(mixture_add[mol_indices])
+                                    
+                                    if (len(cluster_indices)) <= self.max_cluster_size / 2:
+                                        add_slab = True
+                                        slab_indices += list(slab_add)
                                 else:
+                                    cluster_indices += list(mixture_add)
+
+                            elif atom_ind in slab_add:
+                                add_slab = True
+                                slab_indices += list(slab_add)
+                                # molecules.append(molIdx_add)
+                                if len(slab_indices)>0.75*self.nlithiums:
                                     build = False
 
                         else:
                             build = False
                         
-                if not add_bulk:           
-                    cluster = self.atoms[cluster_indices]
-
-                if add_slab and len(slab_indices)>0:
-                    cluster, cluster_indices = self.segment_slab(cluster, cluster_indices, slab_indices)
+                if add_slab:
+                    
+                    if len(cluster_indices)>0:
+                        pure_slab = create_slab(self.slab_config)
+                        cell = pure_slab.cell.diagonal()
+                        min_cluster = np.absolute(self.atoms[cluster_indices].positions[:,2]-self.atoms[idx].position[2]).min()
+                        if min_cluster <= cell[2]/2:
+                            cluster, cluster_indices = self.segment_slab(cluster_indices, slab_indices)
+                        else:
+                            # Add bulk
+                            cluster, cluster_indices = self.segment_bulk(slab_indices,idx)
+                            cluster.pbc = True
+                    else:
+                        # Add bulk
+                        cluster, cluster_indices = self.segment_bulk(slab_indices,idx)
+                        cluster.pbc = True
                     # write('test_cluster.xyz',cluster)
                     # print('done')
-                elif add_bulk:
-                    cluster.pbc = True
                 else:
+                    cluster = self.atoms[cluster_indices]
                     cluster = self.reduce_mixture_size(cluster)
                     cluster.pbc = True
 
@@ -198,8 +284,9 @@ class segment_atoms():
                     #     save = False
 
                     if (len(cluster)>1 and 
-                        cluster.get_volume()/len(cluster)<self.max_volume_per_atom and
-                        np.isclose(cluster.get_initial_charges().sum().round(),cluster.get_initial_charges().sum().round(2))):
+                            cluster.get_volume()/len(cluster)<self.max_volume_per_atom and
+                            np.isclose(cluster.get_initial_charges().sum().round(),cluster.get_initial_charges().sum().round(2))):
+                        
                         cluster.arrays['cluster_indices'] = np.array(cluster_indices,dtype=int)
                         clusters.append(cluster)
                         atom_indices.append(idx)
@@ -372,8 +459,9 @@ class segment_atoms():
         return slab_indices, mixture_indices
             
     
-    def segment_slab(self, cluster, cluster_indices, slab_indices):
+    def segment_slab(self, cluster_indices, slab_indices):
 
+        cluster = self.atoms[cluster_indices]
         cluster_reduce = self.reduce_mixture_size(cluster)
 
         if np.any(cluster_reduce.cell<cluster.cell):
@@ -400,12 +488,15 @@ class segment_atoms():
         for i, n_planes in enumerate(self.slab_config['supercell_size']):
             hist, bin_edges = np.histogram(D[:,i],bins=self.main_supercell_size[i]*10)
             
-            bin_indices, bin_centers = self.coarsen_histogram(D[:,i],hist, bin_edges)
+            bin_indices, bin_centers = self.coarsen_histogram(D[:,i],hist, bin_edges,self.atoms.cell.diagonal()[i])
 
             n_basis = max([1,int(np.round(len(bin_indices)/self.main_supercell_size[i],0))])
             n_planes *= n_basis
             
             bin_seed_ind = np.argsort(np.abs(bin_centers))[:n_planes]
+
+            # import matplotlib.pyplot as plt
+            # plt.hist(D[:,i],bins=bin_edges)
 
             min_bin_indices = np.concatenate(np.array(bin_indices,dtype=object)[bin_seed_ind]).astype(int)
             if i == 0:
@@ -418,9 +509,9 @@ class segment_atoms():
         reduced_slab_cluster = slab_keep + self.atoms[cluster_indices]
 
         cell_new = pure_slab.get_cell()
-        cell_new[2,2] += 2*self.vacuum
         reduced_slab_cluster.set_cell(cell_new)
         reduced_slab_cluster.center()
+        reduced_slab_cluster.center(vacuum=4,axis=2)
 
         #remove overlapping atoms
         edge_vec = []
@@ -480,7 +571,7 @@ class segment_atoms():
         # ind_location = np.array([*pure_slab.get_cell().diagonal()[:2]/2,0])
         # ind_bottom = np.argmin(np.linalg.norm(pure_slab.positions-ind_location,axis=1))
 
-    def coarsen_histogram(self, d, hist, bin_edges):
+    def coarsen_histogram(self, d, hist, bin_edges,max_dist):
 
         #find the proper bin edges
         idx = np.where(hist!=0)[0]
@@ -496,9 +587,23 @@ class segment_atoms():
 
         #segment D into the bin edges
         bin_indices = [np.argwhere(np.logical_and(d>edge[0],d<edge[1])).flatten() for edge in coarse_edges]
-
         #find bin centers from bin_indices
         bin_centers = [np.mean(d[indices]) for indices in bin_indices]
+
+        n_coarse = [len(bi) for bi in bin_indices]
+        while not np.all(n_coarse == np.mean(n_coarse)):
+            for i, val in enumerate(n_coarse):
+                if val == np.min(n_coarse):
+                    dist = np.abs(bin_centers-bin_centers[i])
+                    dist = np.min([dist,np.abs(max_dist-dist)],axis=0)
+                    concat_ind = np.argsort(dist)[1]
+                    bin_indices[concat_ind] = np.concatenate([bin_indices[concat_ind],bin_indices[i]])
+                    bin_indices.pop(i)
+                    bin_centers.pop(i)
+
+                    n_coarse = [len(bi) for bi in bin_indices]
+                    break
+        
 
         return bin_indices, bin_centers
 
@@ -517,7 +622,7 @@ class segment_atoms():
         for i, n_planes in enumerate(self.slab_config['supercell_size']):
             hist, bin_edges = np.histogram(D[:,i],bins=self.main_supercell_size[i]*10)
             
-            bin_indices, bin_centers = self.coarsen_histogram(D[:,i],hist, bin_edges)
+            bin_indices, bin_centers = self.coarsen_histogram(D[:,i],hist, bin_edges,self.atoms.cell.diagonal()[i])
 
             n_basis = max([1,int(np.round(len(bin_indices)/self.main_supercell_size[i],0))])
             n_planes *= n_basis
@@ -537,9 +642,13 @@ class segment_atoms():
         #         np.logical_and(D[:,2]>-cell[2]/2,D[:,2]<=cell[2]/2))
         # ).flatten()
         
+        z_bins = np.array(bin_centers)[bin_seed_ind]
+        z_span = z_bins.max()-z_bins.min()
+        z_cell = z_span*len(bin_seed_ind)/(len(bin_seed_ind)-1)
         bulk_keep = slab[keep_indices]
         
         cell_new = pure_slab.get_cell()
+        cell_new[2,2] = z_cell
         bulk_keep.set_cell(cell_new)
         bulk_keep.center()
         bulk_keep.wrap()
