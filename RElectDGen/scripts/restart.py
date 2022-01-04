@@ -53,12 +53,17 @@ def main(args = None):
     #     checks.append(read_file(final_MLP,'error std',config.get('UQ_min_uncertainty')/2, operator.lt))
     # checks.append(read_file(final_MLP,'max index',config.get('MLP_MD_steps')+1, operator.eq))
 
-    final_temperature = config['MLP_MD_temperature'] + config['n_temperature_sweep']*config['MLP_MD_dT']
+    #default termination limits
+    max_MLP_MD_temperature = config.get('max_MLP_temperature',350)
+    max_MLP_MD_dT = config.get('max_MLP_MD_dT',100)
+    max_MLP_MD_steps = config.get('max_MLP_MD_steps',4000)
+    min_UQ_min_uncertainty = config.get('UQ_terminal_accuracy',0.04)
 
     termination_conditions = [
-        config.get('i_temperature_sweep')>=config.get('max_temperature_sweep'),
-        final_temperature>=config.get('max_MLP_temperature'),
-        config.get('UQ_min_uncertainty')<=config.get('UQ_terminal_accuracy',.01)
+        config['MLP_MD_temperature']>=max_MLP_MD_temperature,
+        config['MLP_MD_dT']>=max_MLP_MD_dT,
+        config['MLP_MD_steps']>=max_MLP_MD_steps,
+        config.get('UQ_min_uncertainty')<=min_UQ_min_uncertainty,
     ]
 
     print('checks', checks)
@@ -70,6 +75,17 @@ def main(args = None):
     if np.all(checks[:,3]):
         config['UQ_min_uncertainty']/=2
         # config['n_temperature_sweep']+=1
+
+    # Reset to limits
+    
+    if config['MLP_MD_temperature']>max_MLP_MD_temperature:
+        config['MLP_MD_temperature'] = max_MLP_MD_temperature
+    if config['MLP_MD_dT']>max_MLP_MD_dT:
+        config['MLP_MD_dT'] = max_MLP_MD_dT
+    if config['MLP_MD_steps']>max_MLP_MD_steps:
+        config['MLP_MD_steps'] = max_MLP_MD_steps
+    if config['UQ_min_uncertainty']<min_UQ_min_uncertainty:
+        config['UQ_min_uncertainty'] = min_UQ_min_uncertainty
 
     checks_history = config.get('checks_history',[])
     checks_history.append(np.all(checks,axis=0).tolist())
