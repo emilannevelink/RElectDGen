@@ -86,7 +86,7 @@ if train:
     print('Training NN ... ', flush=True)
         
     process = subprocess.run(commands,capture_output=True)
-    print(process)
+    # print(process)
     [print(line) for line in process.stderr.split(b'\n')]
 
     # print(process.stderr.decode('ascii'))

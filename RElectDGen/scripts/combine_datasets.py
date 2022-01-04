@@ -33,6 +33,7 @@ def main(args=None):
         traj += read(trajectory_file,index=':')
     except:
         print('Trajectory file couldnt be appended', flush=True)
+        print(trajectory_file, flush=True)
 
     print(len(traj))
 

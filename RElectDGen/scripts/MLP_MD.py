@@ -132,7 +132,7 @@ def main(args=None):
     checks = [
         float(uncertainty.mean())<config.get('UQ_min_uncertainty'),
         float(uncertainty.std())<config.get('UQ_min_uncertainty')/2,
-        max_index==(config.get('MLP_MD_steps')+1),
+        max_index==expected_max_index,
     ]
 
     if max_index < 10:
@@ -170,6 +170,10 @@ def main(args=None):
         write(cluster_file,clusters)
 
         uncertainties, cluster_embeddings = UQ.predict_from_traj(clusters,max=True)
+
+        tmp1 = time.time()
+        print('Time to predict cluster uncertainties', tmp1-tmp0, 'Elapsed time ', tmp1-start, flush=True)
+        tmp0 = tmp1
         if sorted:
             mask = torch.logical_and(uncertainties>min_sigma,uncertainties<max_sigma)
         else:
