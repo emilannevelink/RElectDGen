@@ -237,7 +237,7 @@ def main(args=None):
             [traj_write.write(atoms) for atoms in traj_calc]
 
             print(len(calc_inds), calc_inds)
-            checks.append(False)
+            checks.append(len(calc_inds)<config.get('max_samples')/2)
         else:
             print('No uncertain data points')
             checks.append(True)
