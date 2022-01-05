@@ -6,6 +6,10 @@ from ase.io.trajectory import Trajectory
 from ase.parallel import world
 from nequip.utils import config
 
+import numpy as np
+
+from ..utils.logging import write_to_tmp_dict
+
 def parse_command_line(argsin):
     parser = argparse.ArgumentParser()
     parser.add_argument('--config_file', dest='config',
@@ -42,6 +46,22 @@ def main(args=None):
             except InvalidULMFileError:
                 print(f'failed to retrieve {i} calculations from array', flush=True)
         
+        try:
+            calculation_times = []
+            for atoms in traj_active:
+                calculation_times.append(atoms.info['calculation_time'])
+            
+            print(calculation_times)
+            print(np.mean(calculation_times))
+            logging_dict = {
+                'calculation_times_mean': float(np.mean(calculation_times)),
+                'calculation_times_max': float(np.max(calculation_times)),
+                'calculation_times_min': float(np.min(calculation_times))
+            }
+            tmp_filename = os.path.join(config.get('directory'),config.get('run_dir'),config.get('tmp_file','tmp.json'))
+            write_to_tmp_dict(tmp_filename,logging_dict)
+        except:
+            print('error')
 
         traj_writer = Trajectory(trajectory_file,mode='a')
         [traj_writer.write(atoms) for atoms in traj_active]

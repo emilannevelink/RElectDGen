@@ -24,6 +24,7 @@ from e3nn_networks.utils.data_helpers import *
 
 from ..calculate.calculator import nn_from_results
 from ..structure.segment import clusters_from_traj
+from ..utils.logging import write_to_tmp_dict, UQ_params_to_dict
 import time
 
 
@@ -46,13 +47,14 @@ def parse_command_line(argsin):
 def main(args=None):
     print('Starting timer', flush=True)
     start = time.time()
+    MLP_dict = {}
 
     config, filename_config, loop_learning_count = parse_command_line(args)
-    MD_temperature = config.get('MLP_MD_temperature') + (loop_learning_count-1)*config.get('MLP_MD_dT')
     structure_file = os.path.join(config.get('data_directory'),config.get('structure_file'))
     supercell = read(structure_file)
     #Delete Bondlength constraints
     supercell.constraints = [constraint for constraint in supercell.constraints if type(constraint)!=ase.constraints.FixBondLengths]
+    
 
     ### Setup NN ASE calculator
     calc_nn, model, MLP_config = nn_from_results()
@@ -65,6 +67,7 @@ def main(args=None):
     UQ = latent_distance_uncertainty_Nequip(model, MLP_config)
     UQ.calibrate()
     print(UQ.params,flush=True)
+    UQ_dict = UQ_params_to_dict(UQ.params,'MLP')
     for key in UQ.params:
         print(key, UQ.params[key],flush=True) 
         if UQ.params[key][1] < config.get('mininmum_uncertainty_scaling',0):
@@ -76,18 +79,20 @@ def main(args=None):
     print('Time to calibrate UQ ', tmp1-tmp0, 'Elapsed time ', tmp1-start, flush=True)
     tmp0 = tmp1
 
-    ### e3nn trajectory
-    trajectory_file = os.path.join(config.get('data_directory'),config.get('MLP_trajectory_file'))
-    print(MD_temperature,flush=True)
-
 
     ### Run MLP MD
+    MLP_dict['MLP_MD_temperature'] = config.get('MLP_MD_temperature') + (loop_learning_count-1)*config.get('MLP_MD_dT')
+    MaxwellBoltzmannDistribution(supercell, temperature_K=MLP_dict['MLP_MD_temperature'])
+    print(MLP_dict['MLP_MD_temperature'],flush=True)
+
     dyn = VelocityVerlet(supercell, timestep=config.get('MLP_MD_timestep') * units.fs)
     MLP_MD_dump_file = os.path.join(config.get('data_directory'),config.get('MLP_MD_dump_file'))
     #MDLogger only has append, delete log file
     if os.path.isfile(MLP_MD_dump_file):
         os.remove(MLP_MD_dump_file)
     dyn.attach(MDLogger(dyn,supercell,MLP_MD_dump_file,mode='w'),interval=1)
+    
+    trajectory_file = os.path.join(config.get('data_directory'),config.get('MLP_trajectory_file'))
     traj = Trajectory(trajectory_file, 'w', supercell)
     dyn.attach(traj.write, interval=1)
     try:
@@ -102,6 +107,7 @@ def main(args=None):
 
     # print('Done with MD', flush = True)
     traj = Trajectory(trajectory_file)
+    MLP_dict['MLP_MD_steps'] = len(traj)
 
     max_traj_len = config.get('max_atoms_to_segment',1001)
 
@@ -115,8 +121,10 @@ def main(args=None):
 
     uncertainty, embeddings = UQ.predict_from_traj(traj,max=False)
 
-    print('MLP error value', float(uncertainty.mean()), flush=True)
-    print('MLP error std', float(uncertainty.std()),flush=True)
+    MLP_dict['MLP_error_value'] = float(uncertainty.mean())
+    MLP_dict['MLP_error_std'] = float(uncertainty.std())
+    print('MLP error value', MLP_dict['MLP_error_value'], flush=True)
+    print('MLP error std', MLP_dict['MLP_error_std'],flush=True)
 
     min_sigma = config.get('UQ_min_uncertainty')
     max_sigma = config.get('UQ_max_uncertainty')
@@ -135,7 +143,7 @@ def main(args=None):
         max_index==expected_max_index,
     ]
 
-    if max_index < 10:
+    if max(max_index, MLP_dict['MLP_MD_steps']) < 10:
         MLP_log = pd.read_csv(MLP_MD_dump_file,delim_whitespace=True)
         try:
             max_index = int(np.argwhere(MLP_log['T[K]'].values>2000)[0])
@@ -163,8 +171,11 @@ def main(args=None):
     print('Time to segment clusters', tmp1-tmp0, 'Elapsed time ', tmp1-start, flush=True)
     tmp0 = tmp1
 
+    MLP_dict['number_uncertain_points'] = len(clusters)
     if len(clusters) == 0:
         print('No clusters to calculate', flush=True)
+        MLP_dict['number_clusters_calculate'] = 0
+        checks.append(True)
     else:
         cluster_file = os.path.join(config.get('data_directory'),config.get('GPAW_MD_dump_file').split('.log')[0]+'_clusters.xyz')
         write(cluster_file,clusters)
@@ -219,6 +230,8 @@ def main(args=None):
                 
                 if len(calc_inds) >= config.get('max_samples'):
                     break
+        
+        MLP_dict['number_clusters_calculate'] = len(calc_inds)
 
         if len(calc_inds)>0:
             print('Embedding distances: ', embedding_distances, flush=True)
@@ -242,19 +255,33 @@ def main(args=None):
             print('No uncertain data points')
             checks.append(True)
 
-        print('checks: ', checks)
+    print('checks: ', checks)
 
-        if config.get('checks') is not None:
-            config['checks'].append(checks)
-        else:
-            config['checks'] = [checks]
+    if config.get('checks') is not None:
+        config['checks'].append(checks)
+    else:
+        config['checks'] = [checks]
 
-        with open(filename_config,'w') as fl:
-            yaml.dump(config, fl)
+    with open(filename_config,'w') as fl:
+        yaml.dump(config, fl)
 
-        tmp1 = time.time()
-        print('Time to finish', tmp1-tmp0, 'Elapsed time ', tmp1-start, flush=True)
-        tmp0 = tmp1
+    tmp1 = time.time()
+    print('Time to finish', tmp1-tmp0, 'Elapsed time ', tmp1-start, flush=True)
+    tmp0 = tmp1
+
+    MLP_dict['check_error'] = checks[0]
+    MLP_dict['check_std'] = checks[1]
+    MLP_dict['check_steps'] = checks[2]
+    MLP_dict['check_npoints'] = checks[3]
+
+    logging_dict = {
+        **UQ_dict,
+        **MLP_dict,
+        'MLP_MD_time': tmp1-start,
+    }
+
+    tmp_filename = os.path.join(config.get('directory'),config.get('run_dir'),config.get('tmp_file','tmp.json'))
+    write_to_tmp_dict(tmp_filename,logging_dict)
 
 if __name__ == "__main__":
     main()
