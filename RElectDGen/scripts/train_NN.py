@@ -30,11 +30,11 @@ def parse_command_line(argsin):
     with open(args.MLP_config,'r') as fl:
         MLP_config_new = yaml.load(fl,yaml.FullLoader)
 
-    return config, MLP_config_new
+    return config, MLP_config_new, args.MLP_config
 
 def main(args=None):
     start_time = time.time()
-    config, MLP_config_new = parse_command_line(args)
+    config, MLP_config_new, MLP_config_filename = parse_command_line(args)
 
     ### Check for previous model
     try:
@@ -61,7 +61,7 @@ def main(args=None):
     if config.get('force_retrain', False):
         train = True
 
-    commands = ['nequip-train', args.MLP_config]
+    commands = ['nequip-train', MLP_config_filename]
     UQ_dict = {}
     if not train:
         
@@ -84,11 +84,11 @@ def main(args=None):
                 if MLP_config_new.get('load_previous') and check_NN_parameters(MLP_config_new, MLP_config):
                     MLP_config_new['workdir_load'] = MLP_config['workdir']
 
-                    with open(args.MLP_config, "w+") as fp:
+                    with open(MLP_config_filename, "w+") as fp:
                         yaml.dump(dict(MLP_config_new), fp)
 
                     print('Load previous', flush = True)
-                    commands = ['nequip-train-load', args.MLP_config]
+                    commands = ['nequip-train-load', MLP_config_filename]
 
             else:
                 print('No uncertain points, reusing neural network')
