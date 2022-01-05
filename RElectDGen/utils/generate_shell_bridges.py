@@ -108,12 +108,16 @@ def slurm_config_from_config(config, file):
         slurm_config['n'] = cores
         slurm_config['--mem-per-cpu'] = config.get('memory_per_core',2000)
         if '--ntasks' in slurm_config.keys():
+            slurm_config.pop('--ntasks')
             slurm_config['--cpus-per-task'] = cores
+            slurm_config['--ntasks'] = 1
     elif 'GPU' in slurm_config['p']:
         slurm_config['--gpus'] = cores
         slurm_config['--mem-per-gpu'] = config.get('memory_per_core',2000)
         if '--ntasks' in slurm_config.keys():
+            slurm_config.pop('--ntasks')
             slurm_config['--gpus-per-task'] = cores
+            slurm_config['--ntasks'] = 1
 
     return slurm_config
 
