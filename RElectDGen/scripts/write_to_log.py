@@ -31,7 +31,7 @@ def main(args = None):
     new_line = pd.DataFrame(tmp_dict,index=[0])
     
     #create dataframe
-    log_filename = os.path.join(config.get('directory'),config.get('log_filename'))
+    log_filename = os.path.join(config.get('data_directory'),config.get('log_filename'))
     if os.path.isfile(log_filename):
         dataframe = pd.read_csv(log_filename)
 
