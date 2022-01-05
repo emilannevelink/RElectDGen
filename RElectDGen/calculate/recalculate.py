@@ -1,8 +1,9 @@
-
+import time
 
 def recalculate_traj_energies(traj,calc=None,config=None,writer=None,rewrite_pbc=False):
 	from copy import deepcopy
 	import gpaw
+	start_time = time.time()
 	# traj_new = []
 	if calc==None:
 		from .calculator import oracle_from_config
@@ -17,6 +18,7 @@ def recalculate_traj_energies(traj,calc=None,config=None,writer=None,rewrite_pbc
 		atoms.calc = calci
 		try:
 			atoms.get_forces()
+			atoms.info['calculation_time'] = time.time()-start_time
 			if writer is not None:
 				writer.write(atoms)
 		except gpaw.grid_descriptor.GridBoundsError:
