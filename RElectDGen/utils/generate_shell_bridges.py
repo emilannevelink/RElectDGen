@@ -18,17 +18,18 @@ def shell_from_config(config):
 
     gpaw_cores = config.get('gpaw_cores',config.get('cores'))
 
+    environment = config.get('conda_env', 'nequip')
     for file in filenames:
         fname = os.path.join(location,file)
         
         slurm_config = slurm_config_from_config(config,file)
         
+        commands = ["module load anaconda3", 
+                    f"conda activate {environment}",
+                    'export LD_LIBRARY_PATH=/opt/packages/anaconda3/lib:$LD_LIBRARY_PATH']
 
         if 'train' in file:
-            commands = [
-                "module load anaconda3",
-                'conda activate nequip',
-                'export LD_LIBRARY_PATH=/opt/packages/anaconda3/lib:$LD_LIBRARY_PATH',
+            commands += [
                 'rm results/processed*/ -r',
                 # 'python ${1}scripts/'+f'{branch}/combine_datasets.py --config_file $2 --MLP_config_file $3',
                 # 'nequip-train $3',
@@ -38,17 +39,12 @@ def shell_from_config(config):
             ]
             
         elif 'restart' in file:
-            commands = [
-                "module load anaconda3",
-                'conda activate nequip',
-                'export LD_LIBRARY_PATH=/opt/packages/anaconda3/lib:$LD_LIBRARY_PATH',
+            commands = +[
                 # 'python ${1}scripts/'+f'{branch}/restart.py --config_file $2 --MLP_config_file $3',
                 'REDGEN-restart --config_file $2 --MLP_config_file $3'
             ]
             
         else:
-            commands = ["module load anaconda3", "conda activate nequip",'export LD_LIBRARY_PATH=/opt/packages/anaconda3/lib:$LD_LIBRARY_PATH']
-
             if 'MLP' in file:
                 commands += ['REDGEN-MLP-MD --config_file $2  --MLP_config_file $3 --loop_learning_count $4']
                 
