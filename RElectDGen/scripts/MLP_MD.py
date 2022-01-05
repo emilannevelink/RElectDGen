@@ -107,7 +107,7 @@ def main(args=None):
 
     if len(traj) > max_traj_len:
         reduction_factor = np.ceil(len(traj)/max_traj_len).astype(int)
-        expected_max_index = np.ceil(len(traj)/reduction_factor)
+        expected_max_index = int(np.ceil((config.get('MLP_MD_steps')+1)/reduction_factor))
         traj = traj[::reduction_factor]
         print(f'reduced length of trajectory by {reduction_factor}, new length {len(traj)}, new max_index {expected_max_index}', flush=True)
     else:
