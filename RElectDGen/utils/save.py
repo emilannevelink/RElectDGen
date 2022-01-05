@@ -52,3 +52,14 @@ def check_NN_parameters(MLP_config_new, MLP_config_old):
     #     yaml.dump(dict(MLP_config_new), fp)
 
     return value
+
+def get_results_dir():
+    max_time = 0
+    for tmp in os.listdir('results'):
+        if not tmp.startswith('processed'):
+            time_tmp = os.stat('results/'+tmp).st_mtime
+            if time_tmp>max_time:
+                max_time = time_tmp
+                train_directory = 'results/'+ tmp
+    
+    return train_directory

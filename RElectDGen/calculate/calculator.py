@@ -6,6 +6,8 @@ from nequip.data.transforms import TypeMapper
 import numpy as np
 from ase.parallel import world
 
+from RElectDGen.utils.save import get_results_dir
+
 def oracle_from_config(config,atoms=None):
 
     from gpaw import GPAW, PW, FermiDirac, restart
@@ -61,14 +63,8 @@ def oracle_from_config(config,atoms=None):
 
 def nn_from_results():
     
-    max_time = 0
-    for tmp in os.listdir('results'):
-        if not tmp.startswith('processed'):
-            time_tmp = os.stat('results/'+tmp).st_mtime
-            if time_tmp>max_time:
-                max_time = time_tmp
-                train_directory = 'results/'+ tmp
-
+    train_directory = get_results_dir()
+    
     file_config = train_directory + "/config_final.yaml"
     MLP_config = Config.from_file(file_config)
 
