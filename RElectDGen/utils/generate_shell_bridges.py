@@ -39,7 +39,7 @@ def shell_from_config(config):
             ]
             
         elif 'restart' in file:
-            commands = +[
+            commands += [
                 # 'python ${1}scripts/'+f'{branch}/restart.py --config_file $2 --MLP_config_file $3',
                 'REDGEN-restart --config_file $2 --MLP_config_file $3'
             ]
