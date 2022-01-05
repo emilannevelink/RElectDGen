@@ -26,6 +26,7 @@ setup(
             "REDGEN-gpaw-active = RElectDGen.scripts.gpaw_active:main",
             "REDGEN-gpaw-active-array = RElectDGen.scripts.gpaw_active_array:main",
             "REDGEN-gpaw-summary = RElectDGen.scripts.gpaw_summary_array:main",
+            "REDGEN-log = RElectDGen.scripts.write_to_log:main",
             "REDGEN-restart = RElectDGen.scripts.restart:main",
         ]
     },
