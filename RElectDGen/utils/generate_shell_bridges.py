@@ -68,8 +68,9 @@ def shell_from_config(config):
                 file = os.path.join(config.get('scripts_path'),'gpaw_summary_array.py')
                 # commands += [f'mpiexec -n {gpaw_cores}' + f' gpaw python {file} --config_file $2 --MLP_config_file $3 --loop_learning_count $4']
                 commands += ['REDGEN-gpaw-summary --config_file $2  --MLP_config_file $3 --loop_learning_count $4']
+                commands += ['REDGEN-log --config_file $2']
             
-        if 'array' in file:
+        if 'array' in fname:
             gen_job_array(commands,'',slurm_config,fname=fname)
         else:
             gen_job_script(commands,slurm_config,fname=fname)
@@ -108,14 +109,14 @@ def slurm_config_from_config(config, file):
         slurm_config['n'] = cores
         slurm_config['--mem-per-cpu'] = config.get('memory_per_core',2000)
         if '--ntasks' in slurm_config.keys():
-            slurm_config.pop('--ntasks')
+            slurm_config.pop('--ntasks') #ntasks needs to go after cores otherwise you get a slurm error
             slurm_config['--cpus-per-task'] = cores
             slurm_config['--ntasks'] = 1
     elif 'GPU' in slurm_config['p']:
         slurm_config['--gpus'] = cores
         slurm_config['--mem-per-gpu'] = config.get('memory_per_core',2000)
         if '--ntasks' in slurm_config.keys():
-            slurm_config.pop('--ntasks')
+            slurm_config.pop('--ntasks') #ntasks needs to go after cores otherwise you get a slurm error
             slurm_config['--gpus-per-task'] = cores
             slurm_config['--ntasks'] = 1
 

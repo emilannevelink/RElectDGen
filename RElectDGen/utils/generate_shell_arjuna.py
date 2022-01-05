@@ -113,11 +113,12 @@ def shell_from_config(config):
             elif 'summary' in file:
                 file = os.path.join(config.get('scripts_path'),'gpaw_summary_array.py')
                 commands += [f'srun -n {gpaw_cores}' + f' gpaw python {file} --config_file $2 --MLP_config_file $3 --loop_learning_count $4']
+                commands += ['REDGEN-log --config_file $2']
                 # commands += [f'srun -n {gpaw_cores}' + ' gpaw python ${1}scripts/'+f'{branch}/gpaw_summary_array.py --config_file $2 --MLP_config_file $3 --loop_learning_count $4']
                 slurm_config['n'] = gpaw_cores
                 slurm_config['N'] = gpaw_nodes
             
-        if 'array' in file:
+        if 'array' in fname:
             gen_job_array(commands,'',slurm_config,fname=fname)
         else:
             gen_job_script(commands,slurm_config,fname=fname)
