@@ -1,6 +1,7 @@
 import argparse
 import subprocess
 import os, yaml
+from RElectDGen.scripts.gpaw_MD import get_initial_MD_steps
 
 def parse_command_line(args):
     parser = argparse.ArgumentParser()
@@ -47,7 +48,7 @@ def main(args=None):
     job_types = []
 
     shell_file = 'submits/gpaw_MD.sh'
-    if shell_file.split('/')[-1] in filenames:
+    if shell_file.split('/')[-1] in filenames and get_initial_MD_steps(config)>0:
         commands = ['sbatch', shell_file, config.get("directory"), active_learning_config, MLP_config_filename]
         process = subprocess.run(commands, capture_output=True)
         job_ids.append(int(process.stdout.split(b' ')[-1]))
