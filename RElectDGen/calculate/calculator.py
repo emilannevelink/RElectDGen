@@ -75,8 +75,10 @@ def nn_from_results():
     model = torch.load(model_path, map_location=torch.device("cpu"))
     if MLP_config.compile_model:
         import e3nn
-        model = e3nn.util.jit.script(model)
+        model = e3nn.util.jit.compile(model)
         print('compiled model', flush=True)
+    torch._C._jit_set_bailout_depth(MLP_config.get("_jit_bailout_depth",2))
+    
     calc_nn = NequIPCalculator(model=model, r_max=MLP_config.r_max,device='cpu', transform=transform)
 
     return calc_nn, model, MLP_config

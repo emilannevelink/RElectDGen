@@ -104,25 +104,24 @@ def main(args=None):
         
     if config.get('restart',False) and 'restart.sh' in filenames and len(job_ids)>0:
 
-        job_info = {
-            'job_ids': job_ids,
-            'job_types': job_types,
-        }
-        config['job_info'] = job_info
-
-        with open(active_learning_config,'w') as fl:
-            yaml.dump(config, fl)
-        
         shell_file = 'submits/restart.sh'
         commands = ['sbatch', f'--dependency=afterok:{job_ids[-1]}', shell_file, config.get('directory'), active_learning_config, MLP_config_filename]
         process = subprocess.run(commands,capture_output=True)
         job_ids.append(int(process.stdout.split(b' ')[-1]))
+        job_types.append(shell_file)
 
         restart_ids = config.get('restart_ids',[])
         restart_ids.append(int(process.stdout.split(b' ')[-1]))
         config['restart_ids'] = restart_ids
-        with open(active_learning_config,'w') as fl:
-            yaml.dump(config, fl)
+    
+    job_info = {
+            'job_ids': job_ids,
+            'job_types': job_types,
+    }
+    config['job_info'] = job_info
+    
+    with open(active_learning_config,'w') as fl:
+        yaml.dump(config, fl)
 
     print(job_ids)
 

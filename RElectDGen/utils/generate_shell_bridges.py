@@ -4,6 +4,9 @@ import os
 import argparse
 import yaml
 
+max_cpu_cores = 128
+max_gpu_cores = 8
+
 def shell_from_config(config):
 
     location = os.path.join(config.get('directory'),config.get('run_dir'),config.get('dir_shell','submits'))
@@ -16,7 +19,11 @@ def shell_from_config(config):
 
     filenames = config.get('shell_filenames')
 
-    gpaw_cores = config.get('gpaw_cores',config.get('cores'))
+    
+    if 'shared' in config.get('gpaw_queue'):
+        gpaw_cores = config.get('gpaw_cores',config.get('cores'))
+    else:
+        gpaw_cores = max_cpu_cores if 'RM' in config.get('gpaw_queue') else max_gpu_cores
 
     environment = config.get('conda_env', 'nequip')
     for file in filenames:
@@ -93,27 +100,41 @@ def slurm_config_from_config(config, file):
         cores = config.get('MLP_cores',config.get('cores'))
         slurm_config['N'] = config.get('MLP_nodes',config.get('nodes',1))
         slurm_config['--ntasks'] = 1
-    elif ('MD' in file or 
+    elif ('MD' in file or #note MLP has already taken out the MLP_MD
         'active' in file or 
         'array' in file):
         slurm_config['p'] = config.get('gpaw_queue',config.get('queue','RM-shared'))
         cores = config.get('gpaw_cores',config.get('cores'))
         slurm_config['N'] = config.get('gpaw_nodes',config.get('nodes',1))
 
-    
-    if 'RM' in slurm_config['p']:
+    #Add distinction for RM-shared and GPU-shared
+    if 'RM-shared' in slurm_config['p']:
         slurm_config['n'] = cores
         slurm_config['--mem-per-cpu'] = config.get('memory_per_core',2000)
         if '--ntasks' in slurm_config.keys():
             slurm_config.pop('--ntasks') #ntasks needs to go after cores otherwise you get a slurm error
             slurm_config['--cpus-per-task'] = cores
             slurm_config['--ntasks'] = 1
-    elif 'GPU' in slurm_config['p']:
+    elif 'RM' in slurm_config['p']:
+        # slurm_config['n'] = cores
+        # slurm_config['--mem-per-cpu'] = config.get('memory_per_core',2000)
+        if '--ntasks' in slurm_config.keys():
+            slurm_config.pop('--ntasks') #ntasks needs to go after cores otherwise you get a slurm error
+            slurm_config['--cpus-per-task'] = max_cpu_cores
+            slurm_config['--ntasks'] = 1
+    elif 'GPU-shared' in slurm_config['p']:
         slurm_config['--gpus'] = cores
         slurm_config['--mem-per-gpu'] = config.get('memory_per_core',2000)
         if '--ntasks' in slurm_config.keys():
             slurm_config.pop('--ntasks') #ntasks needs to go after cores otherwise you get a slurm error
             slurm_config['--gpus-per-task'] = cores
+            slurm_config['--ntasks'] = 1
+    elif 'GPU' in slurm_config['p']:
+        # slurm_config['--gpus'] = cores
+        # slurm_config['--mem-per-gpu'] = config.get('memory_per_core',2000)
+        if '--ntasks' in slurm_config.keys():
+            slurm_config.pop('--ntasks') #ntasks needs to go after cores otherwise you get a slurm error
+            slurm_config['--gpus-per-task'] = max_gpu_cores
             slurm_config['--ntasks'] = 1
 
     return slurm_config
