@@ -18,10 +18,11 @@ class latent_distance_uncertainty_Nequip():
         self.transform = TypeMapper(chemical_symbol_to_type=chemical_symbol_to_type)
 
         self.self_interaction = self.config.get('dataset_extra_fixed_fields',False).get('self_interaction',False)
+        self.device = 'cude' if torch.cuda.is_available() else 'cpu'
+            
 
     def transform_data_input(self,data):
-        if torch.cuda.is_available():
-            data.to(torch.device('cuda'))
+        data.to(torch.device(self.device))
         data = AtomicData.to_AtomicDataDict(data)
         # if torch.cuda.is_available():
         #     for key in data.keys():
@@ -34,7 +35,7 @@ class latent_distance_uncertainty_Nequip():
         
         dataset = dataset_from_config(self.config)
 
-        train_force_latent_distances = torch.empty((0,self.latent_size))
+        train_force_latent_distances = torch.empty((0,self.latent_size),device=self.device)
 
         train_embeddings = {}
         test_embeddings = {}
@@ -57,8 +58,9 @@ class latent_distance_uncertainty_Nequip():
 
         self.train_force_latent_distances = train_force_latent_distances
 
-        test_force_latent_distances = torch.empty((0,self.latent_size))
-        test_force_errors = torch.empty((0,3))
+        test_force_latent_distances = torch.empty((0,self.latent_size),device=self.device)
+        test_force_errors = torch.empty((0,3),device=self.device)
+
         for data in dataset[self.config.val_idcs]:
             out = self.model(self.transform_data_input(data))
             test_force_latent_distances = torch.cat([test_force_latent_distances,out['node_features']]) 

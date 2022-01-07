@@ -56,7 +56,8 @@ def main(args=None):
         )
         model.load_state_dict(model_load.state_dict())
         train = False
-    except:
+    except Exception as e:
+        print(e)
         print('previous model is not the same as state dict', flush=True)
         train = True
 
