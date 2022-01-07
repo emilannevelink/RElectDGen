@@ -19,6 +19,14 @@ class latent_distance_uncertainty_Nequip():
 
         self.self_interaction = self.config.get('dataset_extra_fixed_fields',False).get('self_interaction',False)
 
+    def transform_data_input(self,data):
+        data = AtomicData.to_AtomicDataDict(data)
+        if torch.cuda.is_available():
+            for key in data.keys():
+                if isinstance(data[key],torch.Tensor):
+                    data[key].to(torch.device('cuda'))
+        return data
+
     def calibrate(self):
         #latent_size = self.model.final.tp.irreps_in1.dim #monolayer energy
         
@@ -35,7 +43,7 @@ class latent_distance_uncertainty_Nequip():
             test_errors[key] = torch.empty((0))
     
         for data in dataset[self.config.train_idcs]:
-            out = self.model(AtomicData.to_AtomicDataDict(data))
+            out = self.model(self.transform_data_input(data))
             
             train_force_latent_distances = torch.cat([train_force_latent_distances,out['node_features']])
 
@@ -50,7 +58,7 @@ class latent_distance_uncertainty_Nequip():
         test_force_latent_distances = torch.empty((0,self.latent_size))
         test_force_errors = torch.empty((0,3))
         for data in dataset[self.config.val_idcs]:
-            out = self.model(AtomicData.to_AtomicDataDict(data))
+            out = self.model(self.transform_data_input(data))
             test_force_latent_distances = torch.cat([test_force_latent_distances,out['node_features']]) 
             
             error = torch.absolute(out['forces'] - data.forces)
@@ -96,7 +104,7 @@ class latent_distance_uncertainty_Nequip():
         self.test_errors = test_errors
 
     def predict(self, data, distances='train_val'):
-        out = self.model(AtomicData.to_AtomicDataDict(data))
+        out = self.model(self.transform_data_input(data))
         self.atom_embedding = out['node_features']
         
         uncertainties = torch.zeros(self.atom_embedding.shape[0])

@@ -48,6 +48,7 @@ def main(args=None):
     print('Starting timer', flush=True)
     start = time.time()
     MLP_dict = {}
+    
 
     config, filename_config, loop_learning_count = parse_command_line(args)
     structure_file = os.path.join(config.get('data_directory'),config.get('structure_file'))
@@ -58,6 +59,7 @@ def main(args=None):
 
     ### Setup NN ASE calculator
     calc_nn, model, MLP_config = nn_from_results()
+    torch._C._jit_set_bailout_depth(MLP_config.get("_jit_bailout_depth",2))
     supercell.calc = calc_nn
 
     tmp0 = time.time()

@@ -5,6 +5,7 @@ import os
 import yaml
 import time
 
+import torch
 from torch.nn import L1Loss
 from nequip.data import AtomicData, AtomicDataDict
 from nequip.model import model_from_config
@@ -35,6 +36,7 @@ def parse_command_line(argsin):
 def main(args=None):
     start_time = time.time()
     config, MLP_config_new, MLP_config_filename = parse_command_line(args)
+    torch._C._jit_set_bailout_depth(MLP_config_new.get("_jit_bailout_depth",2))
 
     ### Check for previous model
     try:
