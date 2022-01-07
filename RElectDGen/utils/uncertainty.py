@@ -20,11 +20,13 @@ class latent_distance_uncertainty_Nequip():
         self.self_interaction = self.config.get('dataset_extra_fixed_fields',False).get('self_interaction',False)
 
     def transform_data_input(self,data):
-        data = AtomicData.to_AtomicDataDict(data)
         if torch.cuda.is_available():
-            for key in data.keys():
-                if isinstance(data[key],torch.Tensor):
-                    data[key].to(torch.device('cuda'))
+            data.to(torch.device('cuda'))
+        data = AtomicData.to_AtomicDataDict(data)
+        # if torch.cuda.is_available():
+        #     for key in data.keys():
+        #         if isinstance(data[key],torch.Tensor):
+        #             data[key].to(torch.device('cuda'))
         return data
 
     def calibrate(self):
