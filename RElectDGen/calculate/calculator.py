@@ -32,9 +32,9 @@ def oracle_from_config(config,atoms=None):
 
     if config.get('kxl') is not None and config.get('cell') is not None:
         if len(np.shape(config.get('cell'))) == 2:
-            kpts = (config.get('kxl')/np.linalg.norm(config.get('cell'),axis=1))//2*2+2
+            kpts = np.ceil((config.get('kxl')/np.linalg.norm(config.get('cell'),axis=1))).astype(int)
         elif len(np.shape(config.get('cell'))) == 1:
-            kpts = (config.get('kxl')/np.array(config.get('cell')))//2*2+2
+            kpts = np.ceil((config.get('kxl')/np.array(config.get('cell')))).astype(int)
 
         kpts = [kpts[i] if bool else 1 for i, bool in enumerate(config.get('pbc'))]
     else:
