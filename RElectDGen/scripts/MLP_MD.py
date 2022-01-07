@@ -19,8 +19,8 @@ import torch
 # from nequip.utils import Config
 
 # home_directory = '/Users/emil/Google Drive/'
-from e3nn_networks.utils.train_val import latent_distance_uncertainty_Nequip
-from e3nn_networks.utils.data_helpers import *
+from ..utils.uncertainty import latent_distance_uncertainty_Nequip
+# from e3nn_networks.utils.data_helpers import *
 
 from ..calculate.calculator import nn_from_results
 from ..structure.segment import clusters_from_traj

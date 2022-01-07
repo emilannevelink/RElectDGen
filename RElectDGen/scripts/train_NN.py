@@ -10,7 +10,7 @@ from nequip.data import AtomicData, AtomicDataDict
 from nequip.model import model_from_config
 from nequip.data.transforms import TypeMapper
 
-from e3nn_networks.utils.train_val import latent_distance_uncertainty_Nequip
+from ..utils.uncertainty import latent_distance_uncertainty_Nequip
 
 from ..calculate.calculator import nn_from_results
 from ..utils.save import check_NN_parameters
