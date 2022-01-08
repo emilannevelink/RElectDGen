@@ -74,7 +74,7 @@ class latent_distance_uncertainty_Nequip():
                 test_errors[key] = torch.cat([test_errors[key],error.mean(dim=1)[mask]])
         self.test_embeddings = test_embeddings
 
-        self.test_force_errors = test_force_errors.mean(dim=1).detach().numpy()
+        self.test_force_errors = test_force_errors.mean(dim=1).detach().cpu().numpy()
         
         self.val_latent_distances = test_force_latent_distances
         self.train_val_latent_distances = torch.cat([train_force_latent_distances,test_force_latent_distances])
@@ -82,7 +82,7 @@ class latent_distance_uncertainty_Nequip():
         self.latent_force_distances = torch.cdist(train_force_latent_distances,test_force_latent_distances,p=2)
         
         inds = torch.argmin(self.latent_force_distances,axis=0)
-        self.d_force_test = torch.tensor([self.latent_force_distances[ind,i] for i, ind in enumerate(inds)]).detach().numpy()
+        self.d_force_test = torch.tensor([self.latent_force_distances[ind,i] for i, ind in enumerate(inds)]).detach().cpu().numpy()
         
         params0 = (0.01,0.01)
         res = minimize(optimizeparams,params0,args=(self.test_force_errors.reshape(-1),self.d_force_test),method='Nelder-Mead')
@@ -95,11 +95,11 @@ class latent_distance_uncertainty_Nequip():
         for key in self.config.get('chemical_symbol_to_type'):
             latent_distances[key] = torch.cdist(train_embeddings[key],test_embeddings[key],p=2)
             inds = torch.argmin(latent_distances[key],axis=0)
-            min_distances[key] = torch.tensor([latent_distances[key][ind,i] for i, ind in enumerate(inds)]).detach().numpy()
+            min_distances[key] = torch.tensor([latent_distances[key][ind,i] for i, ind in enumerate(inds)]).detach().cpu().numpy()
 
 
             params0 = (0.01,0.01)
-            res = minimize(optimizeparams,params0,args=(test_errors[key].reshape(-1).detach().numpy(),min_distances[key]),method='Nelder-Mead')
+            res = minimize(optimizeparams,params0,args=(test_errors[key].reshape(-1).detach().cpu().numpy(),min_distances[key]),method='Nelder-Mead')
             print(res,flush=True)
             params[key] = np.abs(res.x)
 
@@ -127,7 +127,7 @@ class latent_distance_uncertainty_Nequip():
             inds = torch.argmin(latent_force_distances,axis=0)
             min_distance = torch.tensor([latent_force_distances[ind,i] for i, ind in enumerate(inds)])
 
-            self.test_distances[key] = min_distance
+            self.test_distances[key] = min_distance.detach().cpu().numpy()
         
             uncertainties[mask] = self.params[key][0]+min_distance*self.params[key][1]
 
@@ -151,7 +151,7 @@ class latent_distance_uncertainty_Nequip():
             end_inds = np.cumsum(atom_lengths).tolist()
 
             uncertainty_partition = [uncertainty[si:ei] for si, ei in zip(start_inds,end_inds)]
-            embeddings = [atom_embeddings[si:ei].detach() for si, ei in zip(start_inds,end_inds)]
+            embeddings = [atom_embeddings[si:ei].detach().cpu() for si, ei in zip(start_inds,end_inds)]
             return torch.tensor([unc.max() for unc in uncertainty_partition]), embeddings
         else:
             uncertainty = uncertainty.reshape(len(traj),-1)
