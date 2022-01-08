@@ -18,7 +18,7 @@ class latent_distance_uncertainty_Nequip():
         self.transform = TypeMapper(chemical_symbol_to_type=chemical_symbol_to_type)
 
         self.self_interaction = self.config.get('dataset_extra_fixed_fields',False).get('self_interaction',False)
-        self.device = 'cude' if torch.cuda.is_available() else 'cpu'
+        self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
             
 
     def transform_data_input(self,data):
