@@ -142,8 +142,8 @@ class latent_distance_uncertainty_Nequip():
             uncertainty.append(self.predict(batch))
             atom_embeddings.append(self.atom_embedding)
         
-        uncertainty = torch.cat(uncertainty)
-        atom_embeddings = torch.cat(atom_embeddings)
+        uncertainty = torch.cat(uncertainty).detach().cpu()
+        atom_embeddings = torch.cat(atom_embeddings).detach().cpu()
 
         if max:
             atom_lengths = [len(atoms) for atoms in traj]
@@ -151,7 +151,7 @@ class latent_distance_uncertainty_Nequip():
             end_inds = np.cumsum(atom_lengths).tolist()
 
             uncertainty_partition = [uncertainty[si:ei] for si, ei in zip(start_inds,end_inds)]
-            embeddings = [atom_embeddings[si:ei].detach().cpu() for si, ei in zip(start_inds,end_inds)]
+            embeddings = [atom_embeddings[si:ei] for si, ei in zip(start_inds,end_inds)]
             return torch.tensor([unc.max() for unc in uncertainty_partition]), embeddings
         else:
             uncertainty = uncertainty.reshape(len(traj),-1)

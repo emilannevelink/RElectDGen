@@ -194,7 +194,7 @@ def main(args=None):
 
         print(len(clusters),sum(mask),flush=True)
 
-        cluster_uncertainties = cluster_uncertainties[mask.detach().numpy()]
+        cluster_uncertainties = cluster_uncertainties[mask.numpy()]
         clusters = [atoms for bool, atoms in zip(mask,clusters) if bool]
         cluster_embeddings = [embed for bool, embed in zip(mask,cluster_embeddings) if bool]
 
@@ -210,7 +210,7 @@ def main(args=None):
                 ind = np.argwhere(clusters[i].arrays['cluster_indices']==atom_ind).flatten()[0]
                 
                 embeddingi_cluster = embedding_all[ind].numpy()
-                embeddingi_total = embeddings[int(traj_ind), int(atom_ind)].detach().numpy()
+                embeddingi_total = embeddings[int(traj_ind), int(atom_ind)].numpy()
                
                 embedding_distance = np.round(np.linalg.norm(embeddingi_total-embeddingi_cluster),4)
 
