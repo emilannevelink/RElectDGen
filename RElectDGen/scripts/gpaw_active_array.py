@@ -51,7 +51,7 @@ def main(args=None):
 
             atoms = traj_calc[args.array_index]
             recalculate_traj_energies([atoms], config=config, writer=writer)#,rewrite_pbc=True)
-            traj = read(calc_file)
+            traj = Trajectory(calc_file)
             for atoms in traj:
                 print(atoms)
                 print(atoms.info)
