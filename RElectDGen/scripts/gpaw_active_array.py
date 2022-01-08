@@ -52,9 +52,10 @@ def main(args=None):
             atoms = traj_calc[array_index]
             recalculate_traj_energies([atoms], config=config, writer=writer)#,rewrite_pbc=True)
             traj = Trajectory(calc_file)
-            for atoms in traj:
-                print(atoms)
-                print(atoms.info)
+            if world.rank == 0:
+                for atoms in traj:
+                    print(atoms)
+                    print(atoms.info)
 
         else:
             if os.path.isfile(calc_file):
