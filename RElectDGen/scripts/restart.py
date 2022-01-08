@@ -91,7 +91,7 @@ def main(args = None):
     checks_history.append(np.all(checks,axis=0).tolist())
     config['checks_history'] = checks_history
     print('termination conditions', termination_conditions)
-    if not np.any(termination_conditions):
+    if not np.all(termination_conditions):
         config['i_temperature_sweep']+=1
         with open(filename_config,'w') as fl:
             yaml.dump(config, fl)
