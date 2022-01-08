@@ -23,8 +23,12 @@ def main(args=None):
     
     config['scripts_path'] = os.path.dirname(os.path.abspath(__file__))
 
-    config['data_directory'] = os.path.join(os.environ.get('PROJECT',os.environ.get('HOME')),config.get('directory'))
-    config['directory'] = os.path.join(os.environ.get('HOME'),config.get('directory'))
+    data_root = os.environ.get('PROJECT',os.environ.get('HOME'))
+    dir_root = os.environ.get('HOME')
+    if dir_root not in config.get('directory') and data_root not in config.get('data_directory',''):
+        config['data_directory'] = os.path.join(data_root,config.get('directory'))
+        config['directory'] = os.path.join(dir_root,config.get('directory'))
+    
     active_learning_config = os.path.join(config.get('directory'),config.get('run_dir'),config.get('run_config_file'))
 
     with open(active_learning_config,'w+') as fl:
