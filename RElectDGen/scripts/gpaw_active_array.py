@@ -26,11 +26,11 @@ def parse_command_line(argsin):
     with open(args.config,'r') as fl:
         config = yaml.load(fl,yaml.FullLoader)
 
-    return config
+    return config, args.array_index
 
 def main(args=None):
 
-    config = parse_command_line(args)
+    config, array_index = parse_command_line(args)
     
     calc_oracle = oracle_from_config(config)
     active_learning_configs = os.path.join(config.get('data_directory'),config.get('active_learning_configs'))
@@ -40,16 +40,16 @@ def main(args=None):
         # try:
         traj_calc = Trajectory(active_learning_configs)
         
-        calc_file = active_learning_calc+f'.{args.array_index}'
+        calc_file = active_learning_calc+f'.{array_index}'
 
         if world.rank == 0:
             print('Active Learning Array',flush=True)
             print(f'File: {calc_file}',flush=True)
             
-        if len(traj_calc)>args.array_index:
+        if len(traj_calc)>array_index:
             writer = Trajectory(calc_file,'w')
 
-            atoms = traj_calc[args.array_index]
+            atoms = traj_calc[array_index]
             recalculate_traj_energies([atoms], config=config, writer=writer)#,rewrite_pbc=True)
             traj = Trajectory(calc_file)
             for atoms in traj:
