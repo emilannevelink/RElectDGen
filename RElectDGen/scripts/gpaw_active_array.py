@@ -2,7 +2,7 @@ import os, argparse
 import yaml
 
 from ase.io.ulm import InvalidULMFileError
-from ase.io.trajectory import Trajectory
+from ase.io.trajectory import Trajectory, read
 
 from ase.parallel import world
 
@@ -51,6 +51,10 @@ def main(args=None):
 
             atoms = traj_calc[args.array_index]
             recalculate_traj_energies([atoms], config=config, writer=writer)#,rewrite_pbc=True)
+            traj = read(calc_file)
+            for atoms in traj:
+                print(atoms)
+                print(atoms.info)
 
         else:
             if os.path.isfile(calc_file):

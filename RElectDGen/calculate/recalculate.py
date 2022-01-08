@@ -21,6 +21,8 @@ def recalculate_traj_energies(traj,calc=None,config=None,writer=None,rewrite_pbc
 			atoms.info['calculation_time'] = time.time()-start_time
 			if writer is not None:
 				writer.write(atoms)
+			print(atoms)
+			print(atoms.info)
 		except gpaw.grid_descriptor.GridBoundsError:
 			print(f'GridBounds box error for {i}th active learning')
 		except gpaw.KohnShamConvergenceError:
