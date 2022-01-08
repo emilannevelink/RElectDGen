@@ -2,7 +2,7 @@ import os, argparse
 import yaml
 
 from ase.io.ulm import InvalidULMFileError
-from ase.io.trajectory import Trajectory, read
+from ase.io.trajectory import Trajectory
 
 from ase.parallel import world
 
