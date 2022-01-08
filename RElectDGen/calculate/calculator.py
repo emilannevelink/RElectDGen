@@ -72,7 +72,8 @@ def nn_from_results():
     transform = TypeMapper(chemical_symbol_to_type=chemical_symbol_to_type)
 
     model_path = train_directory + "/best_model.pth"
-    model = torch.load(model_path, map_location=torch.device("cpu"))
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    model = torch.load(model_path, map_location=torch.device(device))
     if MLP_config.compile_model:
         import e3nn
         model = e3nn.util.jit.compile(model)
