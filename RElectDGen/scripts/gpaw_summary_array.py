@@ -49,6 +49,7 @@ def main(args=None):
         try:
             calculation_times = []
             for atoms in traj_active:
+                print(atoms)
                 print(atoms.info)
                 calculation_times.append(atoms.info['calculation_time'])
             
