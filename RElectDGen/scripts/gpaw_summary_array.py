@@ -60,7 +60,8 @@ def main(args=None):
             }
             tmp_filename = os.path.join(config.get('directory'),config.get('run_dir'),config.get('tmp_file','tmp.json'))
             write_to_tmp_dict(tmp_filename,logging_dict)
-        except:
+        except Exception as e:
+            print(e)
             print('error')
 
         traj_writer = Trajectory(trajectory_file,mode='a')
