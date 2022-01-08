@@ -84,6 +84,6 @@ def nn_from_results():
     # model = torch.jit.freeze(model)
     # model = torch.jit.optimize_for_inference(model)
     
-    calc_nn = NequIPCalculator(model=model, r_max=MLP_config.r_max,device='cpu', transform=transform)
+    calc_nn = NequIPCalculator(model=model, r_max=MLP_config.r_max,device=device, transform=transform)
 
     return calc_nn, model, MLP_config

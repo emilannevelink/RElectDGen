@@ -41,9 +41,9 @@ class latent_distance_uncertainty_Nequip():
         test_embeddings = {}
         test_errors = {}
         for key in self.config.get('chemical_symbol_to_type'):
-            train_embeddings[key] = torch.empty((0,self.latent_size))
-            test_embeddings[key] = torch.empty((0,self.latent_size))
-            test_errors[key] = torch.empty((0))
+            train_embeddings[key] = torch.empty((0,self.latent_size),device=self.device)
+            test_embeddings[key] = torch.empty((0,self.latent_size),device=self.device)
+            test_errors[key] = torch.empty((0),device=self.device)
     
         for data in dataset[self.config.train_idcs]:
             out = self.model(self.transform_data_input(data))

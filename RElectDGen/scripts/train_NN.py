@@ -64,9 +64,12 @@ def main(args=None):
     if config.get('force_retrain', False):
         train = True
 
+
     commands = ['nequip-train', MLP_config_filename]
     UQ_dict = {}
     if not train:
+        device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        model.to(torch.device(device))
         
         traj = Trajectory(MLP_config['dataset_file_name'])
         if max(MLP_config.get('train_idcs').max(),MLP_config.get('val_idcs').max()) > len(traj):
