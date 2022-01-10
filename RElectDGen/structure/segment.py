@@ -255,6 +255,7 @@ class segment_atoms():
                         cell = pure_slab.cell.diagonal()
                         min_cluster = np.absolute(self.atoms[cluster_indices].positions[:,2]-self.atoms[idx].position[2]).min()
                         if min_cluster <= cell[2]/2:
+                            print('segment slab', flush=True)
                             cluster, cluster_indices = self.segment_slab(cluster_indices, slab_indices)
                         else:
                             # Add bulk
@@ -274,14 +275,8 @@ class segment_atoms():
                 lithium_ind = np.argwhere(cluster.get_atomic_numbers()==3).flatten()
                 if len(lithium_ind)>500:
                     print('wrong, too many lithium atoms',flush=True)
+                    print(add_slab,len(cluster_indices), len(lithium_ind), flush=True)
                 else:
-
-                    # try:
-                    #     data = AtomicData.from_ase(atoms=cluster, r_max=4)
-                    #     save = True
-                    # except Exception as e:
-                    #     print(e)
-                    #     save = False
 
                     if (len(cluster)>1 and 
                             cluster.get_volume()/len(cluster)<self.max_volume_per_atom and
