@@ -10,6 +10,7 @@ import uuid
 
 
 def structure_from_config(config):
+    config = config.copy()
     constraints = []
     # Load initial structure if it exists
     if config.get('initial_structure') is not None:
