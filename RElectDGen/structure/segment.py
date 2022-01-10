@@ -251,6 +251,7 @@ class segment_atoms():
                 if add_slab:
                     
                     if len(cluster_indices)>0:
+                        print(len(cluster_indices),flush=True)
                         pure_slab = create_slab(self.slab_config)
                         cell = pure_slab.cell.diagonal()
                         min_cluster = np.absolute(self.atoms[cluster_indices].positions[:,2]-self.atoms[idx].position[2]).min()
@@ -486,7 +487,7 @@ class segment_atoms():
             hist, bin_edges = np.histogram(D[:,i],bins=self.main_supercell_size[i]*10)
             
             bin_indices, bin_centers = self.coarsen_histogram(D[:,i],hist, bin_edges,self.atoms.cell.diagonal()[i])
-
+            print(len(bin_centers))
             n_basis = max([1,int(np.round(len(bin_indices)/self.main_supercell_size[i],0))])
             n_planes *= n_basis
             
@@ -620,7 +621,7 @@ class segment_atoms():
             hist, bin_edges = np.histogram(D[:,i],bins=self.main_supercell_size[i]*10)
             
             bin_indices, bin_centers = self.coarsen_histogram(D[:,i],hist, bin_edges,self.atoms.cell.diagonal()[i])
-
+            print(len(bin_centers))
             n_basis = max([1,int(np.round(len(bin_indices)/self.main_supercell_size[i],0))])
             n_planes *= n_basis
             bin_seed_ind = np.argsort(np.abs(bin_centers))[:n_planes]
