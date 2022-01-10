@@ -25,6 +25,7 @@ from ..utils.uncertainty import latent_distance_uncertainty_Nequip
 from ..calculate.calculator import nn_from_results
 from ..structure.segment import clusters_from_traj
 from ..utils.logging import write_to_tmp_dict, UQ_params_to_dict
+from ..structure.build import get_initial_structure
 import time
 
 
@@ -51,8 +52,8 @@ def main(args=None):
     
 
     config, filename_config, loop_learning_count = parse_command_line(args)
-    structure_file = os.path.join(config.get('data_directory'),config.get('structure_file'))
-    supercell = read(structure_file)
+    supercell = get_initial_structure(config)
+    
     #Delete Bondlength constraints
     supercell.constraints = [constraint for constraint in supercell.constraints if type(constraint)!=ase.constraints.FixBondLengths]
     

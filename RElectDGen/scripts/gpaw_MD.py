@@ -8,7 +8,7 @@ from ase.md.verlet import VelocityVerlet
 from ase import units
 
 
-from RElectDGen.structure.build import structure_from_config
+from RElectDGen.structure.build import get_initial_structure
 
 from ase.parallel import world
 import yaml
@@ -28,16 +28,6 @@ def parse_command_line(argsin):
     
     config
 
-def create_initial_structure(config):
-
-    structure_file = os.path.join(config.get('data_directory'),config.get('structure_file'))
-    if os.path.isfile(structure_file):
-        supercell = read(structure_file)
-    else:
-        supercell = structure_from_config(config)
-        write(structure_file,supercell)
-
-    return supercell
 
 def get_initial_MD_steps(config):
     trajectory_file = os.path.join(config.get('data_directory'),config.get('trajectory_file'))
@@ -62,7 +52,7 @@ def main(args=None):
 
     config = parse_command_line(args)
 
-    supercell = create_initial_structure(config)
+    supercell = get_initial_structure(config)
 
     config['cell'] = supercell.get_cell()
 

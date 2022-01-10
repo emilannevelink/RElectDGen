@@ -282,3 +282,14 @@ def getchargesforpackmol(
         charges += list(atoms.get_initial_charges())*nmolecule
 
     return charges
+
+def get_initial_structure(config):
+
+    structure_file = os.path.join(config.get('data_directory'),config.get('structure_file'))
+    if os.path.isfile(structure_file):
+        supercell = read(structure_file)
+    else:
+        supercell = structure_from_config(config)
+        write(structure_file,supercell)
+
+    return supercell
