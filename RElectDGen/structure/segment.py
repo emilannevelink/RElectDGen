@@ -259,10 +259,12 @@ class segment_atoms():
                             cluster, cluster_indices = self.segment_slab(cluster_indices, slab_indices)
                         else:
                             # Add bulk
+                            print('segment bulk', flush=True)
                             cluster, cluster_indices = self.segment_bulk(slab_indices,idx)
                             cluster.pbc = True
                     else:
                         # Add bulk
+                        print('segment bulk', flush=True)
                         cluster, cluster_indices = self.segment_bulk(slab_indices,idx)
                         cluster.pbc = True
                     # write('test_cluster.xyz',cluster)
