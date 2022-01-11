@@ -484,10 +484,10 @@ class segment_atoms():
 
         
         for i, n_planes in enumerate(self.slab_config['supercell_size']):
-            hist, bin_edges = np.histogram(D[:,i],bins=self.main_supercell_size[i]*10)
+            hist, bin_edges = np.histogram(D[:,i],bins=self.main_supercell_size[i]*30)
             
-            bin_indices, bin_centers = self.coarsen_histogram(D[:,i],hist, bin_edges,self.atoms.cell.diagonal()[i])
-            print(len(bin_centers))
+            bin_indices, bin_centers = self.coarsen_histogram(D[:,i],hist, bin_edges,self.atoms.cell.diagonal()[i],self.main_supercell_size[i])
+            print(len(bin_centers),self.main_supercell_size[i])
             n_basis = max([1,int(np.round(len(bin_indices)/self.main_supercell_size[i],0))])
             n_planes *= n_basis
             
@@ -569,7 +569,7 @@ class segment_atoms():
         # ind_location = np.array([*pure_slab.get_cell().diagonal()[:2]/2,0])
         # ind_bottom = np.argmin(np.linalg.norm(pure_slab.positions-ind_location,axis=1))
 
-    def coarsen_histogram(self, d, hist, bin_edges,max_dist):
+    def coarsen_histogram(self, d, hist, bin_edges,max_dist,expected_bins):
 
         #find the proper bin edges
         idx = np.where(hist!=0)[0]
@@ -589,7 +589,7 @@ class segment_atoms():
         bin_centers = [np.mean(d[indices]) for indices in bin_indices]
 
         n_coarse = [len(bi) for bi in bin_indices]
-        while not np.all(n_coarse == np.mean(n_coarse)):
+        while not np.all(n_coarse == np.mean(n_coarse)) and len(bin_indices)>expected_bins:
             for i, val in enumerate(n_coarse):
                 if val == np.min(n_coarse):
                     dist = np.abs(bin_centers-bin_centers[i])
@@ -618,10 +618,10 @@ class segment_atoms():
         D = slab.get_distances(np.arange(len(slab)),slab_seed, mic=True,vector=True)
 
         for i, n_planes in enumerate(self.slab_config['supercell_size']):
-            hist, bin_edges = np.histogram(D[:,i],bins=self.main_supercell_size[i]*10)
+            hist, bin_edges = np.histogram(D[:,i],bins=self.main_supercell_size[i]*30)
             
-            bin_indices, bin_centers = self.coarsen_histogram(D[:,i],hist, bin_edges,self.atoms.cell.diagonal()[i])
-            print(len(bin_centers))
+            bin_indices, bin_centers = self.coarsen_histogram(D[:,i],hist, bin_edges,self.atoms.cell.diagonal()[i],self.main_supercell_size[i])
+            print(len(bin_centers),self.main_supercell_size[i])
             n_basis = max([1,int(np.round(len(bin_indices)/self.main_supercell_size[i],0))])
             n_planes *= n_basis
             bin_seed_ind = np.argsort(np.abs(bin_centers))[:n_planes]
