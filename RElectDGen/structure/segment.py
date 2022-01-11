@@ -588,8 +588,20 @@ class segment_atoms():
         #find bin centers from bin_indices
         bin_centers = [np.mean(d[indices]) for indices in bin_indices]
 
+        def check_condition(n_coarse):
+            mean = np.mean(n_coarse)
+            condition = np.all(n_coarse>mean/2)
+            # if np.round(mean,0)==mean:
+            #     condition = np.all(n_coarse == np.mean(n_coarse))
+            # else:
+            #     condition = np.all(np.logical_or(
+            #         n_coarse==np.ceil(mean),
+            #         n_coarse==np.floor(mean)
+            #     ))
+            return condition
+
         n_coarse = [len(bi) for bi in bin_indices]
-        while not np.all(n_coarse == np.mean(n_coarse)) and len(bin_indices)>expected_bins:
+        while not check_condition(n_coarse) and len(bin_indices)>expected_bins:
             for i, val in enumerate(n_coarse):
                 if val == np.min(n_coarse):
                     dist = np.abs(bin_centers-bin_centers[i])
