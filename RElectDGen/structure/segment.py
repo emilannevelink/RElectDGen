@@ -294,10 +294,16 @@ class segment_atoms():
                     else:
                         if len(cluster)==1:
                             print(f'wrong, not enough atoms around {idx}',flush=True)
+                            print('Didnt add atoms', idx_add)
+                            print('Didnt add molecules', mol_add)
                         elif cluster.get_volume()/len(cluster)>self.max_volume_per_atom:
                             print(f'wrong, cluster volume too large volume/atom: {cluster.get_volume()/len(cluster)}',flush=True)
+                            print('Didnt add atoms', idx_add)
+                            print('Didnt add molecules', mol_add)
                         elif not np.isclose(cluster.get_initial_charges().sum().round(),cluster.get_initial_charges().sum().round(2)):
                             print(f'wrong, cluster doesnt have whole number charge')
+                            print('Didnt add atoms', idx_add)
+                            print('Didnt add molecules', mol_add)
                         # elif not save:
                         #     print(f'problem with AtomicData {idx}',flush=True)
                         #     save = True
