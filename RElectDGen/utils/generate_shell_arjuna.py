@@ -3,10 +3,11 @@ import os
 
 def shell_from_config(config):
 
-    location = config.get('dir_shell','submits')
+    location = os.path.join(config.get('directory'),config.get('run_dir'),config.get('dir_shell','submits'))
+    log_path = os.path.join(config.get('directory'),config.get('run_dir'),'logs')
 
-    if not os.path.isdir('logs'):
-        os.makedirs('logs')
+    if not os.path.isdir(log_path):
+        os.makedirs(log_path)
     if not os.path.isdir(location):
         os.makedirs(location)
 
@@ -25,32 +26,7 @@ def shell_from_config(config):
     for file in filenames:
         fname = os.path.join(location,file)
         
-        slurm_config = {
-            'n': 18,
-            't': '03-00:00',
-            '--mem-per-cpu': 2000,
-            'p': 'cpu',
-            'A': 'venkvis',
-            'J': file.split('.')[0],
-            'o': 'logs/output.%j',
-            'e': 'logs/error.%j'
-        }
-
-        if config.get('queue','cpu') == 'cpu':
-            slurm_config['p'] = 'cpu'
-            slurm_config['A'] = 'venkvis'
-        elif config.get('queue') == 'gpu':
-            slurm_config['p'] = 'gpu'
-            slurm_config['A'] = 'venkvis_gpu'
-        elif config.get('queue') == 'idle':
-            slurm_config['p'] = 'idle'
-            slurm_config['A'] = 'venkvis'
-        elif config.get('queue') == 'highmem':
-            slurm_config['p'] = 'highmem'
-            slurm_config['A'] = 'venkvis'
-            slurm_config['--mem-per-cpu'] = 13000
-
-        
+        slurm_config = slurm_config_from_config(config,file)
 
         if 'train' in file:
             commands = [
@@ -66,10 +42,10 @@ def shell_from_config(config):
                 'REDGEN-train-NN --config_file $2 --MLP_config_file $3',
                 # 'python ${1}scripts/'+f'{branch}/train_NN.py --config_file $2 --MLP_config_file $3',
             ]
-            slurm_config['n'] = python_cores
-            slurm_config['N'] = python_nodes
-            slurm_config['--ntasks'] = 1
-            slurm_config['--cpus-per-task'] = python_cores
+            # slurm_config['n'] = python_cores
+            # slurm_config['N'] = python_nodes
+            # slurm_config['--ntasks'] = 1
+            # slurm_config['--cpus-per-task'] = python_cores
         elif 'restart' in file:
             commands = [
                 "spack unload -a",
@@ -78,45 +54,45 @@ def shell_from_config(config):
                 'REDGEN-restart --config_file $2 --MLP_config_file $3'
                 # 'python ${1}scripts/'+f'{branch}/restart.py --config_file $2 --MLP_config_file $3',
             ]
-            slurm_config['n'] = python_cores
-            slurm_config['N'] = python_nodes
-            slurm_config['--ntasks'] = 1
-            slurm_config['--cpus-per-task'] = python_cores
+            # slurm_config['n'] = python_cores
+            # slurm_config['N'] = python_nodes
+            # slurm_config['--ntasks'] = 1
+            # slurm_config['--cpus-per-task'] = python_cores
         else:
             commands = ['spack load -r py-gpaw']
 
             if 'MLP' in file:
                 commands += ['REDGEN-MLP-MD --config_file $2  --MLP_config_file $3 --loop_learning_count $4']
                 # commands += ['python3 ${1}scripts/'+f'{branch}/slabmol_MLP_MD.py --config_file $2  --MLP_config_file $3 --loop_learning_count $4']
-                slurm_config['n'] = python_cores
-                slurm_config['N'] = python_nodes
-                slurm_config['--ntasks'] = 1
-                slurm_config['--cpus-per-task'] = python_cores
+                # slurm_config['n'] = python_cores
+                # slurm_config['N'] = python_nodes
+                # slurm_config['--ntasks'] = 1
+                # slurm_config['--cpus-per-task'] = python_cores
             elif 'MD' in file:
                 file = os.path.join(config.get('scripts_path'),'gpaw_MD.py')
                 commands += [f'srun -n {gpaw_cores}' + f' gpaw python {file} --config_file $2 --MLP_config_file $3']
                 # commands += [f'srun -n {gpaw_cores}' + ' gpaw python ${1}scripts/'+f'{branch}/slabmol_gpaw_MD.py --config_file $2 --MLP_config_file $3']
-                slurm_config['n'] = gpaw_cores
-                slurm_config['N'] = gpaw_nodes
+                # slurm_config['n'] = gpaw_cores
+                # slurm_config['N'] = gpaw_nodes
             elif 'active' in file:
                 file = os.path.join(config.get('scripts_path'),'gpaw_active.py')
                 commands += [f'srun -n {gpaw_cores}' + f' gpaw python {file} --config_file $2 --MLP_config_file $3 --loop_learning_count $4']
                 # commands += [f'srun -n {gpaw_cores}' + ' gpaw python ${1}scripts/'+f'{branch}/slabmol_gpaw_active.py --config_file $2 --MLP_config_file $3 --loop_learning_count $4']
-                slurm_config['n'] = gpaw_cores
-                slurm_config['N'] = gpaw_nodes
+                # slurm_config['n'] = gpaw_cores
+                # slurm_config['N'] = gpaw_nodes
             elif 'array' in file:
                 file = os.path.join(config.get('scripts_path'),'gpaw_active_array.py')
                 commands += [f'srun -n {gpaw_cores}' + f' gpaw python {file} --config_file $2 --MLP_config_file $3 --loop_learning_count $4' + " --array_index ${SLURM_ARRAY_TASK_ID}"]
                 # commands += [f'srun -n {gpaw_cores}' + ' gpaw python ${1}scripts/'+f'{branch}/gpaw_active_array.py --config_file $2 --MLP_config_file $3 --loop_learning_count $4' + " --array_index ${SLURM_ARRAY_TASK_ID}"]
-                slurm_config['n'] = gpaw_cores
-                slurm_config['N'] = gpaw_nodes
+                # slurm_config['n'] = gpaw_cores
+                # slurm_config['N'] = gpaw_nodes
             elif 'summary' in file:
                 file = os.path.join(config.get('scripts_path'),'gpaw_summary_array.py')
                 commands += [f'srun -n {gpaw_cores}' + f' gpaw python {file} --config_file $2 --MLP_config_file $3 --loop_learning_count $4']
                 commands += ['REDGEN-log --config_file $2']
                 # commands += [f'srun -n {gpaw_cores}' + ' gpaw python ${1}scripts/'+f'{branch}/gpaw_summary_array.py --config_file $2 --MLP_config_file $3 --loop_learning_count $4']
-                slurm_config['n'] = gpaw_cores
-                slurm_config['N'] = gpaw_nodes
+                # slurm_config['n'] = gpaw_cores
+                # slurm_config['N'] = gpaw_nodes
             
         if 'array' in fname:
             gen_job_array(commands,'',slurm_config,fname=fname)
@@ -124,3 +100,45 @@ def shell_from_config(config):
             gen_job_script(commands,slurm_config,fname=fname)
             
 
+def slurm_config_from_config(config, file):
+
+    slurm_config = {
+            'n': 18,
+            't': '03-00:00',
+            '--mem-per-cpu': 2000,
+            'J': file.split('.')[0],
+            'o': 'logs/output.%j',
+            'e': 'logs/error.%j'
+        }
+
+    if ('summary' in file or
+        'restart' in file):
+        slurm_config['p'] = config.get('queue','cpu')
+        slurm_config['n'] = 1
+        slurm_config['--cpus-per-task'] = 1
+        slurm_config['N'] = 1
+        slurm_config['--ntasks'] = 1
+    elif ('train' in file or
+        'MLP' in file):
+        slurm_config['p'] = config.get('MLP_queue',config.get('queue','cpu'))
+        cores = config.get('MLP_cores',config.get('cores'))
+        slurm_config['n'] = cores
+        slurm_config['--cpus-per-task'] = cores
+        slurm_config['N'] = config.get('MLP_nodes',config.get('nodes',1))
+        slurm_config['--ntasks'] = 1
+    elif ('MD' in file or #note MLP has already taken out the MLP_MD
+        'active' in file or 
+        'array' in file):
+        slurm_config['p'] = config.get('gpaw_queue',config.get('queue','cpu'))
+        slurm_config['n'] = config.get('gpaw_cores',config.get('cores'))
+        slurm_config['N'] = config.get('gpaw_nodes',config.get('nodes',1))
+
+    if 'gpu' in slurm_config['p']:
+        slurm_config['A'] = 'venkvis_gpu'
+    else:
+        slurm_config['A'] = 'venkvis'
+    
+    if 'mem' in slurm_config['p']:
+        slurm_config['--mem-per-cpu'] = 13000
+
+    return slurm_config
