@@ -25,9 +25,10 @@ def main(args=None):
 
     data_root = os.environ.get('PROJECT',os.environ.get('HOME'))
     dir_root = os.environ.get('HOME')
-    if dir_root not in config.get('directory') and data_root not in config.get('data_directory',''):
-        config['data_directory'] = os.path.join(data_root,config.get('directory'))
+    if dir_root not in config.get('directory'):
         config['directory'] = os.path.join(dir_root,config.get('directory'))
+    if data_root not in config.get('data_directory',''):
+        config['data_directory'] = os.path.join(data_root,config.get('directory'))    
     
     active_learning_config = os.path.join(config.get('directory'),config.get('run_dir'),config.get('run_config_file'))
 
