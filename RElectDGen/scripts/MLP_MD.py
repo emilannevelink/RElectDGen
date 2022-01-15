@@ -208,7 +208,7 @@ def main(args=None):
         for i, (traj_ind, atom_ind, uncert) in enumerate(cluster_uncertainties.values):
                 embedding_all = cluster_embeddings[i]
 
-                ind = np.argwhere(clusters[i].arrays['cluster_indices']==atom_ind).flatten()[0]
+                ind = int(np.argwhere(clusters[i].arrays['cluster_indices']==atom_ind))
                 
                 embeddingi_cluster = embedding_all[ind].numpy()
                 embeddingi_total = embeddings[int(traj_ind), int(atom_ind)].numpy()
