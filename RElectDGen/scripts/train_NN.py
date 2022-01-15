@@ -99,6 +99,8 @@ def main(args=None):
             else:
                 print('No uncertain points, reusing neural network')
 
+        del model, model_load, calc_nn, UQ, uncertainty, embedding
+
     if train:
         print('Training NN ... ', flush=True)
             
