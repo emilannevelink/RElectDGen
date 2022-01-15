@@ -206,33 +206,36 @@ def main(args=None):
         for key in MLP_config.get('chemical_symbol_to_type'): 
             keep_embeddings[key] = torch.empty((0,cluster_embeddings[0].shape[-1]))
         for i, (traj_ind, atom_ind, uncert) in enumerate(cluster_uncertainties.values):
-                embedding_all = cluster_embeddings[i]
-
-                ind = int(np.argwhere(clusters[i].arrays['cluster_indices']==atom_ind))
+                if atom_ind in clusters[i].arrays['cluster_indices']:
+                    embedding_all = cluster_embeddings[i]
+                    ind = np.argwhere(clusters[i].arrays['cluster_indices']==atom_ind).flatten()[0]
+                    
+                    embeddingi_cluster = embedding_all[ind].numpy()
+                    embeddingi_total = embeddings[int(traj_ind), int(atom_ind)].numpy()
                 
-                embeddingi_cluster = embedding_all[ind].numpy()
-                embeddingi_total = embeddings[int(traj_ind), int(atom_ind)].numpy()
-               
-                embedding_distance = np.round(np.linalg.norm(embeddingi_total-embeddingi_cluster),4)
+                    embedding_distance = np.round(np.linalg.norm(embeddingi_total-embeddingi_cluster),4)
 
-                key = clusters[i].get_chemical_symbols()[ind]
-                if len(keep_embeddings[key])==0:
-                    for key in MLP_config.get('chemical_symbol_to_type'):
-                        mask = np.array(clusters[i].get_chemical_symbols()) == key
-                        keep_embeddings[key] = torch.cat([keep_embeddings[key],embedding_all[mask]])
-                    calc_inds.append(i)
-                    embedding_distances.append(embedding_distance)
-                else:
-                    UQ_dist = np.linalg.norm(keep_embeddings[key]-embeddingi_cluster,axis=1).min()*UQ.params[key][1]
-                    if UQ_dist>2*config.get('UQ_min_uncertainty'):
+                    key = clusters[i].get_chemical_symbols()[ind]
+                    if len(keep_embeddings[key])==0:
                         for key in MLP_config.get('chemical_symbol_to_type'):
                             mask = np.array(clusters[i].get_chemical_symbols()) == key
                             keep_embeddings[key] = torch.cat([keep_embeddings[key],embedding_all[mask]])
                         calc_inds.append(i)
                         embedding_distances.append(embedding_distance)
-                
-                if len(calc_inds) >= config.get('max_samples'):
-                    break
+                    else:
+                        UQ_dist = np.linalg.norm(keep_embeddings[key]-embeddingi_cluster,axis=1).min()*UQ.params[key][1]
+                        if UQ_dist>2*config.get('UQ_min_uncertainty'):
+                            for key in MLP_config.get('chemical_symbol_to_type'):
+                                mask = np.array(clusters[i].get_chemical_symbols()) == key
+                                keep_embeddings[key] = torch.cat([keep_embeddings[key],embedding_all[mask]])
+                            calc_inds.append(i)
+                            embedding_distances.append(embedding_distance)
+                    
+                    if len(calc_inds) >= config.get('max_samples'):
+                        break
+                else:
+                    indices = clusters[i].arrays['cluster_indices']
+                    print(f'atom_ind {atom_ind} is not in cluster {i} with indices {indices}', flush=True)
         
         MLP_dict['number_clusters_calculate'] = len(calc_inds)
 
