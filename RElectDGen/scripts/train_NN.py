@@ -4,6 +4,7 @@ import numpy as np
 import os
 import yaml
 import time
+import gc
 
 import torch
 from torch.nn import L1Loss
@@ -101,6 +102,7 @@ def main(args=None):
 
         del model, model_load, calc_nn, UQ, uncertainty, embedding
 
+    gc.collect()
     if train:
         print('Training NN ... ', flush=True)
             
