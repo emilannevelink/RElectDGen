@@ -125,7 +125,7 @@ def slurm_config_from_config(config, file):
             slurm_config['--ntasks'] = 1
     elif 'GPU-shared' in slurm_config['p']:
         slurm_config['--gpus'] = cores
-        slurm_config['--mem-per-gpu'] = config.get('memory_per_core',2000)
+        slurm_config['--mem-per-gpu'] = config.get('memory_per_core',10000)
         if '--ntasks' in slurm_config.keys():
             slurm_config.pop('--ntasks') #ntasks needs to go after cores otherwise you get a slurm error
             # slurm_config['--gpus-per-task'] = cores
