@@ -7,8 +7,6 @@ import time
 import gc
 
 import torch
-from torch.nn import L1Loss
-from nequip.data import AtomicData, AtomicDataDict
 from nequip.model import model_from_config
 from nequip.data.transforms import TypeMapper
 
