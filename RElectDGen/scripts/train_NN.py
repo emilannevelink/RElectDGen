@@ -98,7 +98,7 @@ def main(args=None):
             else:
                 print('No uncertain points, reusing neural network')
 
-        del model, model_load, calc_nn, UQ, uncertainty, embedding
+        del model, model_load, calc_nn, UQ, uncertainty, embedding, uncertain_data, MLP_config, MLP_config_new, transform
 
     gc.collect()
     if train:

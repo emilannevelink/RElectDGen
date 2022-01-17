@@ -114,13 +114,13 @@ def main(args=None):
 
     max_traj_len = config.get('max_atoms_to_segment',1001)
 
+    expected_max_index = config.get('MLP_MD_steps')+1
+    reduction_factor = 1
     if len(traj) > max_traj_len:
         reduction_factor = np.ceil(len(traj)/max_traj_len).astype(int)
-        expected_max_index = int(np.ceil((config.get('MLP_MD_steps')+1)/reduction_factor))
+        expected_max_index = int(np.ceil(expected_max_index/reduction_factor))
         traj = traj[::reduction_factor]
         print(f'reduced length of trajectory by {reduction_factor}, new length {len(traj)}, new max_index {expected_max_index}', flush=True)
-    else:
-        expected_max_index = config.get('MLP_MD_steps')+1
 
     uncertainty, embeddings = UQ.predict_from_traj(traj,max=False)
 
@@ -137,6 +137,7 @@ def main(args=None):
     try:
         max_index = int((uncertainty.max(axis=1).values>5*max_sigma).nonzero()[0])
     except IndexError:
+        print('Index Error', uncertainty, flush=True)
         max_index = len(uncertainty)
     print('max index: ', max_index,flush=True)
 
@@ -146,7 +147,7 @@ def main(args=None):
         max_index==expected_max_index,
     ]
 
-    if max(max_index, MLP_dict['MLP_MD_steps']) < 10:
+    if max_index < 10/reduction_factor and config.get('MLP_MD_steps')>10:
         MLP_log = pd.read_csv(MLP_MD_dump_file,delim_whitespace=True)
         try:
             max_index = int(np.argwhere(MLP_log['T[K]'].values>2000)[0])
