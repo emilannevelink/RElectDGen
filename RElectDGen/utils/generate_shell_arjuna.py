@@ -115,7 +115,7 @@ def slurm_config_from_config(config, file):
     if ('summary' in file or
         'restart' in file):
         slurm_config['p'] = config.get('queue','cpu')
-        slurm_config['4'] = '00-00:05'
+        slurm_config['t'] = '00-00:05'
         slurm_config['n'] = 1
         slurm_config['--cpus-per-task'] = 1
         slurm_config['N'] = 1
