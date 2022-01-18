@@ -33,6 +33,7 @@ class segment_atoms():
         max_samples: int = 10,
         vacuum: float = 2.0,
         overlap_radius: float = 0.5,
+        max_electrons: int = 400,
         ) -> None:
         
         self.atoms = atoms
@@ -46,6 +47,7 @@ class segment_atoms():
         self.main_supercell_size = main_supercell_size
         self.vacuum = vacuum
         self.overlap_radius = overlap_radius
+        self.max_electrons = max_electrons
 
         self.n_components_natural, self.component_list_natural, self.matrix_natural = self.findclusters(natural = True)
 
@@ -268,8 +270,7 @@ class segment_atoms():
                         print('segment bulk', flush=True)
                         cluster, cluster_indices = self.segment_bulk(slab_indices,idx)
                         cluster.pbc = True
-                    # write('test_cluster.xyz',cluster)
-                    # print('done')
+                    
                 else:
                     cluster = self.atoms[cluster_indices]
                     cluster = self.reduce_mixture_size(cluster)
@@ -283,7 +284,8 @@ class segment_atoms():
 
                     if (len(cluster)>1 and 
                             cluster.get_volume()/len(cluster)<self.max_volume_per_atom and
-                            np.isclose(cluster.get_initial_charges().sum().round(),cluster.get_initial_charges().sum().round(2))):
+                            np.isclose(cluster.get_initial_charges().sum().round(),cluster.get_initial_charges().sum().round(2)) and
+                            cluster.get_atomic_numbers().sum()<self.max_electrons):
                         
                         cluster.arrays['cluster_indices'] = np.array(cluster_indices,dtype=int)
                         clusters.append(cluster)
@@ -294,19 +296,16 @@ class segment_atoms():
                     else:
                         if len(cluster)==1:
                             print(f'wrong, not enough atoms around {idx}',flush=True)
-                            print('Didnt add atoms', idx_add)
-                            print('Didnt add molecules', mol_add)
                         elif cluster.get_volume()/len(cluster)>self.max_volume_per_atom:
                             print(f'wrong, cluster volume too large volume/atom: {cluster.get_volume()/len(cluster)}',flush=True)
-                            print('Didnt add atoms', idx_add)
-                            print('Didnt add molecules', mol_add)
                         elif not np.isclose(cluster.get_initial_charges().sum().round(),cluster.get_initial_charges().sum().round(2)):
                             print(f'wrong, cluster doesnt have whole number charge')
-                            print('Didnt add atoms', idx_add)
-                            print('Didnt add molecules', mol_add)
-                        # elif not save:
-                        #     print(f'problem with AtomicData {idx}',flush=True)
-                        #     save = True
+                        elif cluster.get_atomic_numbers().sum()>=self.max_electrons:
+                            print(f'wrong, too many electrons in cluster: {cluster.get_atomic_numbers().sum()}',flush=True)
+                        
+                        print('Didnt add atoms', idx_add)
+                        print('Didnt add molecules', mol_add)
+                        
             if len(clusters)>=self.max_samples:
                 break
 
@@ -706,6 +705,8 @@ def clusters_from_traj(
     max_volume_per_atom: int = 150,
     max_samples: int = 10,
     vacuum: float = 2.0,
+    overlap_radius: float = 0.5,
+    max_electrons: int = 300,
     **kwargs,
 ):
 
@@ -721,7 +722,7 @@ def clusters_from_traj(
 
     generator = ((traj_filename, i, uncertainties[i], uncertainty_thresholds,
                     slab_config, supercell_size, cutoff, segment_type, max_volume_per_atom,
-                    min_cluster_size, max_cluster_size, max_samples, vacuum) 
+                    min_cluster_size, max_cluster_size, max_samples, vacuum, overlap_radius, max_electrons) 
                 for i in range(natoms))
     
     if segment_type == 'embedding' or traj_cores==1:

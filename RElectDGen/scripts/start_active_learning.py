@@ -53,6 +53,13 @@ def main(args=None):
     job_ids = []
     job_types = []
 
+    ### Set global attributes
+    config['max_electrons'] = int(
+        config.get('electrons_per_core', 2.75)*
+        config.get('gpaw_cores',config.get('cores',1))*
+        config.get('gpaw_nodes',config.get('nodes',1)))
+
+
     shell_file = 'submits/gpaw_MD.sh'
     if shell_file.split('/')[-1] in filenames and get_initial_MD_steps(config)>0:
         commands = ['sbatch', shell_file, config.get("directory"), active_learning_config, MLP_config_filename]
