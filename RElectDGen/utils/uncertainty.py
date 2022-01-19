@@ -83,11 +83,6 @@ class latent_distance_uncertainty_Nequip():
         
         inds = torch.argmin(self.latent_force_distances,axis=0)
         self.d_force_test = torch.tensor([self.latent_force_distances[ind,i] for i, ind in enumerate(inds)]).detach().cpu().numpy()
-        
-        params0 = (0.01,0.01)
-        res = minimize(optimizeparams,params0,args=(self.test_force_errors.reshape(-1),self.d_force_test),method='Nelder-Mead')
-        print(res,flush=True)
-        self.sigmas = np.abs(res.x)
 
         latent_distances = {}
         min_distances = {}

@@ -55,6 +55,7 @@ def main(args=None):
         )
         model.load_state_dict(model_load.state_dict())
         train = False
+        del model_load, calc_nn, transform
     except Exception as e:
         print(e)
         print('previous model is not the same as state dict', flush=True)
@@ -98,7 +99,7 @@ def main(args=None):
             else:
                 print('No uncertain points, reusing neural network')
 
-        del model, model_load, calc_nn, UQ, uncertainty, embedding, uncertain_data, MLP_config, MLP_config_new, transform
+        del model, UQ, uncertainty, embedding, uncertain_data, MLP_config, MLP_config_new
 
     gc.collect()
     if train:
