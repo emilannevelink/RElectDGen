@@ -220,7 +220,8 @@ class segment_atoms():
                         if len(indices_add)>0:
                             slab_add, mixture_add = self.segment_slab_mixture(indices_add)
 
-                            if (len(cluster_indices) + len(mixture_add)) > self.max_cluster_size / (2  - (not add_slab)):
+                            if ((len(cluster_indices) + len(mixture_add)) > self.max_cluster_size / (2  - (not add_slab)) or
+                                self.atoms[cluster_indices+list(mixture_add)].get_atomic_numbers().sum() > self.max_electrons/ (2  - (not add_slab)) ):
                                 build = False
                             elif atom_ind in mixture_add:
                                 
@@ -284,8 +285,7 @@ class segment_atoms():
 
                     if (len(cluster)>1 and 
                             cluster.get_volume()/len(cluster)<self.max_volume_per_atom and
-                            np.isclose(cluster.get_initial_charges().sum().round(),cluster.get_initial_charges().sum().round(2)) and
-                            cluster.get_atomic_numbers().sum()<self.max_electrons):
+                            np.isclose(cluster.get_initial_charges().sum().round(),cluster.get_initial_charges().sum().round(2))):
                         
                         cluster.arrays['cluster_indices'] = np.array(cluster_indices,dtype=int)
                         clusters.append(cluster)
@@ -300,8 +300,6 @@ class segment_atoms():
                             print(f'wrong, cluster volume too large volume/atom: {cluster.get_volume()/len(cluster)}',flush=True)
                         elif not np.isclose(cluster.get_initial_charges().sum().round(),cluster.get_initial_charges().sum().round(2)):
                             print(f'wrong, cluster doesnt have whole number charge')
-                        elif cluster.get_atomic_numbers().sum()>=self.max_electrons:
-                            print(f'wrong, too many electrons in cluster: {cluster.get_atomic_numbers().sum()}',flush=True)
                         
                         print('Didnt add atoms', idx_add)
                         print('Didnt add molecules', mol_add)
