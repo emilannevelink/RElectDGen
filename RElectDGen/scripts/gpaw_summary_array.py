@@ -8,7 +8,7 @@ from nequip.utils import config
 
 import numpy as np
 
-from ..utils.logging import write_to_tmp_dict
+from RElectDGen.utils.logging import write_to_tmp_dict
 
 def parse_command_line(argsin):
     parser = argparse.ArgumentParser()
