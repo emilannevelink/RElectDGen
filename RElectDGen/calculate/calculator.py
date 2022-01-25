@@ -54,7 +54,7 @@ def oracle_from_config(config,atoms=None):
 
     calculator.set(charge=charge)
 
-    if not config.get('pbc')[-1]:
+    if not config.get('pbc')[-1] and np.sum(config.get('pbc'))==2:
         calculator.set(poissonsolver={'dipolelayer': 'xy'})
 
     return calculator
