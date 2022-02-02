@@ -204,8 +204,9 @@ def main(args=None):
         calc_inds = []
         embedding_distances = []
         keep_embeddings = {}
-        for key in MLP_config.get('chemical_symbol_to_type'): 
-            keep_embeddings[key] = torch.empty((0,cluster_embeddings[0].shape[-1]))
+        if sum(mask)>0:
+            for key in MLP_config.get('chemical_symbol_to_type'): 
+                keep_embeddings[key] = torch.empty((0,cluster_embeddings[0].shape[-1]))
         for i, (traj_ind, atom_ind, uncert) in enumerate(cluster_uncertainties.values):
                 if atom_ind in clusters[i].arrays['cluster_indices']:
                     embedding_all = cluster_embeddings[i]
