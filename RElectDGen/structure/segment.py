@@ -161,55 +161,58 @@ class segment_atoms():
         initial_supercell_charge = self.atoms.get_initial_charges().sum()
         
         filename = os.path.join(self.fragment_dir,'fragment_db.csv')
-        fragment_db = pd.read_csv(filename)
-        
-        cluster_fragments = []
-        for cluster_ind in range(nclusters):
-            cluster = self.atoms[self.component_list_natural==cluster_ind]
-
-            #check if cluster matches decomposed template
-            total_charge = cluster.get_initial_charges().sum()
-            integer_charge = np.round(total_charge,0) == np.round(total_charge,2)
-            if not integer_charge: # most likely signifies it comes from a larger molecule
-                
-                cluster_fragments.append([cluster,cluster_ind])
-                
-        # replace charge on atoms
-        for i, (cluster_i, ind_i) in enumerate(cluster_fragments):
-            charge_i = cluster_i.get_initial_charges().sum()
+        if os.path.isfile(filename):
+            fragment_db = pd.read_csv(filename)
             
-            db_ind = fragment_db['origin_charge'] ==charge_i
+            cluster_fragments = []
+            for cluster_ind in range(nclusters):
+                cluster = self.atoms[self.component_list_natural==cluster_ind]
 
-            atom_symbols = np.array(cluster_i.get_chemical_symbols())
-            for i, sym in enumerate(np.unique(atom_symbols)):
-                col = 'n_' + sym
+                #check if cluster matches decomposed template
+                total_charge = cluster.get_initial_charges().sum()
+                integer_charge = np.round(total_charge,0) == np.round(total_charge,2)
+                if not integer_charge: # most likely signifies it comes from a larger molecule
+                    
+                    cluster_fragments.append([cluster,cluster_ind])
+                    
+            # replace charge on atoms
+            for i, (cluster_i, ind_i) in enumerate(cluster_fragments):
+                charge_i = cluster_i.get_initial_charges().sum()
                 
-                nsym = np.sum(atom_symbols==sym)
-                db_ind = np.logical_and(db_ind,fragment_db[col] == nsym)
+                db_ind = fragment_db['origin_charge'] ==charge_i
+
+                atom_symbols = np.array(cluster_i.get_chemical_symbols())
+                for i, sym in enumerate(np.unique(atom_symbols)):
+                    col = 'n_' + sym
+                    
+                    nsym = np.sum(atom_symbols==sym)
+                    db_ind = np.logical_and(db_ind,fragment_db[col] == nsym)
 
 
-            #look-up fragment id in fragment database
-            if db_ind.sum()==1:
-                fragment_name = fragment_db['fragment_name'][db_ind].values[0]
-                print(fragment_name)
-                fragment_filename = os.path.join(self.fragment_dir,f'fragment_{fragment_name}.json')
-                cluster_fragment = read(fragment_filename)
+                #look-up fragment id in fragment database
+                if db_ind.sum()==1:
+                    fragment_name = fragment_db['fragment_name'][db_ind].values[0]
+                    print(fragment_name)
+                    fragment_filename = os.path.join(self.fragment_dir,f'fragment_{fragment_name}.json')
+                    cluster_fragment = read(fragment_filename)
 
-                indices = self.component_list_natural==ind_i
+                    indices = self.component_list_natural==ind_i
 
-                self.atoms.arrays['initial_charges'][indices] = cluster_fragment.get_initial_charges()
-            elif db_ind.sum() == 0:
-                unknown_fragment_file = os.path.join(self.run_dir,'unknown_fragments.txt')
-                f = open(unknown_fragment_file,'a')
-                f.write(str(cluster_i)+str(cluster_i.get_initial_charges())+str(self.atoms)+'\n')
-                f.close()
-            else:
-                print('Fragment DB retrieves too many results ', db_ind.sum())
-                print(fragment_db['fragment_name'][db_ind])
+                    self.atoms.arrays['initial_charges'][indices] = cluster_fragment.get_initial_charges()
+                elif db_ind.sum() == 0:
+                    unknown_fragment_file = os.path.join(self.run_dir,'unknown_fragments.txt')
+                    f = open(unknown_fragment_file,'a')
+                    f.write(str(cluster_i)+str(cluster_i.get_initial_charges())+str(self.atoms)+'\n')
+                    f.close()
+                else:
+                    print('Fragment DB retrieves too many results ', db_ind.sum())
+                    print(fragment_db['fragment_name'][db_ind])
 
-        final_supercell_charge = self.atoms.get_initial_charges().sum()
-        
-        assert np.isclose(initial_supercell_charge,final_supercell_charge,atol=1e-3), 'Reassign charges changed the total supercell charge'
+            final_supercell_charge = self.atoms.get_initial_charges().sum()
+            
+            assert np.isclose(initial_supercell_charge,final_supercell_charge,atol=1e-3), 'Reassign charges changed the total supercell charge'
+        else:
+            print('Path not found: ', filename)
 
     def clusterstocalculate(self,
         uncertain_indices: list,
