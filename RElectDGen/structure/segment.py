@@ -26,7 +26,7 @@ class segment_atoms():
         slab_config: dict, 
         main_supercell_size: list,
         cutoff: float = 2.0,
-        segment_type: str = 'uncertain',
+        segment_type: str = 'distance',
         max_volume_per_atom: int = 150,
         min_cluster_size: int = 20,
         max_cluster_size: int = 50,
@@ -34,6 +34,8 @@ class segment_atoms():
         vacuum: float = 2.0,
         overlap_radius: float = 0.5,
         max_electrons: int = 400,
+        run_dir: str = '',
+        fragment_dir: str = '',
         ) -> None:
         
         self.atoms = atoms
@@ -48,8 +50,14 @@ class segment_atoms():
         self.vacuum = vacuum
         self.overlap_radius = overlap_radius
         self.max_electrons = max_electrons
+        self.run_dir = run_dir
+        self.fragment_dir = fragment_dir
+        # ('/Users/emil/GITHUB/RElectDGen/' + 
+        # 'tests/structure/reassign_charge/data/')
 
         self.n_components_natural, self.component_list_natural, self.matrix_natural = self.findclusters(natural = True)
+
+        self.reassign_cluster_charges()
 
         self.n_components, self.component_list, self.matrix = self.findclusters(cutoff=self.cutoff)
         self.matrixnonzero = self.matrix.nonzero()
@@ -148,6 +156,60 @@ class segment_atoms():
 
         return matrix #, n_components, component_list
 
+    def reassign_cluster_charges(self):
+        nclusters = np.unique(self.component_list_natural).shape[0]
+        initial_supercell_charge = self.atoms.get_initial_charges().sum()
+        
+        filename = os.path.join(self.fragment_dir,'fragment_db.csv')
+        fragment_db = pd.read_csv(filename)
+        
+        cluster_fragments = []
+        for cluster_ind in range(nclusters):
+            cluster = self.atoms[self.component_list_natural==cluster_ind]
+
+            #check if cluster matches decomposed template
+            total_charge = cluster.get_initial_charges().sum()
+            integer_charge = np.round(total_charge,0) == np.round(total_charge,2)
+            if not integer_charge: # most likely signifies it comes from a larger molecule
+                
+                cluster_fragments.append([cluster,cluster_ind])
+                
+        # replace charge on atoms
+        for i, (cluster_i, ind_i) in enumerate(cluster_fragments):
+            charge_i = cluster_i.get_initial_charges().sum()
+            
+            db_ind = fragment_db['origin_charge'] ==charge_i
+
+            atom_symbols = np.array(cluster_i.get_chemical_symbols())
+            for i, sym in enumerate(np.unique(atom_symbols)):
+                col = 'n_' + sym
+                
+                nsym = np.sum(atom_symbols==sym)
+                db_ind = np.logical_and(db_ind,fragment_db[col] == nsym)
+
+
+            #look-up fragment id in fragment database
+            if db_ind.sum()==1:
+                fragment_name = fragment_db['fragment_name'][db_ind].values[0]
+                print(fragment_name)
+                fragment_filename = os.path.join(self.fragment_dir,f'fragment_{fragment_name}.json')
+                cluster_fragment = read(fragment_filename)
+
+                indices = self.component_list_natural==ind_i
+
+                self.atoms.arrays['initial_charges'][indices] = cluster_fragment.get_initial_charges()
+            elif db_ind.sum() == 0:
+                unknown_fragment_file = os.path.join(self.run_dir,'unknown_fragments.txt')
+                f = open(unknown_fragment_file,'a')
+                f.write(str(cluster_i)+str(cluster_i.get_initial_charges())+str(self.atoms)+'\n')
+                f.close()
+            else:
+                print('Fragment DB retrieves too many results ', db_ind.sum())
+                print(fragment_db['fragment_name'][db_ind])
+
+        final_supercell_charge = self.atoms.get_initial_charges().sum()
+        
+        assert np.isclose(initial_supercell_charge,final_supercell_charge,atol=1e-3), 'Reassign charges changed the total supercell charge'
 
     def clusterstocalculate(self,
         uncertain_indices: list,
@@ -705,6 +767,10 @@ def clusters_from_traj(
     vacuum: float = 2.0,
     overlap_radius: float = 0.5,
     max_electrons: int = 300,
+    directory: str = '',
+    run_dir: str = '',
+    data_directory: str = '',
+    fragment_dir: str = '',
     **kwargs,
 ):
 
@@ -720,7 +786,8 @@ def clusters_from_traj(
 
     generator = ((traj_filename, i, uncertainties[i], uncertainty_thresholds,
                     slab_config, supercell_size, cutoff, segment_type, max_volume_per_atom,
-                    min_cluster_size, max_cluster_size, max_samples, vacuum, overlap_radius, max_electrons) 
+                    min_cluster_size, max_cluster_size, max_samples, vacuum, overlap_radius, max_electrons,
+                    os.path.join(directory, run_dir), os.path.join(data_directory, fragment_dir)) 
                 for i in range(natoms))
     
     if segment_type == 'embedding' or traj_cores==1:
