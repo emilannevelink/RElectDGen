@@ -5,6 +5,7 @@ tmp.*
 launch.json
 *.xyz
 wandb/
+.DS_Store
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
