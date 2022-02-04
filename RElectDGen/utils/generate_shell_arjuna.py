@@ -58,17 +58,23 @@ def shell_from_config(config):
             # slurm_config['N'] = python_nodes
             # slurm_config['--ntasks'] = 1
             # slurm_config['--cpus-per-task'] = python_cores
+
+        elif 'MLP' in file:
+            commands = [
+                "spack unload -a",
+                "source /home/spack/.spack/opt/spack/linux-centos7-broadwell/gcc-11.2.0/miniconda3-4.9.2-et7ujxrrzevxewx65fnmzqkftwwkrsyc/etc/profile.d/conda.sh",
+                'conda activate nequip',
+                'REDGEN-MLP-MD --config_file $2  --MLP_config_file $3 --loop_learning_count $4'
+                # 'python ${1}scripts/'+f'{branch}/restart.py --config_file $2 --MLP_config_file $3',
+            ]
+            # slurm_config['n'] = python_cores
+            # slurm_config['N'] = python_nodes
+            # slurm_config['--ntasks'] = 1
+            # slurm_config['--cpus-per-task'] = python_cores
         else:
             commands = ['spack load -r py-gpaw']
 
-            if 'MLP' in file:
-                commands += ['REDGEN-MLP-MD --config_file $2  --MLP_config_file $3 --loop_learning_count $4']
-                # commands += ['python3 ${1}scripts/'+f'{branch}/slabmol_MLP_MD.py --config_file $2  --MLP_config_file $3 --loop_learning_count $4']
-                # slurm_config['n'] = python_cores
-                # slurm_config['N'] = python_nodes
-                # slurm_config['--ntasks'] = 1
-                # slurm_config['--cpus-per-task'] = python_cores
-            elif 'MD' in file:
+            if 'MD' in file:
                 file = os.path.join(config.get('scripts_path'),'gpaw_MD.py')
                 commands += [f'srun -n {gpaw_cores}' + f' gpaw python {file} --config_file $2 --MLP_config_file $3']
                 # commands += [f'srun -n {gpaw_cores}' + ' gpaw python ${1}scripts/'+f'{branch}/slabmol_gpaw_MD.py --config_file $2 --MLP_config_file $3']
