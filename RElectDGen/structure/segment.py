@@ -82,7 +82,8 @@ class segment_atoms():
         
         
         if cutoff is None:
-            cutoff = np.array(neighborlist.natural_cutoffs(atoms))*1.2
+            cutoff = np.array(neighborlist.natural_cutoffs(atoms))*1.3
+            cutoff[atoms.get_atomic_numbers()==3]*=1.3
         elif isinstance(cutoff,float) or isinstance(cutoff,int):
             cutoff = [cutoff for _ in atoms]
         elif isinstance(cutoff,list):
