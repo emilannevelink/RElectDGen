@@ -187,8 +187,11 @@ class segment_atoms():
                     col = 'n_' + sym
                     
                     nsym = np.sum(atom_symbols==sym)
-                    db_ind = np.logical_and(db_ind,fragment_db[col] == nsym)
-
+                    try:
+                        db_ind = np.logical_and(db_ind,fragment_db[col] == nsym)
+                    except KeyError as e:
+                        print(e)
+                        print(cluster_i)
 
                 #look-up fragment id in fragment database
                 if db_ind.sum()==1:
