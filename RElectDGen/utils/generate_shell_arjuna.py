@@ -71,6 +71,16 @@ def shell_from_config(config):
             # slurm_config['N'] = python_nodes
             # slurm_config['--ntasks'] = 1
             # slurm_config['--cpus-per-task'] = python_cores
+
+        elif 'summary' in file:
+                commands = [
+                    "spack unload -a",
+                    "source /home/spack/.spack/opt/spack/linux-centos7-broadwell/gcc-11.2.0/miniconda3-4.9.2-et7ujxrrzevxewx65fnmzqkftwwkrsyc/etc/profile.d/conda.sh",
+                    'conda activate nequip',
+                    'REDGEN-gpaw-summary --config_file $2  --MLP_config_file $3 --loop_learning_count $4',
+                    'REDGEN-log --config_file $2'
+                ]
+
         else:
             commands = ['spack load -r py-gpaw']
 
@@ -92,14 +102,7 @@ def shell_from_config(config):
                 # commands += [f'srun -n {gpaw_cores}' + ' gpaw python ${1}scripts/'+f'{branch}/gpaw_active_array.py --config_file $2 --MLP_config_file $3 --loop_learning_count $4' + " --array_index ${SLURM_ARRAY_TASK_ID}"]
                 # slurm_config['n'] = gpaw_cores
                 # slurm_config['N'] = gpaw_nodes
-            elif 'summary' in file:
-                cores = slurm_config['n']
-                file = os.path.join(config.get('scripts_path'),'gpaw_summary_array.py')
-                commands += [f'srun -n {cores}' + f' gpaw python {file} --config_file $2 --MLP_config_file $3 --loop_learning_count $4']
-                commands += ['REDGEN-log --config_file $2']
-                # commands += [f'srun -n {gpaw_cores}' + ' gpaw python ${1}scripts/'+f'{branch}/gpaw_summary_array.py --config_file $2 --MLP_config_file $3 --loop_learning_count $4']
-                # slurm_config['n'] = gpaw_cores
-                # slurm_config['N'] = gpaw_nodes
+            
             
         if 'array' in fname:
             gen_job_array(commands,'',slurm_config,fname=fname)
