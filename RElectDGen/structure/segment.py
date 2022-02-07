@@ -180,7 +180,7 @@ class segment_atoms():
             for i, (cluster_i, ind_i) in enumerate(cluster_fragments):
                 charge_i = cluster_i.get_initial_charges().sum()
                 
-                db_ind = fragment_db['origin_charge'] ==charge_i
+                db_ind = np.isclose(fragment_db['origin_charge'],charge_i,atol=1e-5)
 
                 atom_symbols = np.array(cluster_i.get_chemical_symbols())
                 for i, sym in enumerate(np.unique(atom_symbols)):
