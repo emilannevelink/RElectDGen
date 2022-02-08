@@ -64,7 +64,8 @@ def main(args=None):
     initial_MD_steps = get_initial_MD_steps(config)
 
     if initial_MD_steps > 0:
-        print(f'Running GPAW, initial MD steps {initial_MD_steps}', flush =True)
+        if world.rank == 0:
+            print(f'Running GPAW, initial MD steps {initial_MD_steps}', flush =True)
         from RElectDGen.calculate.calculator import oracle_from_config
 
         calc_oracle = oracle_from_config(config)
