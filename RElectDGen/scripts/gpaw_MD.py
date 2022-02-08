@@ -34,7 +34,8 @@ def get_initial_MD_steps(config):
     initial_MD_steps = config.get('GPAW_MD_steps')
     
     if os.path.isfile(trajectory_file):
-        print('traj file')
+        if world.rank == 0:
+            print('traj file')
         try:
             traj = Trajectory(trajectory_file)
             # print('traj file load')
@@ -44,7 +45,8 @@ def get_initial_MD_steps(config):
             # supercell = traj[-1]
             initial_MD_steps-=len(traj)
         except:
-            print('Loading Trajectory fialed, re-initializing',flush=True)
+            if world.rank == 0:
+                print('Loading Trajectory fialed, re-initializing',flush=True)
 
     return initial_MD_steps
 

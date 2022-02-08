@@ -159,7 +159,8 @@ class segment_atoms():
 
     def reassign_cluster_charges(self):
         nclusters = np.unique(self.component_list_natural).shape[0]
-        initial_supercell_charge = self.atoms.get_initial_charges().sum()
+        initial_charges = copy.copy(self.atoms.get_initial_charges())
+        initial_supercell_charge = initial_charges.sum()
         
         filename = os.path.join(self.fragment_dir,'fragment_db.csv')
         if os.path.isfile(filename):
@@ -180,7 +181,7 @@ class segment_atoms():
             for i, (cluster_i, ind_i) in enumerate(cluster_fragments):
                 charge_i = cluster_i.get_initial_charges().sum()
                 
-                db_ind = np.isclose(fragment_db['origin_charge'],charge_i,atol=1e-5)
+                db_ind = np.isclose(fragment_db['origin_charge'],charge_i)
 
                 atom_symbols = np.array(cluster_i.get_chemical_symbols())
                 for i, sym in enumerate(np.unique(atom_symbols)):
@@ -214,7 +215,9 @@ class segment_atoms():
 
             final_supercell_charge = self.atoms.get_initial_charges().sum()
             
-            assert np.isclose(initial_supercell_charge,final_supercell_charge,atol=1e-3), 'Reassign charges changed the total supercell charge'
+            if not np.isclose(initial_supercell_charge,final_supercell_charge,atol=1e-3):
+                print('Reassign charges changed the total supercell charge, changing back')
+                self.atoms.set_initial_charges(initial_charges)
         else:
             print('Path not found: ', filename)
 
