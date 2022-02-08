@@ -26,7 +26,7 @@ def parse_command_line(argsin):
     with open(args.config,'r') as fl:
         config = yaml.load(fl,yaml.FullLoader)
     
-    config
+    return config
 
 
 def get_initial_MD_steps(config):
