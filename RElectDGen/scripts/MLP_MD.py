@@ -4,6 +4,7 @@ import h5py, uuid, json, pdb, ase, os, argparse, time
 # import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import copy
 
 from ase.io.trajectory import Trajectory
 from ase.io import read, write
@@ -21,6 +22,8 @@ import torch
 # home_directory = '/Users/emil/Google Drive/'
 from ..utils.uncertainty import latent_distance_uncertainty_Nequip
 # from e3nn_networks.utils.data_helpers import *
+
+from RElectDGen.scripts.gpaw_MD import get_initial_MD_steps
 
 from ..calculate.calculator import nn_from_results
 from ..structure.segment import clusters_from_traj
@@ -197,6 +200,7 @@ def main(args=None):
         print(len(clusters),sum(mask),flush=True)
 
         cluster_uncertainties = cluster_uncertainties[mask.numpy()]
+        clusters_old = copy.copy(clusters)
         clusters = [atoms for bool, atoms in zip(mask,clusters) if bool]
         cluster_embeddings = [embed for bool, embed in zip(mask,cluster_embeddings) if bool]
 
@@ -240,6 +244,10 @@ def main(args=None):
                     print(f'atom_ind {atom_ind} is not in cluster {i} with indices {indices}', flush=True)
         
         MLP_dict['number_clusters_calculate'] = len(calc_inds)
+
+        if len(calc_inds) == 0 and get_initial_MD_steps(config)==-1:
+            calc_inds = uncertainties.argsort()[:config.get('max_samples')]
+            clusters = clusters_old
 
         if len(calc_inds)>0:
             print('Embedding distances: ', embedding_distances, flush=True)
