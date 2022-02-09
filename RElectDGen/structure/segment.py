@@ -61,21 +61,22 @@ class segment_atoms():
         else:
             self.fragment_db = None
 
-        self.n_components_natural, self.component_list_natural, self.matrix_natural = self.findclusters(natural = True)
+        if len(self.atoms)>self.max_cluster_size:
+            self.n_components_natural, self.component_list_natural, self.matrix_natural = self.findclusters(natural = True)
 
-        self.reassign_cluster_charges()
+            self.reassign_cluster_charges()
 
-        self.n_components, self.component_list, self.matrix = self.findclusters(cutoff=self.cutoff)
-        self.matrixnonzero = self.matrix.nonzero()
-        
-        self.nlithiums = (self.atoms.get_atomic_numbers()==3).sum()
+            self.n_components, self.component_list, self.matrix = self.findclusters(cutoff=self.cutoff)
+            self.matrixnonzero = self.matrix.nonzero()
+            
+            self.nlithiums = (self.atoms.get_atomic_numbers()==3).sum()
 
-        if self.segment_type == 'embedding':
-            calc_nn, model_load, MLP_config = nn_from_results()
-            self.model = copy.copy(model_load)
-            self.transform = TypeMapper(chemical_symbol_to_type=MLP_config.get('chemical_symbol_to_type'))
-            self.r_max = MLP_config.get('r_max')
-            print('loaded model',self.model, flush=True)
+            if self.segment_type == 'embedding':
+                calc_nn, model_load, MLP_config = nn_from_results()
+                self.model = copy.copy(model_load)
+                self.transform = TypeMapper(chemical_symbol_to_type=MLP_config.get('chemical_symbol_to_type'))
+                self.r_max = MLP_config.get('r_max')
+                print('loaded model',self.model, flush=True)
 
     def findclusters(self,
         atoms = None,
