@@ -23,6 +23,8 @@ def oracle_from_config(config,atoms=None):
     if atoms is not None:
         config['cell'] = atoms.cell
         config['pbc'] = atoms.pbc
+        if sum(atoms.pbc)==0:
+            atoms.center()
         charge = atoms.get_initial_charges().sum().round()
     else:
         charge = 0
