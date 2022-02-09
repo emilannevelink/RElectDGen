@@ -175,37 +175,21 @@ class segment_atoms():
 
         cluster = atoms[cluster_indices]
 
-        # cutoff = np.array(neighborlist.natural_cutoffs(cluster))
-        if not self.is_valid_cluster(cluster) and not self.is_valid_fragment(cluster):
-            max_iterations = len(cluster_indices)
-            iterations = 0
-            fragments = []
-            while len(cluster_indices)>0 and iterations < max_iterations:
-                iterations += 1
-                cluster = atoms[cluster_indices]
-                cluster_nblist = neighborlist.NeighborList(cutoff[cluster_indices],skin=0,self_interaction=False,bothways=True)
-                cluster_nblist.update(cluster)
-                cluster_matrix = cluster_nblist.get_connectivity_matrix().asformat("array")
-
-                leafs = np.argwhere(cluster_matrix.sum(axis=0)==1)
-                
-                for leaf_index in leafs.flatten():
-                    fragment = [leaf_index]
-                    while not self.is_valid_fragment(cluster[fragment]) and len(fragment)<len(cluster):
-                        potential_additions = np.argwhere(cluster_matrix[fragment])
-                        sorted_by_connections = np.argsort(cluster_matrix[potential_additions[:,1]].sum(axis=1))
-                        for add_ind in sorted_by_connections:
-                            if potential_additions[add_ind,1] not in fragment:
-                                fragment.append(potential_additions[add_ind,1])
-                                break
-                        # fragment += indices[indices[:,0]==minimum_connection,1].tolist()
-                        # fragment = np.unique(fragment).tolist()
-
-                    if self.is_valid_fragment(cluster[fragment]):
-                        fragments.append(cluster_indices[fragment])
-                        cluster_indices = np.delete(cluster_indices,fragment)
-                        break
+        fragments, cluster_indices = self.fragments_from_cluster(atoms, cluster_indices, cutoff)
         
+        cluster = atoms[cluster_indices]
+        if len(cluster_indices)>0 and not self.is_valid_cluster(cluster) and not self.is_valid_fragment(cluster):
+            lithium_indices = np.argwhere(cluster.get_atomic_numbers()==3).flatten()
+            
+            fragments += [np.array([ind]) for ind in cluster_indices[lithium_indices]]
+            cluster_indices = np.delete(cluster_indices, lithium_indices)
+
+            fragments_stripped, cluster_indices = self.fragments_from_cluster(atoms, cluster_indices, cutoff)
+
+            fragments = fragments + fragments_stripped
+
+        # if len(fragments)>0:
+        #     print(cluster_indices)
         #Change matrix only if cluster was able to be decomposed into fragments
         if len(cluster_indices) == 0:
             for fragment in fragments:
@@ -221,6 +205,51 @@ class segment_atoms():
                     matrix[fragment[src],fragment[dst]] = 1
 
         return matrix
+
+    def fragments_from_cluster(self, atoms, cluster_indices, cutoff):
+        fragments = []
+        cluster = atoms[cluster_indices]
+        # cutoff = np.array(neighborlist.natural_cutoffs(cluster))
+        if self.is_valid_cluster(cluster):
+            fragments = [cluster_indices]
+            cluster_indices = np.array([],dtype=int)
+        elif self.is_valid_fragment(cluster):
+            fragments = [cluster_indices]
+            cluster_indices = np.array([],dtype=int)
+        else:
+            max_iterations = len(cluster_indices)
+            iterations = 0
+            
+            while len(cluster_indices)>0 and iterations < max_iterations:
+                iterations += 1
+                cluster = atoms[cluster_indices]
+                cluster_nblist = neighborlist.NeighborList(cutoff[cluster_indices],skin=0,self_interaction=False,bothways=True)
+                cluster_nblist.update(cluster)
+                cluster_matrix = cluster_nblist.get_connectivity_matrix().asformat("array")
+
+                leafs = np.argwhere(cluster_matrix.sum(axis=0)==1)
+                
+                for leaf_index in leafs.flatten():
+                    fragment = [leaf_index]
+                    while (
+                        not (self.is_valid_fragment(cluster[fragment]) or 
+                            self.is_valid_cluster(cluster[fragment])) 
+                            and len(fragment)<len(cluster)):
+                        potential_additions = np.argwhere(cluster_matrix[fragment])
+                        sorted_by_connections = np.argsort(cluster_matrix[potential_additions[:,1]].sum(axis=1))
+                        for add_ind in sorted_by_connections:
+                            if potential_additions[add_ind,1] not in fragment:
+                                fragment.append(potential_additions[add_ind,1])
+                                break
+                        # fragment += indices[indices[:,0]==minimum_connection,1].tolist()
+                        # fragment = np.unique(fragment).tolist()
+
+                    if self.is_valid_cluster(cluster[fragment]) or self.is_valid_fragment(cluster[fragment]):
+                        fragments.append(cluster_indices[fragment])
+                        cluster_indices = np.delete(cluster_indices,fragment)
+                        break
+
+        return fragments, cluster_indices
 
     def is_valid_cluster(self, cluster):
 
