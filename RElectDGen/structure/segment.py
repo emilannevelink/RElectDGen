@@ -55,6 +55,12 @@ class segment_atoms():
         # ('/Users/emil/GITHUB/RElectDGen/' + 
         # 'tests/structure/reassign_charge/data/')
 
+        filename = os.path.join(self.fragment_dir,'fragment_db.csv')
+        if os.path.isfile(filename):
+            self.fragment_db = pd.read_csv(filename)
+        else:
+            self.fragment_db = None
+
         self.n_components_natural, self.component_list_natural, self.matrix_natural = self.findclusters(natural = True)
 
         self.reassign_cluster_charges()
@@ -103,6 +109,12 @@ class segment_atoms():
             for cluster_index, check in enumerate(clusters_to_check):
                 if check:
                     matrix = self.separate_cluster(cluster_index, matrix, n_components, component_list, atoms, cutoff)
+
+            n_components, component_list = sparse.csgraph.connected_components(matrix)
+
+            # Make sure they are smallest connected 
+            for cluster_index in range(n_components):
+                matrix = self.split_molecules_fragments(cluster_index, matrix, n_components, component_list, atoms, cutoff)
 
             n_components, component_list = sparse.csgraph.connected_components(matrix)
 
@@ -157,14 +169,99 @@ class segment_atoms():
 
         return matrix #, n_components, component_list
 
+    def split_molecules_fragments(self, cluster_index, matrix, n_components, component_list, atoms, cutoff):
+
+        cluster_indices = np.argwhere(component_list==cluster_index).flatten()
+
+        cluster = atoms[cluster_indices]
+
+        # cutoff = np.array(neighborlist.natural_cutoffs(cluster))
+        if not self.is_valid_cluster(cluster) and not self.is_valid_fragment(cluster):
+            max_iterations = len(cluster_indices)
+            iterations = 0
+            fragments = []
+            while len(cluster_indices)>0 and iterations < max_iterations:
+                iterations += 1
+                cluster = atoms[cluster_indices]
+                cluster_nblist = neighborlist.NeighborList(cutoff[cluster_indices],skin=0,self_interaction=False,bothways=True)
+                cluster_nblist.update(cluster)
+                cluster_matrix = cluster_nblist.get_connectivity_matrix().asformat("array")
+
+                leafs = np.argwhere(cluster_matrix.sum(axis=0)==1)
+                
+                for leaf_index in leafs.flatten():
+                    fragment = [leaf_index]
+                    while not self.is_valid_fragment(cluster[fragment]) and len(fragment)<len(cluster):
+                        potential_additions = np.argwhere(cluster_matrix[fragment])
+                        sorted_by_connections = np.argsort(cluster_matrix[potential_additions[:,1]].sum(axis=1))
+                        for add_ind in sorted_by_connections:
+                            if potential_additions[add_ind,1] not in fragment:
+                                fragment.append(potential_additions[add_ind,1])
+                                break
+                        # fragment += indices[indices[:,0]==minimum_connection,1].tolist()
+                        # fragment = np.unique(fragment).tolist()
+
+                    if self.is_valid_fragment(cluster[fragment]):
+                        fragments.append(cluster_indices[fragment])
+                        cluster_indices = np.delete(cluster_indices,fragment)
+                        break
+        
+        #Change matrix only if cluster was able to be decomposed into fragments
+        if len(cluster_indices) == 0:
+            for fragment in fragments:
+                #Remove previous connectivity
+                matrix[fragment] = 0
+                cluster = atoms[fragment]
+                cluster_nblist = neighborlist.NeighborList(cutoff[fragment],skin=0,self_interaction=False,bothways=True)
+                cluster_nblist.update(cluster)
+                cluster_matrix = cluster_nblist.get_connectivity_matrix()
+
+                #Add connectivity of the fragment
+                for src, dst in cluster_matrix.keys():
+                    matrix[fragment[src],fragment[dst]] = 1
+
+        return matrix
+
+    def is_valid_cluster(self, cluster):
+
+        total_charge = cluster.get_initial_charges().sum()
+        integer_charge = np.round(total_charge,0) == np.round(total_charge,2)
+
+        return integer_charge
+
+    def is_valid_fragment(self, cluster):
+
+        if self.fragment_db is None:
+            return False
+        else:
+            charge_i = cluster.get_initial_charges().sum()
+                    
+            db_ind = np.isclose(self.fragment_db['origin_charge'],charge_i)
+
+            atom_symbols = np.array(cluster.get_chemical_symbols())
+            for i, sym in enumerate(np.unique(atom_symbols)):
+                col = 'n_' + sym
+                
+                nsym = np.sum(atom_symbols==sym)
+                try:
+                    db_ind = np.logical_and(db_ind,self.fragment_db[col] == nsym)
+                except KeyError as e:
+                    print(e)
+                    print(cluster)
+
+            if db_ind.sum()==1:
+                return True
+            else:
+                return False
+
     def reassign_cluster_charges(self):
         nclusters = np.unique(self.component_list_natural).shape[0]
         initial_charges = copy.copy(self.atoms.get_initial_charges())
         initial_supercell_charge = initial_charges.sum()
         
-        filename = os.path.join(self.fragment_dir,'fragment_db.csv')
-        if os.path.isfile(filename):
-            fragment_db = pd.read_csv(filename)
+        
+        if self.fragment_db is not None:
+            fragment_db = self.fragment_db 
             
             cluster_fragments = []
             for cluster_ind in range(nclusters):
@@ -213,13 +310,15 @@ class segment_atoms():
                     print('Fragment DB retrieves too many results ', db_ind.sum())
                     print(fragment_db['fragment_name'][db_ind])
 
-            final_supercell_charge = self.atoms.get_initial_charges().sum()
+            final_charges = self.atoms.get_initial_charges()
+            final_supercell_charge = final_charges.sum()
             
             if not np.isclose(initial_supercell_charge,final_supercell_charge,atol=1e-3):
                 print('Reassign charges changed the total supercell charge, changing back')
                 self.atoms.set_initial_charges(initial_charges)
+            
         else:
-            print('Path not found: ', filename)
+            print('Fragment DB is none')
 
     def clusterstocalculate(self,
         uncertain_indices: list,
