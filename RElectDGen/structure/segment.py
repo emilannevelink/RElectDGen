@@ -105,6 +105,7 @@ class segment_atoms():
         n_components, component_list = sparse.csgraph.connected_components(matrix)
         
         if natural:
+            #Separate molecules from lithium slab
             clusters_to_check = [(atoms[component_list ==i].get_atomic_numbers()==3).sum()>nlithium for i in np.arange(n_components)]
             
             for cluster_index, check in enumerate(clusters_to_check):
@@ -174,8 +175,6 @@ class segment_atoms():
 
         cluster_indices = np.argwhere(component_list==cluster_index).flatten()
 
-        cluster = atoms[cluster_indices]
-
         fragments, cluster_indices = self.fragments_from_cluster(atoms, cluster_indices, cutoff)
         
         cluster = atoms[cluster_indices]
@@ -232,10 +231,18 @@ class segment_atoms():
                 
                 for leaf_index in leafs.flatten():
                     fragment = [leaf_index]
+                    fragment_iterations = 0
+                    max_fragment_iterations = len(cluster_indices)
                     while (
-                        not (self.is_valid_fragment(cluster[fragment]) or 
-                            self.is_valid_cluster(cluster[fragment])) 
-                            and len(fragment)<len(cluster)):
+                        not (
+                            self.is_valid_fragment(cluster[fragment]) or 
+                            self.is_valid_cluster(cluster[fragment])
+                        ) 
+                        and len(fragment)<len(cluster)
+                        and fragment_iterations<max_fragment_iterations
+                        ):
+                        
+                        fragment_iterations+=1
                         potential_additions = np.argwhere(cluster_matrix[fragment])
                         sorted_by_connections = np.argsort(cluster_matrix[potential_additions[:,1]].sum(axis=1))
                         for add_ind in sorted_by_connections:
