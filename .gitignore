@@ -6,6 +6,7 @@ launch.json
 *.xyz
 wandb/
 .DS_Store
+unknown_fragments.txt
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

@@ -440,8 +440,8 @@ class segment_atoms():
                                 add_slab = True
                                 slab_indices += list(slab_add)
                                 # molecules.append(molIdx_add)
-                                if len(slab_indices)>0.75*self.nlithiums:
-                                    build = False
+                                # if len(slab_indices)>0.75*self.nlithiums:
+                                #     build = False
 
                         else:
                             build = False
