@@ -106,17 +106,27 @@ class segment_atoms():
         
         if natural:
             #Separate molecules from lithium slab
+            start_time = time.time()
+            print('natural')
             clusters_to_check = [(atoms[component_list ==i].get_atomic_numbers()==3).sum()>nlithium for i in np.arange(n_components)]
             
             for cluster_index, check in enumerate(clusters_to_check):
                 if check:
                     matrix = self.separate_cluster(cluster_index, matrix, n_components, component_list, atoms, cutoff)
 
+            time_separate = time.time()
+            print('Time to separate ', time_separate-start_time)
             n_components, component_list = sparse.csgraph.connected_components(matrix)
 
+
             # Make sure they are smallest connected 
-            for cluster_index in range(n_components):
-                matrix = self.split_molecules_fragments(cluster_index, matrix, n_components, component_list, atoms, cutoff)
+            clusters_to_check = [not self.is_valid_cluster(atoms[component_list ==i]) for i in np.arange(n_components)]
+            for cluster_index, check in enumerate(clusters_to_check):
+                if check:
+                    matrix = self.split_molecules_fragments(cluster_index, matrix, n_components, component_list, atoms, cutoff)
+
+            time_split = time.time()
+            print('Time to fragment ', time_split- time_separate)
 
             n_components, component_list = sparse.csgraph.connected_components(matrix)
 
@@ -133,41 +143,22 @@ class segment_atoms():
         cluster_indices = np.argwhere(component_list==cluster_index).flatten()
 
         slab_indices, mixture_indices = self.segment_slab_mixture(cluster_indices)
+        
 
         if len(slab_indices)>0 and len(mixture_indices)>0:
-            slab_nblist = neighborlist.NeighborList(cutoff[slab_indices],skin=0,self_interaction=False,bothways=True)
-            slab = atoms[slab_indices]
-            slab_nblist.update(slab)
-            slab_matrix = slab_nblist.get_connectivity_matrix()
-            for src in range(len(slab_indices)):
-                # src, dst = list(slab_matrix[i].keys())[0]
-                # print(src)
-                # original = list(matrix[slab_indices[src]].keys()).copy()
-                matrix[slab_indices[src]] = 0
-                # print(matrix[slab_indices[src]].keys())
-                for _, dst in list(slab_matrix[src].keys()):
-                    matrix[slab_indices[src],slab_indices[dst]] = 1
-                    
-                # if original != list(matrix[slab_indices[src]].keys()):
-                #     print('matrix altered')
 
-            mixture_nblist = neighborlist.NeighborList(cutoff[mixture_indices],skin=0,self_interaction=False,bothways=True)
-            mixture = atoms[mixture_indices]
-            mixture_nblist.update(mixture)
-            mixture_matrix = mixture_nblist.get_connectivity_matrix()
+            separate_ind = mixture_indices if len(mixture_indices)<len(slab_indices) else slab_indices
 
-            for src in range(len(mixture_indices)):
-                # src, dst = list(slab_matrix[i].keys())[0]
-                # print(src)
-                # original = list(matrix[mixture_indices[src]].keys()).copy()
-                matrix[mixture_indices[src]] = 0
-                # print(matrix[mixture_indices[src]].keys())
-                for _, dst in list(mixture_matrix[src].keys()):
-                    matrix[mixture_indices[src],mixture_indices[dst]] = 1
-                    
-                # if original != list(matrix[mixture_indices[src]].keys()):
-                #     print('matrix altered')
+            nblist = neighborlist.NeighborList(cutoff[separate_ind],skin=0,self_interaction=False,bothways=True)
 
+            sub_cluster = atoms[separate_ind]
+            nblist.update(sub_cluster)
+            sub_matrix = nblist.get_connectivity_matrix()
+
+            matrix[separate_ind] = 0
+            matrix[:,separate_ind] = 0
+            indices = np.array(list(sub_matrix.keys()))
+            matrix[separate_ind[indices[:,0]],separate_ind[indices[:,1]]] = 1
 
         return matrix #, n_components, component_list
 
@@ -181,15 +172,14 @@ class segment_atoms():
         if len(cluster_indices)>0 and not self.is_valid_cluster(cluster) and not self.is_valid_fragment(cluster):
             lithium_indices = np.argwhere(cluster.get_atomic_numbers()==3).flatten()
             
-            fragments += [np.array([ind]) for ind in cluster_indices[lithium_indices]]
+            fragments += [np.array([ind]) for ind in cluster_indices[lithium_indices] if self.is_valid_cluster(atoms[[ind]])]
             cluster_indices = np.delete(cluster_indices, lithium_indices)
 
             fragments_stripped, cluster_indices = self.fragments_from_cluster(atoms, cluster_indices, cutoff)
 
             fragments = fragments + fragments_stripped
 
-        # if len(fragments)>0:
-        #     print(cluster_indices)
+        
         #Change matrix only if cluster was able to be decomposed into fragments
         if len(cluster_indices) == 0:
             for fragment in fragments:
@@ -292,7 +282,7 @@ class segment_atoms():
                 return False
 
     def reassign_cluster_charges(self):
-        nclusters = np.unique(self.component_list_natural).shape[0]
+        nclusters = self.n_components_natural
         initial_charges = copy.copy(self.atoms.get_initial_charges())
         initial_supercell_charge = initial_charges.sum()
         
@@ -304,10 +294,7 @@ class segment_atoms():
             for cluster_ind in range(nclusters):
                 cluster = self.atoms[self.component_list_natural==cluster_ind]
 
-                #check if cluster matches decomposed template
-                total_charge = cluster.get_initial_charges().sum()
-                integer_charge = np.round(total_charge,0) == np.round(total_charge,2)
-                if not integer_charge: # most likely signifies it comes from a larger molecule
+                if not self.is_valid_cluster(cluster): # most likely signifies it comes from a larger molecule
                     
                     cluster_fragments.append([cluster,cluster_ind])
                     
