@@ -172,7 +172,7 @@ def main(args=None):
     config['sorted'] = sorted
 
     print('isolating uncertain clusters', flush=True)
-    clusters, cluster_uncertainties = clusters_from_traj(traj,uncertainty, **config)
+    clusters, cluster_uncertainties = clusters_from_traj(traj, uncertainty, **config)
 
     tmp1 = time.time()
     print('Time to segment clusters', tmp1-tmp0, 'Elapsed time ', tmp1-start, flush=True)

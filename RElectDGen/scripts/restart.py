@@ -69,7 +69,7 @@ def main(args = None):
     print('checks', checks)
     if np.all(checks[:,:2]):
         config['MLP_MD_temperature']*=2
-        config['MLP_MD_dT']*=2
+        config['MLP_MD_dT']*=1.5
     if np.all(checks[:,2]):
         config['MLP_MD_steps']*=2
     if np.all(checks[:,3]):

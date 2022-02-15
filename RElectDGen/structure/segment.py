@@ -563,12 +563,13 @@ class segment_atoms():
 
     def reduce_mixture_size(self,cluster):
 
-        atoms1 = cluster.copy()
+        atoms1 = copy.deepcopy(cluster)
         divisor = 2
         # arg = np.argwhere(atoms1.positions.std(axis=0)>cluster.cell.diagonal()/5)
         
         bools = self.axis_crossing_boundary(atoms1)
         while bools.sum()>0:
+            atoms1 = copy.deepcopy(cluster)
             atoms1.positions[:,bools]+=atoms1.cell.diagonal()[bools]/divisor
             atoms1.wrap()
             bools = self.axis_crossing_boundary(atoms1)
@@ -585,7 +586,7 @@ class segment_atoms():
         #     if divisor >=8:
         #         break
         
-        atoms2 = atoms1.copy()
+        atoms2 = copy.deepcopy(atoms1)
         atoms1.center(vacuum=self.vacuum)
         shrink_ind = np.argwhere(np.any(cluster.cell>atoms1.cell,axis=1)).flatten()
         # atoms1.center(vacuum=vacuum_size,axis=shrink_ind)
@@ -897,7 +898,7 @@ def clusters_from_traj(
     segment_type: str = 'uncertain',
     max_volume_per_atom: int = 150,
     max_samples: int = 10,
-    vacuum: float = 2.0,
+    molecule_vacuum: float = 2.0,
     overlap_radius: float = 0.5,
     max_electrons: int = 300,
     directory: str = '',
@@ -919,7 +920,7 @@ def clusters_from_traj(
 
     generator = ((traj_filename, i, uncertainties[i], uncertainty_thresholds,
                     slab_config, supercell_size, cutoff, segment_type, max_volume_per_atom,
-                    min_cluster_size, max_cluster_size, max_samples, vacuum, overlap_radius, max_electrons,
+                    min_cluster_size, max_cluster_size, max_samples, molecule_vacuum, overlap_radius, max_electrons,
                     os.path.join(directory, run_dir), os.path.join(data_directory, fragment_dir)) 
                 for i in range(natoms))
     
