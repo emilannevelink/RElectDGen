@@ -120,7 +120,7 @@ def main(args=None):
         max_T_index = int(config.get('MLP_MD_steps')+1)
 
     if max_T_index < config.get('MLP_MD_steps'):
-        print(f'max T index {max_T_index} less than MLP_MD_steps', flush=True)
+        print(f'max T index {max_T_index}; less than MLP_MD_steps', flush=True)
     else:
         print(f'Temperature stable: max T index {max_T_index}', flush=True)
 

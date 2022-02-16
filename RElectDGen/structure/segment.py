@@ -169,7 +169,10 @@ class segment_atoms():
         fragments, cluster_indices = self.fragments_from_cluster(atoms, cluster_indices, cutoff)
         
         cluster = atoms[cluster_indices]
-        if len(cluster_indices)>0 and not self.is_valid_cluster(cluster) and not self.is_valid_fragment(cluster):
+        if self.is_valid_cluster(cluster) or self.is_valid_fragment(cluster):
+            fragments += [cluster_indices]
+            cluster_indices = []
+        elif len(cluster_indices)>0:
             lithium_indices = np.argwhere(cluster.get_atomic_numbers()==3).flatten()
             
             fragments += [np.array([ind]) for ind in cluster_indices[lithium_indices] if self.is_valid_cluster(atoms[[ind]])]
@@ -185,6 +188,7 @@ class segment_atoms():
             for fragment in fragments:
                 #Remove previous connectivity
                 matrix[fragment] = 0
+                matrix[:,fragment] = 0
                 cluster = atoms[fragment]
                 cluster_nblist = neighborlist.NeighborList(cutoff[fragment],skin=0,self_interaction=False,bothways=True)
                 cluster_nblist.update(cluster)
@@ -256,7 +260,7 @@ class segment_atoms():
 
         return integer_charge
 
-    def is_valid_fragment(self, cluster):
+    def is_valid_fragment(self, cluster,raw=False):
 
         if self.fragment_db is None:
             return False
@@ -275,11 +279,13 @@ class segment_atoms():
                 except KeyError as e:
                     print(e)
                     print(cluster)
-
-            if db_ind.sum()==1:
-                return True
+            if raw:
+                return db_ind
             else:
-                return False
+                if db_ind.sum()==1:
+                    return True
+                else:
+                    return False
 
     def reassign_cluster_charges(self):
         nclusters = self.n_components_natural
@@ -300,20 +306,7 @@ class segment_atoms():
                     
             # replace charge on atoms
             for i, (cluster_i, ind_i) in enumerate(cluster_fragments):
-                charge_i = cluster_i.get_initial_charges().sum()
-                
-                db_ind = np.isclose(fragment_db['origin_charge'],charge_i)
-
-                atom_symbols = np.array(cluster_i.get_chemical_symbols())
-                for i, sym in enumerate(np.unique(atom_symbols)):
-                    col = 'n_' + sym
-                    
-                    nsym = np.sum(atom_symbols==sym)
-                    try:
-                        db_ind = np.logical_and(db_ind,fragment_db[col] == nsym)
-                    except KeyError as e:
-                        print(e)
-                        print(cluster_i)
+                db_ind = self.is_valid_fragment(cluster_i,raw=True)
 
                 #look-up fragment id in fragment database
                 if db_ind.sum()==1:
@@ -470,7 +463,7 @@ class segment_atoms():
                 else:
                     cluster = self.atoms[cluster_indices]
                     cluster = self.reduce_mixture_size(cluster)
-                    cluster.pbc = True
+                    cluster.pbc = False
 
                 lithium_ind = np.argwhere(cluster.get_atomic_numbers()==3).flatten()
                 if len(lithium_ind)>500:
