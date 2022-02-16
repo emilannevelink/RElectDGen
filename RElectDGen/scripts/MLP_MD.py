@@ -112,7 +112,20 @@ def main(args=None):
     tmp0 = tmp1
 
     # print('Done with MD', flush = True)
+    # Check temperature stability
+    MLP_log = pd.read_csv(MLP_MD_dump_file,delim_whitespace=True)
+    try:
+        max_T_index = int(np.argwhere(MLP_log['T[K]'].values>2000)[0])
+    except IndexError:
+        max_T_index = int(config.get('MLP_MD_steps')+1)
+
+    if max_T_index < config.get('MLP_MD_steps'):
+        print(f'max T index {max_T_index} less than MLP_MD_steps', flush=True)
+    else:
+        print(f'Temperature stable: max T index {max_T_index}', flush=True)
+
     traj = Trajectory(trajectory_file)
+    traj = traj[:max_T_index] # Only use T stable indices
     MLP_dict['MLP_MD_steps'] = len(traj)
 
     max_traj_len = config.get('max_atoms_to_segment',1001)
