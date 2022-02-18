@@ -1,0 +1,130 @@
+---
+  machine: 'arjuna'
+
+  #Parent Directory
+  directory: '/home/eannevel/ARPA-E/slabmol/'
+  run_dir: 'runs/Lislab_8168_EC_64_0.18_30/'
+  fragment_dir: 'data/molecules/fragments/'
+  train_directory: 'results/'
+
+  #Latest Configuration File
+  latest_config: 'wandb/latest-run/files/config.yaml'
+
+  #MLP Configuration File
+  MLP_config: 'MLP.yaml'
+
+  #shell filenames
+  shell_filenames:
+    - 'gpaw_MD.sh'
+    - 'train_NN.sh'
+    - 'MLP_MD.sh'
+    # - 'gpaw_active.sh'
+    - 'gpaw_array.sh'
+    - 'gpaw_summary.sh'
+    - 'restart.sh'
+
+  #slurm settings
+  cores: 54
+  gpaw_cores: 54
+  gpaw_nodes: 1
+  nodes: 1
+  queue: 'cpu'
+
+  #active learning settings
+  n_temperature_sweep: 2
+  restart: true
+  i_temperature_sweep: 0
+  max_temperature_sweep: 7
+  max_MLP_temperature: 400
+
+  # System information
+
+  # Slab information
+  molecule: 'EC'
+  element: 'Li'
+  crystal_a0: 3.426
+  slab_direction: '110'
+  supercell_size: [8,16,8]
+  vacuum: 10
+  adsorbate_height: 3
+  pbc: [True, True, False]
+
+  # Mixture information
+  mixture: True
+  molecule: ['EC']
+  nmolecules: [64]
+  cell: [25,25,25]
+  molecule_separation: 2
+  pbc: [True,True,True]
+  path_to_packmol_inputs: 'input_data/packmol/'
+  
+
+  #Cluster Reduce Information
+  segment_type: distance
+  max_cluster_size: 80
+  cluster_cutoff: 2 #this is the radii
+  molecule_vacuum: 2
+  max_atoms_to_segment: 101
+
+  #clustercalculation slab size
+  slab_config:
+    element: 'Li'
+    crystal_a0: 3.426
+    slab_direction: '110'
+    supercell_size: [4,4,4]
+    vacuum: 1
+
+  #GPAW Calculator settings
+  grid_spacing: 0.18
+  # kpoints: [8,8,8]
+  kxl: 30
+  xc: 'vdW-DF2'
+  occupation: 'methfessel-paxton'
+  occupation_width: 0.05
+  Davidson_steps: 3
+  Poisson_tol: 1.e-12
+  GPAW_dump_file: 'dumps/Lislab_8168_EC_64_active_learning_0.18_30.txt'
+
+
+  #GPAW MD Parameters
+  GPAW_MD_steps: 0
+  GPAW_MD_timestep: 1.
+  GPAW_MD_temperature: 50.
+  GPAW_MD_dump_file: 'dumps/Lislab_8168_EC_64_active_learning_0.18_30.log'
+
+  #Machine Learning Potential Training parameters
+  force_retrain: false
+  train_perc: 0.9                                                                 
+  val_perc: 0.1
+  n_val_min: 10
+  max_loss: 0.1                                                                     
+
+  #Machine Learning Potential MD parameters
+  MLP_MD_temperature: 40.
+  MLP_MD_dT: 20.
+  MLP_MD_timestep: 1.
+  MLP_MD_steps: 1000
+  MLP_MD_dump_file: 'dumps/Lislab_8168_EC_64_active_learning_0.18_30_NN.log'
+
+  # Uncertainty Quantification
+  UQ_min_uncertainty: 0.1
+  UQ_max_uncertainty: 0.5
+  UQ_sampling_distance: 10
+  max_samples: 20
+  mininmum_uncertainty_scaling: 0.01
+
+  # Save files
+  run_config_file: 'run_config.yaml'
+  structure_file: 'data/slabmol/coordinates/Lislab_8168_EC_64_structure.json'
+  trajectory_file: 'data/slabmol/trajectories/Lislab_8168_EC_64_active_learning_0.18_30.traj'
+  pretraining_data: [ 
+    'data/slabmol/trajectories/EC_4_active_learning_0.18_30.traj',
+    # 'data/slabmol/trajectories/EC_64_active_learning_0.18_30.traj',
+    'data/slabmol/trajectories/Lislab_EC_active_learning_0.18_30.traj',
+  ]
+  combined_trajectory: 'data/slabmol/trajectories/Lislab_8168_EC_64_active_learning_0.18_30_combined.traj'
+  MLP_trajectory_file: 'data/slabmol/trajectories/Lislab_8168_EC_64_active_learning_0.18_30_MLP.traj'
+  active_learning_configs: 'data/slabmol/trajectories/Lislab_8168_EC_64_active_learning_0.18_30_configs.traj'
+  active_learning_calc: 'data/slabmol/trajectories/Lislab_8168_EC_64_active_learning_0.18_30_calculated.traj'
+  hdf5_file: 'data/slabmol/trajectories/Lislab_8168_EC_64_active_learning_0.18_30.hdf5'
+  log_filename: 'data/slabmol/trajectories/Lislab_8168_EC_64_active_learning_0.18_30_logfile.csv'
