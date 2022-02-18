@@ -120,7 +120,7 @@ def main(args=None):
         max_T_index = int(config.get('MLP_MD_steps')+1)
 
     if max_T_index < config.get('MLP_MD_steps'):
-        print(f'max T index {max_T_index}; less than MLP_MD_steps', flush=True)
+        print(f'max T index {max_T_index} of {len(MLP_log)} MLP_MD_steps', flush=True)
     else:
         print(f'Temperature stable: max T index {max_T_index}', flush=True)
 
@@ -258,6 +258,7 @@ def main(args=None):
         
         MLP_dict['number_clusters_calculate'] = len(calc_inds)
 
+        # Address first active learning loop over confidence
         if len(calc_inds) == 0 and get_initial_MD_steps(config)==-1:
             calc_inds = uncertainties.argsort()[:config.get('max_samples')]
             clusters = clusters_old
