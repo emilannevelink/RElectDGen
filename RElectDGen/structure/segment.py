@@ -348,6 +348,7 @@ class segment_atoms():
                     cluster_fragments.append([cluster,cluster_ind])
                     
             # replace charge on atoms
+            n_unknown = 0
             for i, (cluster_i, ind_i) in enumerate(cluster_fragments):
                 db_ind = self.is_valid_fragment(cluster_i,raw=True)
 
@@ -362,6 +363,7 @@ class segment_atoms():
 
                     self.atoms.arrays['initial_charges'][indices] = cluster_fragment.get_initial_charges()
                 elif db_ind.sum() == 0:
+                    n_unknown += 1
                     unknown_fragment_file = os.path.join(self.run_dir,'unknown_fragments.txt')
                     f = open(unknown_fragment_file,'a')
                     f.write(str(cluster_i)+str(cluster_i.get_initial_charges())+str(self.atoms)+'\n')
@@ -375,6 +377,7 @@ class segment_atoms():
             
             if not np.isclose(initial_supercell_charge,final_supercell_charge,atol=1e-3):
                 print('Reassign charges changed the total supercell charge, changing back')
+                print('Number of unknown clusters: ', n_unknown)
                 self.atoms.set_initial_charges(initial_charges)
             
         else:
