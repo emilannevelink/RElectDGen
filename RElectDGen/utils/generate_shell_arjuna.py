@@ -1,4 +1,4 @@
-from slurm_tools import gen_job_array, gen_job_script
+from .slurm_tools import gen_job_array, gen_job_script
 import os
 
 def shell_from_config(config):
@@ -23,6 +23,9 @@ def shell_from_config(config):
     python_cores = config.get('cores')
     python_nodes = config.get('nodes',1)
 
+    conda_environment = config.get('conda_env', 'nequip')
+    spack_environment = config.get('spack_env', 'py-gpaw')
+
     for file in filenames:
         fname = os.path.join(location,file)
         
@@ -34,7 +37,7 @@ def shell_from_config(config):
                 "strings /usr/lib64/libstdc++.so.6 | grep CXXABI",
                 "strings ~/.conda/pkgs/libstdcxx-ng-11.1.0-h56837e0_8/lib/libstdc++.so.6 | grep CXXABI",
                 "source /home/spack/.spack/opt/spack/linux-centos7-broadwell/gcc-11.2.0/miniconda3-4.9.2-et7ujxrrzevxewx65fnmzqkftwwkrsyc/etc/profile.d/conda.sh",
-                'conda activate nequip',
+                f'conda activate {conda_environment}',
                 'rm results/processed*/ -r',
                 'REDGEN-combine-datasets --config_file $2 --MLP_config_file $3',
                 # 'python ${1}scripts/'+f'{branch}/combine_datasets.py --config_file $2 --MLP_config_file $3',
@@ -50,7 +53,7 @@ def shell_from_config(config):
             commands = [
                 "spack unload -a",
                 "source /home/spack/.spack/opt/spack/linux-centos7-broadwell/gcc-11.2.0/miniconda3-4.9.2-et7ujxrrzevxewx65fnmzqkftwwkrsyc/etc/profile.d/conda.sh",
-                'conda activate nequip',
+                f'conda activate {conda_environment}',
                 'REDGEN-restart --config_file $2 --MLP_config_file $3'
                 # 'python ${1}scripts/'+f'{branch}/restart.py --config_file $2 --MLP_config_file $3',
             ]
@@ -63,7 +66,7 @@ def shell_from_config(config):
             commands = [
                 "spack unload -a",
                 "source /home/spack/.spack/opt/spack/linux-centos7-broadwell/gcc-11.2.0/miniconda3-4.9.2-et7ujxrrzevxewx65fnmzqkftwwkrsyc/etc/profile.d/conda.sh",
-                'conda activate nequip',
+                f'conda activate {conda_environment}',
                 'REDGEN-MLP-MD --config_file $2  --MLP_config_file $3 --loop_learning_count $4'
                 # 'python ${1}scripts/'+f'{branch}/restart.py --config_file $2 --MLP_config_file $3',
             ]
@@ -76,13 +79,13 @@ def shell_from_config(config):
                 commands = [
                     "spack unload -a",
                     "source /home/spack/.spack/opt/spack/linux-centos7-broadwell/gcc-11.2.0/miniconda3-4.9.2-et7ujxrrzevxewx65fnmzqkftwwkrsyc/etc/profile.d/conda.sh",
-                    'conda activate nequip',
+                    f'conda activate {conda_environment}',
                     'REDGEN-gpaw-summary --config_file $2  --MLP_config_file $3 --loop_learning_count $4',
                     'REDGEN-log --config_file $2'
                 ]
 
         else:
-            commands = ['spack load -r py-gpaw']
+            commands = [f'spack load -r {spack_environment}']
 
             if 'MD' in file:
                 file = os.path.join(config.get('scripts_path'),'gpaw_MD.py')
