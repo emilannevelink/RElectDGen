@@ -45,6 +45,7 @@ def use_previous_model(MLP_config_new):
         print('No previous results',flush=True)
         train = True
         MLP_config = {}
+        model_load = 0
 
     try:
         chemical_symbol_to_type = MLP_config_new.get('chemical_symbol_to_type')
@@ -56,14 +57,13 @@ def use_previous_model(MLP_config_new):
         )
         model.load_state_dict(model_load.state_dict())
         train = False
-        del model_load, calc_nn, transform
+        del model, calc_nn, transform
     except Exception as e:
         print(e)
         print('previous model is not the same as state dict', flush=True)
         train = True
-        model = 0
 
-    return train, model, MLP_config
+    return train, model_load, MLP_config
 
 @profile
 def main(args=None):
