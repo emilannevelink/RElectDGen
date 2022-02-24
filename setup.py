@@ -40,6 +40,7 @@ setup(
         "e3nn>=0.3.3",
         "pyyaml",
         "packaging",
+        "memory_profiler",
     ],
     zip_safe=True,
 )
