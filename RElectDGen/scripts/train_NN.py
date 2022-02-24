@@ -32,10 +32,8 @@ def parse_command_line(argsin):
 
     return config, MLP_config_new, args.MLP_config
 
-def main(args=None):
-    start_time = time.time()
-    config, MLP_config_new, MLP_config_filename = parse_command_line(args)
-    torch._C._jit_set_bailout_depth(MLP_config_new.get("_jit_bailout_depth",2))
+
+def use_previous_model(MLP_config_new):
 
     ### Check for previous model
     try:
@@ -44,6 +42,7 @@ def main(args=None):
     except (FileNotFoundError, OSError, ValueError):
         print('No previous results',flush=True)
         train = True
+        MLP_config = {}
 
     try:
         chemical_symbol_to_type = MLP_config_new.get('chemical_symbol_to_type')
@@ -60,6 +59,17 @@ def main(args=None):
         print(e)
         print('previous model is not the same as state dict', flush=True)
         train = True
+        model = 0
+
+    return train, model, MLP_config
+
+
+def main(args=None):
+    start_time = time.time()
+    config, MLP_config_new, MLP_config_filename = parse_command_line(args)
+    torch._C._jit_set_bailout_depth(MLP_config_new.get("_jit_bailout_depth",2))
+
+    train, model, MLP_config = use_previous_model(MLP_config_new)
 
     if config.get('force_retrain', False):
         train = True
@@ -75,6 +85,7 @@ def main(args=None):
         if max(MLP_config.get('train_idcs').max(),MLP_config.get('val_idcs').max()) > len(traj):
             train = True     
         else:
+            gc.collect()
             UQ = latent_distance_uncertainty_Nequip(model, MLP_config)
             UQ.calibrate()
             UQ_dict = UQ_params_to_dict(UQ.params,'train')
