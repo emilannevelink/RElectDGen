@@ -10,11 +10,11 @@ import torch
 from nequip.model import model_from_config
 from nequip.data.transforms import TypeMapper
 
-from ..utils.uncertainty import latent_distance_uncertainty_Nequip
+from RElectDGen.utils.uncertainty import latent_distance_uncertainty_Nequip
 
-from ..calculate.calculator import nn_from_results
-from ..utils.save import check_NN_parameters
-from ..utils.logging import get_mae_from_results, write_to_tmp_dict, UQ_params_to_dict
+from RElectDGen.calculate.calculator import nn_from_results
+from RElectDGen.utils.save import check_NN_parameters
+from RElectDGen.utils.logging import get_mae_from_results, write_to_tmp_dict, UQ_params_to_dict
 
 from memory_profiler import profile
 
