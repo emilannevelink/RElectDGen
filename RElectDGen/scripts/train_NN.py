@@ -16,6 +16,8 @@ from ..calculate.calculator import nn_from_results
 from ..utils.save import check_NN_parameters
 from ..utils.logging import get_mae_from_results, write_to_tmp_dict, UQ_params_to_dict
 
+from memory_profiler import profile
+
 def parse_command_line(argsin):
     parser = argparse.ArgumentParser()
     parser.add_argument('--config_file', dest='config',
@@ -63,7 +65,7 @@ def use_previous_model(MLP_config_new):
 
     return train, model, MLP_config
 
-
+@profile
 def main(args=None):
     start_time = time.time()
     config, MLP_config_new, MLP_config_filename = parse_command_line(args)
