@@ -265,13 +265,6 @@ def main(args=None):
 
         if len(calc_inds)>0:
             print('Embedding distances: ', embedding_distances, flush=True)
-            # calc_inds = [ind_sorted[0]]
-            # for ind in ind_sorted[1:]:
-            #     if not torch.any(torch.isclose(torch.tensor(calc_inds),torch.tensor(ind),atol=config.get('UQ_sampling_distance'))):
-            #         calc_inds.append(ind) 
-            #     if len(calc_inds) >= config.get('max_samples'):
-            #         break
-            # print(len(calc_inds), calc_inds)
 
             traj_calc = [clusters[i] for i in torch.tensor(calc_inds).tolist()]
             
