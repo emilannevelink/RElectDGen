@@ -638,7 +638,7 @@ class segment_atoms():
             # adjust_inds = [i for i in [0,1,2] if i not in shrink_ind]
             # atoms1.cell[adjust_inds] = cluster.cell[adjust_inds]
             # atoms1.center(vacuum=vacuum_size,axis=shrink_ind)
-            atoms2.center(self.vacuum,axis=shrink_ind)
+            atoms2.center(vacuum=self.vacuum,axis=shrink_ind)
             cluster = atoms2
         
         del atoms1, atoms2
