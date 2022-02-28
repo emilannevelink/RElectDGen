@@ -57,13 +57,20 @@ def use_previous_model(MLP_config_new):
         )
         model.load_state_dict(model_load.state_dict())
         train = False
-        del model, calc_nn, transform
+        if MLP_config.compile_model:
+            import e3nn
+            model = e3nn.util.jit.compile(model)
+            print('compiled model', flush=True)
+        torch._C._jit_set_bailout_depth(MLP_config.get("_jit_bailout_depth",2))
+        torch._C._jit_set_profiling_executor(False)
+        
+        del model_load, calc_nn, transform
     except Exception as e:
         print(e)
         print('previous model is not the same as state dict', flush=True)
         train = True
 
-    return train, model_load, MLP_config
+    return train, model, MLP_config
 
 @profile
 def main(args=None):
