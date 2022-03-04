@@ -9,6 +9,7 @@ import gc
 import torch
 from nequip.model import model_from_config
 from nequip.data.transforms import TypeMapper
+from nequip.utils import Config
 
 from RElectDGen.utils.uncertainty import latent_distance_uncertainty_Nequip
 
@@ -31,6 +32,8 @@ def parse_command_line(argsin):
 
     with open(args.MLP_config,'r') as fl:
         MLP_config_new = yaml.load(fl,yaml.FullLoader)
+
+    MLP_config_new = Config.from_file(args.MLP_config)
 
     return config, MLP_config_new, args.MLP_config
 
