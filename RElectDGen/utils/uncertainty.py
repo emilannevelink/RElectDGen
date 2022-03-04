@@ -96,7 +96,7 @@ class latent_distance_uncertainty_Nequip():
             elif distances == 'train':
                 embeddings = self.train_embeddings[key]
 
-            mask = data['atom_types']==self.config.get('chemical_symbol_to_type')[key]
+            mask = (data['atom_types']==self.config.get('chemical_symbol_to_type')[key]).flatten()
 
             latent_force_distances = torch.cdist(embeddings,self.atom_embedding[mask],p=2)
         
