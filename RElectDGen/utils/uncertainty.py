@@ -47,7 +47,7 @@ class latent_distance_uncertainty_Nequip():
             out = self.model(self.transform_data_input(data))
 
             for key in self.config.get('chemical_symbol_to_type'):
-                mask = data['atom_types']==self.config.get('chemical_symbol_to_type')[key]
+                mask = (data['atom_types']==self.config.get('chemical_symbol_to_type')[key]).flatten()
                 train_embeddings[key] = torch.cat([train_embeddings[key],out['node_features'][mask]])
 
         self.train_embeddings = train_embeddings
@@ -59,7 +59,7 @@ class latent_distance_uncertainty_Nequip():
             error = torch.absolute(out['forces'] - data.forces)
 
             for key in self.config.get('chemical_symbol_to_type'):
-                mask = data['atom_types']==self.config.get('chemical_symbol_to_type')[key]
+                mask = (data['atom_types']==self.config.get('chemical_symbol_to_type')[key]).flatten()
                 test_embeddings[key] = torch.cat([test_embeddings[key],out['node_features'][mask]])
                 test_errors[key] = torch.cat([test_errors[key],error.mean(dim=1)[mask]])
         
