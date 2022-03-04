@@ -57,10 +57,10 @@ def use_previous_model(MLP_config_new):
         )
         model.load_state_dict(model_load.state_dict())
         train = False
-        if MLP_config.compile_model:
-            import e3nn
-            model = e3nn.util.jit.compile(model)
-            print('compiled model', flush=True)
+        # if MLP_config.compile_model:
+        import e3nn
+        model = e3nn.util.jit.compile(model)
+        print('compiled model', flush=True)
         torch._C._jit_set_bailout_depth(MLP_config.get("_jit_bailout_depth",2))
         torch._C._jit_set_profiling_executor(False)
         

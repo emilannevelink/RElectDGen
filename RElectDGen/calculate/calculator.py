@@ -3,6 +3,7 @@ import torch
 from nequip.utils import Config
 from nequip.ase.nequip_calculator import NequIPCalculator
 from nequip.data.transforms import TypeMapper
+from nequip.model import model_from_config
 import numpy as np
 from ase.parallel import world
 
@@ -61,8 +62,6 @@ def oracle_from_config(config,atoms=None):
 
     return calculator
 
-
-
 def nn_from_results():
     
     train_directory = get_results_dir()
@@ -75,11 +74,15 @@ def nn_from_results():
 
     model_path = train_directory + "/best_model.pth"
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    model = torch.load(model_path, map_location=torch.device(device))
-    if MLP_config.compile_model:
-        import e3nn
-        model = e3nn.util.jit.compile(model)
-        print('compiled model', flush=True)
+    model_state_dict = torch.load(model_path, map_location=torch.device(device))
+    model = model_from_config(
+            config=MLP_config, initialize=False, # dataset=dataset
+        )
+    model.load_state_dict(model_state_dict)
+    # if MLP_config.compile_model:
+    import e3nn
+    model = e3nn.util.jit.compile(model)
+    print('compiled model', flush=True)
     torch._C._jit_set_bailout_depth(MLP_config.get("_jit_bailout_depth",2))
     torch._C._jit_set_profiling_executor(False)
     # model = torch.jit.script(model)
