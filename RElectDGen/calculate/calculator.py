@@ -79,6 +79,7 @@ def nn_from_results():
             config=MLP_config, initialize=False, # dataset=dataset
         )
     model.load_state_dict(model_state_dict)
+    model.to(torch.device(device))
     # if MLP_config.compile_model:
     import e3nn
     model = e3nn.util.jit.compile(model)
