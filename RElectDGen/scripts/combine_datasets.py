@@ -2,6 +2,7 @@ import argparse
 import yaml, os
 from ase.io import read, Trajectory
 from ..utils.save import update_config_trainval
+from ..utils.data import reduce_traj
 
 def parse_command_line(argsin):
     parser = argparse.ArgumentParser()
@@ -37,9 +38,11 @@ def main(args=None):
 
     print(len(traj))
 
+    traj_reduced = reduce_traj(traj)
+
     print(combined_trajectory,flush=True)
     writer = Trajectory(combined_trajectory,'w')
-    for atoms in traj:
+    for atoms in traj_reduced:
         writer.write(atoms)
 
     update_config_trainval(config,filename_MLP_config)
