@@ -20,6 +20,10 @@ from ..calculate.calculator import nn_from_results
 from nequip.data import AtomicData
 from nequip.data.transforms import TypeMapper
 
+from .clustering import findclusters, segment_slab_mixture
+from .fragments import FragmentDB
+from .utils import reassign_cluster_charges
+
 class segment_atoms():
     def __init__(self, 
         atoms: ase.Atoms,
@@ -36,6 +40,7 @@ class segment_atoms():
         max_electrons: int = 400,
         run_dir: str = '',
         fragment_dir: str = '',
+        fragment_type: str = 'iterative',
         ) -> None:
         
         self.atoms = atoms
@@ -52,22 +57,23 @@ class segment_atoms():
         self.max_electrons = max_electrons
         self.run_dir = run_dir
         self.fragment_dir = fragment_dir
+        self.fragment_type = fragment_type
         # ('/Users/emil/GITHUB/RElectDGen/' + 
         # 'tests/structure/reassign_charge/data/')
 
         filename = os.path.join(self.fragment_dir,'fragment_db.csv')
         if os.path.isfile(filename):
-            self.fragment_db = pd.read_csv(filename)
+            self.FragmentDB = FragmentDB(filename)
         else:
-            self.fragment_db = None
+            self.FragmentDB = None
 
         if len(self.atoms)>self.max_cluster_size:
-            self.n_components_natural, self.component_list_natural, self.matrix_natural = self.findclusters(natural = True)
+            self.natural_clusters = findclusters(self.atoms, self.FragmentDB, natural = True, slab_config=self.slab_config, fragment_type = self.fragment_type)
 
-            self.reassign_cluster_charges()
+            self.atoms = reassign_cluster_charges(atoms,self.natural_clusters,self.FragmentDB,self.run_dir)
 
-            self.n_components, self.component_list, self.matrix = self.findclusters(cutoff=self.cutoff)
-            self.matrixnonzero = self.matrix.nonzero()
+            self.cutoff_clusters = findclusters(self.atoms, self.FragmentDB, cutoff = self.cutoff, slab_config=self.slab_config)
+            self.matrixnonzero = self.cutoff_clusters.matrix.nonzero()
             
             self.nlithiums = (self.atoms.get_atomic_numbers()==3).sum()
 
@@ -77,311 +83,6 @@ class segment_atoms():
                 self.transform = TypeMapper(chemical_symbol_to_type=MLP_config.get('chemical_symbol_to_type'))
                 self.r_max = MLP_config.get('r_max')
                 print('loaded model',self.model, flush=True)
-
-    def findclusters(self,
-        atoms = None,
-        cutoff = None,
-        nlithium = 4,
-        natural = False,
-    ):
-        if atoms is None:
-            atoms = self.atoms#.copy()
-        
-        
-        if cutoff is None:
-            cutoff = np.array(neighborlist.natural_cutoffs(atoms))*1.3
-            cutoff[atoms.get_atomic_numbers()==3]*=1.3
-        elif isinstance(cutoff,float) or isinstance(cutoff,int):
-            cutoff = [cutoff for _ in atoms]
-        elif isinstance(cutoff,list):
-            assert len(cutoff) == len(atoms)
-
-
-        nblist = neighborlist.NeighborList(cutoff,skin=0,self_interaction=False,bothways=True)
-        nblist.update(atoms)
-
-        matrix = nblist.get_connectivity_matrix()
-
-        n_components, component_list = sparse.csgraph.connected_components(matrix)
-        
-        if natural:
-            #Separate molecules from lithium slab
-            start_time = time.time()
-            print('natural')
-            clusters_to_check = [(atoms[component_list ==i].get_atomic_numbers()==3).sum()>nlithium for i in np.arange(n_components)]
-            
-            for cluster_index, check in enumerate(clusters_to_check):
-                if check:
-                    matrix = self.separate_cluster(cluster_index, matrix, n_components, component_list, atoms, cutoff)
-
-            time_separate = time.time()
-            print('Time to separate ', time_separate-start_time)
-            n_components, component_list = sparse.csgraph.connected_components(matrix)
-
-
-            # Make sure they are smallest connected 
-            clusters_to_check = [not self.is_valid_cluster(atoms[component_list ==i]) for i in np.arange(n_components)]
-            for cluster_index, check in enumerate(clusters_to_check):
-                if check:
-                    matrix = self.split_molecules_fragments(cluster_index, matrix, n_components, component_list, atoms, cutoff)
-
-            time_split = time.time()
-            print('Time to fragment ', time_split- time_separate)
-
-            n_components, component_list = sparse.csgraph.connected_components(matrix)
-
-        return n_components, component_list, matrix
-
-    def separate_cluster(self,
-        cluster_index,
-        matrix,
-        n_components,
-        component_list,
-        atoms,
-        cutoff):
-
-        cluster_indices = np.argwhere(component_list==cluster_index).flatten()
-
-        slab_indices, mixture_indices = self.segment_slab_mixture(cluster_indices)
-        
-
-        if len(slab_indices)>0 and len(mixture_indices)>0:
-
-            separate_ind = mixture_indices if len(mixture_indices)<len(slab_indices) else slab_indices
-
-            nblist = neighborlist.NeighborList(cutoff[separate_ind],skin=0,self_interaction=False,bothways=True)
-
-            sub_cluster = atoms[separate_ind]
-            nblist.update(sub_cluster)
-            sub_matrix = nblist.get_connectivity_matrix()
-
-            matrix[separate_ind] = 0
-            matrix[:,separate_ind] = 0
-            indices = np.array(list(sub_matrix.keys()))
-            matrix[separate_ind[indices[:,0]],separate_ind[indices[:,1]]] = 1
-
-        return matrix #, n_components, component_list
-
-    def split_molecules_fragments(self, cluster_index, matrix, n_components, component_list, atoms, cutoff):
-
-        cluster_indices = np.argwhere(component_list==cluster_index).flatten()
-
-        fragments, cluster_indices = self.fragments_from_cluster(atoms, cluster_indices, cutoff)
-        
-        #Change matrix only if cluster was able to be decomposed into fragments
-        if len(cluster_indices) == 0:
-            for fragment in fragments:
-                #Remove previous connectivity
-                matrix[fragment] = 0
-                matrix[:,fragment] = 0
-                cluster = atoms[fragment]
-                cluster_nblist = neighborlist.NeighborList(cutoff[fragment],skin=0,self_interaction=False,bothways=True)
-                cluster_nblist.update(cluster)
-                cluster_matrix = cluster_nblist.get_connectivity_matrix()
-
-                #Add connectivity of the fragment
-                for src, dst in cluster_matrix.keys():
-                    matrix[fragment[src],fragment[dst]] = 1
-
-        return matrix
-
-    def fragments_from_cluster(self, atoms, cluster_indices, cutoff):
-        cluster = atoms[cluster_indices]
-        lithium_indices = np.argwhere(cluster.get_atomic_numbers()==3).flatten()
-            
-        fragments = [np.array([ind]) for ind in cluster_indices[lithium_indices] if self.is_valid_cluster(atoms[[ind]])]
-
-        cluster_indices = np.setdiff1d(cluster_indices,np.array(fragments).flatten())
-        cluster = atoms[cluster_indices]
-        # cutoff = np.array(neighborlist.natural_cutoffs(cluster))
-        if self.is_valid_cluster(cluster):
-            fragments += [cluster_indices]
-            cluster_indices = np.array([],dtype=int)
-        elif self.is_valid_fragment(cluster):
-            fragments += [cluster_indices]
-            cluster_indices = np.array([],dtype=int)
-        else:
-            
-            
-            max_iterations = len(cluster_indices)
-            
-            cluster = atoms[cluster_indices]
-            cluster_nblist = neighborlist.NeighborList(cutoff[cluster_indices],skin=0,self_interaction=False,bothways=True)
-            cluster_nblist.update(cluster)
-            cluster_matrix = cluster_nblist.get_connectivity_matrix().asformat("array")
-
-            #designate seed fragments
-            potential_fragments = np.argwhere(cluster_matrix.sum(axis=0)==cluster_matrix.sum(axis=0).min())
-            
-            valid_fragments = []
-            for i in range(max_iterations-1):
-            
-                potential_fragments = self.expand_fragments(cluster,cluster_indices, cluster_matrix, potential_fragments)
-
-                if len(potential_fragments) == 0:
-                    break
-                else:
-                    for frag in potential_fragments:
-                        potential_cluster = cluster[frag]
-                        if self.is_valid_fragment(potential_cluster) or self.is_valid_cluster(potential_cluster):
-                            valid_fragments.append(cluster_indices[frag])
-
-            # decide what fragments to keep
-            valid_fragments = valid_fragments[::-1] #reverse order
-            # print(valid_fragments)
-            for i, start_fragment in enumerate(valid_fragments):
-                test_indices = start_fragment
-                add_indices = [i]
-                for j, add_fragment in enumerate(valid_fragments[i+1:]):
-                    if len(np.intersect1d(test_indices,add_fragment))==0:
-                        test_indices = np.concatenate([test_indices,add_fragment])
-                        add_indices.append(i+j+1)
-                    
-                    if len(test_indices) == len(cluster_indices):
-                        fragments += [valid_fragments[ind] for ind in add_indices]
-                        return fragments, np.array([],dtype=int)
-
-
-            # for leaf_index in leafs.flatten():
-            #     fragment = [leaf_index]
-            #     fragment_iterations = 0
-            #     max_fragment_iterations = len(cluster_indices)
-            #     while (
-            #         not (
-            #             self.is_valid_fragment(cluster[fragment]) or 
-            #             self.is_valid_cluster(cluster[fragment])
-            #         ) 
-            #         and len(fragment)<len(cluster)
-            #         and fragment_iterations<max_fragment_iterations
-            #         ):
-                    
-            #         fragment_iterations+=1
-            #         potential_additions = np.argwhere(cluster_matrix[fragment])
-            #         sorted_by_connections = np.argsort(cluster_matrix[potential_additions[:,1]].sum(axis=1))
-            #         for add_ind in sorted_by_connections:
-            #             if potential_additions[add_ind,1] not in fragment:
-            #                 fragment.append(potential_additions[add_ind,1])
-            #                 break
-            #         # fragment += indices[indices[:,0]==minimum_connection,1].tolist()
-            #         # fragment = np.unique(fragment).tolist()
-
-            #     if self.is_valid_cluster(cluster[fragment]) or self.is_valid_fragment(cluster[fragment]):
-            #         fragments.append(cluster_indices[fragment])
-            #         cluster_indices = np.delete(cluster_indices,fragment)
-            #         break
-
-        return fragments, cluster_indices
-
-    def expand_fragments(self,cluster,cluster_indices,matrix,input_fragments):
-
-        #expand input fragment
-        expanded_fragments = []
-        for frag in input_fragments:
-            connections = np.argwhere(matrix[frag])[:,1]
-            for con in connections:
-                if con not in frag:
-                    expanded_fragments.append(np.concatenate([frag,[con]]))
-            
-
-        if len(expanded_fragments)==0:
-            return []
-        else:
-            expanded_fragments = np.array(expanded_fragments)
-            expanded_fragments.sort(axis=1)
-            expanded_fragments.sort(axis=0)
-            
-            #Remove duplicates
-            mask = np.concatenate([[True],~np.all(expanded_fragments[1:]==expanded_fragments[:-1],axis=1)])
-            output_fragments = expanded_fragments[mask]
-
-            return output_fragments
-
-    def is_valid_cluster(self, cluster):
-
-        total_charge = cluster.get_initial_charges().sum()
-        integer_charge = np.round(total_charge,0) == np.round(total_charge,4)
-
-        return integer_charge
-
-    def is_valid_fragment(self, cluster,raw=False):
-
-        if self.fragment_db is None:
-            return False
-        else:
-            charge_i = cluster.get_initial_charges().sum()
-                    
-            db_ind = np.isclose(self.fragment_db['origin_charge'],charge_i)
-
-            atom_symbols = np.array(cluster.get_chemical_symbols())
-            for i, sym in enumerate(np.unique(atom_symbols)):
-                col = 'n_' + sym
-                
-                nsym = np.sum(atom_symbols==sym)
-                try:
-                    db_ind = np.logical_and(db_ind,self.fragment_db[col] == nsym)
-                except KeyError as e:
-                    print(e)
-                    print(cluster)
-            if raw:
-                return db_ind
-            else:
-                if db_ind.sum()==1:
-                    return True
-                else:
-                    return False
-
-    def reassign_cluster_charges(self):
-        nclusters = self.n_components_natural
-        initial_charges = copy.copy(self.atoms.get_initial_charges())
-        initial_supercell_charge = initial_charges.sum()
-        
-        
-        if self.fragment_db is not None:
-            fragment_db = self.fragment_db 
-            
-            cluster_fragments = []
-            for cluster_ind in range(nclusters):
-                cluster = self.atoms[self.component_list_natural==cluster_ind]
-
-                if not self.is_valid_cluster(cluster): # most likely signifies it comes from a larger molecule
-                    
-                    cluster_fragments.append([cluster,cluster_ind])
-                    
-            # replace charge on atoms
-            n_unknown = 0
-            for i, (cluster_i, ind_i) in enumerate(cluster_fragments):
-                db_ind = self.is_valid_fragment(cluster_i,raw=True)
-
-                #look-up fragment id in fragment database
-                if db_ind.sum()==1:
-                    fragment_name = fragment_db['fragment_name'][db_ind].values[0]
-                    print(fragment_name)
-                    fragment_filename = os.path.join(self.fragment_dir,f'fragment_{fragment_name}.json')
-                    cluster_fragment = read(fragment_filename)
-
-                    indices = self.component_list_natural==ind_i
-
-                    self.atoms.arrays['initial_charges'][indices] = cluster_fragment.get_initial_charges()
-                elif db_ind.sum() == 0:
-                    n_unknown += 1
-                    unknown_fragment_file = os.path.join(self.run_dir,'unknown_fragments.txt')
-                    f = open(unknown_fragment_file,'a')
-                    f.write(str(cluster_i)+str(cluster_i.get_initial_charges())+str(self.atoms)+'\n')
-                    f.close()
-                else:
-                    print('Fragment DB retrieves too many results ', db_ind.sum())
-                    print(fragment_db['fragment_name'][db_ind])
-
-            final_charges = self.atoms.get_initial_charges()
-            final_supercell_charge = final_charges.sum()
-            
-            if not np.isclose(initial_supercell_charge,final_supercell_charge,atol=1e-3):
-                print('Reassign charges changed the total supercell charge, changing back')
-                print('Number of unknown clusters: ', n_unknown)
-                self.atoms.set_initial_charges(initial_charges)
-            
-        else:
-            print('Fragment DB is none')
 
     def clusterstocalculate(self,
         uncertain_indices: list,
@@ -405,12 +106,12 @@ class segment_atoms():
         for idx in uncertain_indices:
             start_time = time.time()
 
-            molIdx = self.component_list_natural[idx]
+            molIdx = self.natural_clusters.component_list[idx]
 
             if molIdx not in molecules:
                 
-                indices_add = [ i for i in range(len(self.component_list_natural)) if self.component_list_natural[i] == molIdx ]
-                slab_add, mixture_add = self.segment_slab_mixture(indices_add)
+                indices_add = [ i for i in range(len(self.natural_clusters.component_list)) if self.natural_clusters.component_list[i] == molIdx ]
+                slab_add, mixture_add = segment_slab_mixture(self.atoms,indices_add,self.slab_config)
                 
 
                 build=True
@@ -419,20 +120,11 @@ class segment_atoms():
                 build_ind = 0
                 idx_add = [idx]
                 mol_add = [molIdx]
-                if idx in mixture_add:
-                    
-                    cluster_indices = list(mixture_add)
-                    slab_indices = list(slab_add)
-                    if len(slab_indices)>0:
-                        print('weird')
-                        
-                elif idx in slab_add:
-                    cluster_indices = list(mixture_add)
-                    slab_indices = list(slab_add)
+
+                cluster_indices = list(mixture_add)
+                slab_indices = list(slab_add)        
+                if idx in slab_add:
                     add_slab = True
-                    if len(cluster_indices)>0:
-                        print('weird')
-                
                 
                 while build: #len(cluster_indices) < min_cluster_size and build:
                     if build_ind>100:
@@ -452,41 +144,23 @@ class segment_atoms():
                         mol_add.append(molIdx_add)
 
                         if len(indices_add)>0:
-                            slab_add, mixture_add = self.segment_slab_mixture(indices_add)
+                            slab_add, mixture_add = segment_slab_mixture(self.atoms,indices_add,self.slab_config)
 
                             if ((len(cluster_indices) + len(mixture_add)) > self.max_cluster_size / (2  - (not add_slab)) or
                                 self.atoms[cluster_indices+list(mixture_add)].get_atomic_numbers().sum() > self.max_electrons/ (2  - (not add_slab)) ):
                                 build = False
-                            elif atom_ind in mixture_add:
-                                
-                                # molecules.append(molIdx_add)
-                                if len(slab_add)>0:
-                                    print('does this even happen???')
-                                    ind_mixture = np.argwhere(mixture_add==idx)[0,0]
 
-                                    n_components, component_list, matrix = self.findclusters(atoms=self.atoms[mixture_add])
-                                    mol_mixture = component_list[ind_mixture]
-                                    mol_indices = [ i for i in range(len(component_list)) if component_list[i] == mol_mixture ]
-                                    cluster_indices += list(mixture_add[mol_indices])
-                                    
-                                    if (len(cluster_indices)) <= self.max_cluster_size / 2:
-                                        add_slab = True
-                                        slab_indices += list(slab_add)
-                                else:
-                                    cluster_indices += list(mixture_add)
+                            elif atom_ind in mixture_add:
+                                cluster_indices += list(mixture_add)
 
                             elif atom_ind in slab_add:
                                 add_slab = True
                                 slab_indices += list(slab_add)
-                                # molecules.append(molIdx_add)
-                                # if len(slab_indices)>0.75*self.nlithiums:
-                                #     build = False
 
                         else:
                             build = False
                         
                 if add_slab:
-                    
                     if len(cluster_indices)>0:
                         print(len(cluster_indices),flush=True)
                         pure_slab = create_slab(self.slab_config)
@@ -512,31 +186,26 @@ class segment_atoms():
                     cluster.pbc = False
 
                 lithium_ind = np.argwhere(cluster.get_atomic_numbers()==3).flatten()
-                if len(lithium_ind)>500:
-                    print('wrong, too many lithium atoms',flush=True)
-                    print(add_slab,len(cluster_indices), len(lithium_ind), flush=True)
+                if (len(cluster)>1 and 
+                        cluster.get_volume()/len(cluster)<self.max_volume_per_atom and
+                        np.isclose(cluster.get_initial_charges().sum().round(),cluster.get_initial_charges().sum().round(2))):
+                    
+                    cluster.arrays['cluster_indices'] = np.array(cluster_indices,dtype=int)
+                    clusters.append(cluster)
+                    atom_indices.append(idx)
+                    molecules.append(molIdx)
+                    print('Added atoms', idx_add)
+                    print('Added molecules', mol_add)
                 else:
-
-                    if (len(cluster)>1 and 
-                            cluster.get_volume()/len(cluster)<self.max_volume_per_atom and
-                            np.isclose(cluster.get_initial_charges().sum().round(),cluster.get_initial_charges().sum().round(2))):
-                        
-                        cluster.arrays['cluster_indices'] = np.array(cluster_indices,dtype=int)
-                        clusters.append(cluster)
-                        atom_indices.append(idx)
-                        molecules.append(molIdx)
-                        print('Added atoms', idx_add)
-                        print('Added molecules', mol_add)
-                    else:
-                        if len(cluster)==1:
-                            print(f'wrong, not enough atoms around {idx}',flush=True)
-                        elif cluster.get_volume()/len(cluster)>self.max_volume_per_atom:
-                            print(f'wrong, cluster volume too large volume/atom: {cluster.get_volume()/len(cluster)}',flush=True)
-                        elif not np.isclose(cluster.get_initial_charges().sum().round(),cluster.get_initial_charges().sum().round(2)):
-                            print(f'wrong, cluster doesnt have whole number charge')
-                        
-                        print('Didnt add atoms', idx_add)
-                        print('Didnt add molecules', mol_add)
+                    if len(cluster)==1:
+                        print(f'wrong, not enough atoms around {idx}',flush=True)
+                    elif cluster.get_volume()/len(cluster)>self.max_volume_per_atom:
+                        print(f'wrong, cluster volume too large volume/atom: {cluster.get_volume()/len(cluster)}',flush=True)
+                    elif not np.isclose(cluster.get_initial_charges().sum().round(),cluster.get_initial_charges().sum().round(2)):
+                        print(f'wrong, cluster doesnt have whole number charge')
+                    
+                    print('Didnt add atoms', idx_add)
+                    print('Didnt add molecules', mol_add)
                         
             if len(clusters)>=self.max_samples:
                 break
@@ -771,42 +440,6 @@ class segment_atoms():
         reduced_slab_cluster.pbc = [True,True,False]
         return reduced_slab_cluster, keep_indices + cluster_indices
 
-        # src, dst, edge_vec = neighborlist.neighbor_list('ijD',slab,np.linalg.norm(pure_slab.get_cell().diagonal()))
-
-        # # determine how to reduce configuration...
-        # # start with mixture atoms
-        # print('not done')
-        # slab_indices = np.array(cluster_indices)[slab_ind]
-        # mixture_indices = np.array(cluster_indices)[mixture_ind]
-        # neighbor_atoms = np.unique(np.concatenate([self.matrix.getcol(i).nonzero()[0] for i in mixture_indices]))
-        
-        # slab_seed = np.intersect1d(slab_indices,neighbor_atoms)
-        # slab_nuclei = slab_seed
-        # for i in range(3):
-        #     neighbor_slab = np.unique(np.concatenate([self.matrix.getcol(i).nonzero()[0] for i in slab_nuclei]))
-        #     mask =  self.atoms[neighbor_slab].get_atomic_numbers()==3
-        #     slab_nuclei = np.concatenate([slab_nuclei,neighbor_slab[mask]])
-
-        # lithium_slab = self.atoms[slab_nuclei]
-        # # lithium_slab.center(about=np.array(self.atoms[slab_seed].positions.mean(axis=0)))
-        # # lithium_slab.center(about=np.array([0,0,self.atoms[slab_seed].positions.mean(axis=0)[2]]))
-        # center = self.atoms[slab_seed].positions.mean(axis=0)-lithium_slab.get_center_of_mass()
-        # lithium_slab.center(about=center)
-        # lithium_slab.wrap()
-        # lithium_slab.write('test_lithium_slab.xyz')
-
-        # pure_slab = create_slab(self.config.get('slab_config'))
-
-        # pure_slab.write('test_pure_slab.xyz')
-
-        # #match_seed
-        # ind_location = np.array([*pure_slab.get_cell().diagonal()[:2]/2,pure_slab.get_cell().diagonal()[-2]])
-        # ind_seed = np.argmin(np.linalg.norm(pure_slab.positions-ind_location,axis=1))
-
-        # #match_bottom
-        # ind_location = np.array([*pure_slab.get_cell().diagonal()[:2]/2,0])
-        # ind_bottom = np.argmin(np.linalg.norm(pure_slab.positions-ind_location,axis=1))
-
     def coarsen_histogram(self, d, hist, bin_edges,max_dist,expected_bins):
 
         #find the proper bin edges
@@ -944,6 +577,7 @@ def clusters_from_traj(
     run_dir: str = '',
     data_directory: str = '',
     fragment_dir: str = '',
+    fragment_type: str = 'iterative',
     **kwargs,
 ):
 
@@ -960,7 +594,8 @@ def clusters_from_traj(
     generator = ((traj_filename, i, uncertainties[i], uncertainty_thresholds,
                     slab_config, supercell_size, cutoff, segment_type, max_volume_per_atom,
                     min_cluster_size, max_cluster_size, max_samples, molecule_vacuum, overlap_radius, max_electrons,
-                    os.path.join(directory, run_dir), os.path.join(data_directory, fragment_dir)) 
+                    os.path.join(directory, run_dir), os.path.join(data_directory, fragment_dir),
+                    fragment_type) 
                 for i in range(natoms))
     
     if segment_type == 'embedding' or traj_cores==1:
