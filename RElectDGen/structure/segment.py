@@ -219,10 +219,11 @@ class segment_atoms():
             neigh_uncertain = [np.argwhere(neigh_ind == np.array(uncertain_indices))[0,0] for neigh_ind in neighbor_atoms if neigh_ind in uncertain_indices]
             if len(neigh_uncertain)>0:
                 atom_ind = neighbor_atoms[np.argmin(neigh_uncertain)]
-                molIdx_add = self.component_list_natural[atom_ind]
+                
+                molIdx_add = self.self.natural_clusters.component_list[atom_ind]
                 
                 # add natural molecule that atom is in to cluster indices                             
-                indices_add = [ i for i in range(len(self.component_list_natural)) if self.component_list_natural[i] == molIdx_add ]
+                indices_add = [ i for i in range(len(self.self.natural_clusters.component_list)) if self.self.natural_clusters.component_list[i] == molIdx_add ]
             else:
                 indices_add = []
         
@@ -230,9 +231,9 @@ class segment_atoms():
             # get the neighbor atom that is closest
             Di = self.atoms.get_distances(neighbor_atoms,idx, mic=True)
             atom_ind = neighbor_atoms[np.argmin(Di)]
-            molIdx_add = self.component_list_natural[atom_ind]
+            molIdx_add = self.self.natural_clusters.component_list[atom_ind]
             
-            indices_add = [ i for i in range(len(self.component_list_natural)) if self.component_list_natural[i] == molIdx_add ]
+            indices_add = [ i for i in range(len(self.self.natural_clusters.component_list)) if self.self.natural_clusters.component_list[i] == molIdx_add ]
 
         elif self.segment_type == 'embedding':
             # print('in embedding', flush=True)
@@ -245,10 +246,10 @@ class segment_atoms():
             # print('got node embedding', flush=True)
             embed_dist = []
             #get possible added molecules
-            close_clusters = np.unique(self.component_list_natural[neighbor_atoms])
+            close_clusters = np.unique(self.self.natural_clusters.component_list[neighbor_atoms])
             for i, cc in enumerate(close_clusters):
                 # print('going through close clusters', i, flush=True)
-                indices_add = [ i for i in range(len(self.component_list_natural)) if self.component_list_natural[i] == cc ]
+                indices_add = [ i for i in range(len(self.self.natural_clusters.component_list)) if self.self.natural_clusters.component_list[i] == cc ]
                 ind_tmp = cluster_indices + indices_add
                 cluster_tmp = self.atoms[ind_tmp]
                 
@@ -261,11 +262,11 @@ class segment_atoms():
             
             molIdx_add = close_clusters[np.argmin(embed_dist)]
             
-            neigh_mol_indices = np.array(neighbor_atoms)[np.argwhere(self.component_list_natural[neighbor_atoms]==molIdx_add).flatten()]
+            neigh_mol_indices = np.array(neighbor_atoms)[np.argwhere(self.self.natural_clusters.component_list[neighbor_atoms]==molIdx_add).flatten()]
             Di = self.atoms.get_distances(neigh_mol_indices,idx, mic=True)
             atom_ind = neigh_mol_indices[np.argmin(Di)]
             
-            indices_add = [ i for i in range(len(self.component_list_natural)) if self.component_list_natural[i] == molIdx_add ]
+            indices_add = [ i for i in range(len(self.self.natural_clusters.component_list)) if self.self.natural_clusters.component_list[i] == molIdx_add ]
 
         return indices_add, atom_ind, molIdx_add
 
