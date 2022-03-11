@@ -62,10 +62,10 @@ class segment_atoms():
         # 'tests/structure/reassign_charge/data/')
 
         filename = os.path.join(self.fragment_dir,'fragment_db.csv')
-        if os.path.isfile(filename):
-            self.FragmentDB = FragmentDB(filename)
-        else:
-            self.FragmentDB = None
+        if not os.path.isfile(filename):
+            print('No fragment filename')
+            
+        self.FragmentDB = FragmentDB(filename)
 
         if len(self.atoms)>self.max_cluster_size:
             self.natural_clusters = findclusters(self.atoms, self.FragmentDB, natural = True, slab_config=self.slab_config, fragment_type = self.fragment_type)
