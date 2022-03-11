@@ -36,10 +36,10 @@ def main(args=None):
         print('Trajectory file couldnt be appended', flush=True)
         print(trajectory_file, flush=True)
 
-    print(len(traj))
-
     traj_reduced = reduce_traj(traj)
 
+    print(len(traj), len(traj_reduced),flush=True)
+    
     print(combined_trajectory,flush=True)
     writer = Trajectory(combined_trajectory,'w')
     for atoms in traj_reduced:
