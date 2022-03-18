@@ -50,7 +50,7 @@ class FunctionCalculator(Calculator):
         # pair_distances = torch.tensor(D,requires_grad=True)
         pair_distances = torch.abs(pair_distances)
         energy = self.function(pair_distances).sum()/2.
-        forces = torch.autograd.grad(energy,positions)[0]
+        forces = -torch.autograd.grad(energy,positions)[0]
 
         # store results
         self.results = {
