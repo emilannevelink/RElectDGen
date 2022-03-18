@@ -23,6 +23,7 @@ setup(
             "REDGEN-gpaw-MD = RElectDGen.scripts.gpaw_MD:main",
             "REDGEN-train-NN = RElectDGen.scripts.train_NN:main",
             "REDGEN-MLP-MD = RElectDGen.scripts.MLP_MD:main",
+            "REDGEN-sample-adv = RElectDGen.scripts.adv_sampling:main",
             "REDGEN-gpaw-active = RElectDGen.scripts.gpaw_active:main",
             "REDGEN-gpaw-active-array = RElectDGen.scripts.gpaw_active_array:main",
             "REDGEN-gpaw-summary = RElectDGen.scripts.gpaw_summary_array:main",

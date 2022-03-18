@@ -74,6 +74,18 @@ def shell_from_config(config):
             # slurm_config['N'] = python_nodes
             # slurm_config['--ntasks'] = 1
             # slurm_config['--cpus-per-task'] = python_cores
+        elif 'adv' in file:
+            commands = [
+                "spack unload -a",
+                "source /home/spack/.spack/opt/spack/linux-centos7-broadwell/gcc-11.2.0/miniconda3-4.9.2-et7ujxrrzevxewx65fnmzqkftwwkrsyc/etc/profile.d/conda.sh",
+                f'conda activate {conda_environment}',
+                'REDGEN-sample-adv --config_file $2  --MLP_config_file $3 --loop_learning_count $4'
+                # 'python ${1}scripts/'+f'{branch}/restart.py --config_file $2 --MLP_config_file $3',
+            ]
+            # slurm_config['n'] = python_cores
+            # slurm_config['N'] = python_nodes
+            # slurm_config['--ntasks'] = 1
+            # slurm_config['--cpus-per-task'] = python_cores
 
         elif 'summary' in file:
                 commands = [
@@ -134,7 +146,8 @@ def slurm_config_from_config(config, file):
         slurm_config['N'] = 1
         slurm_config['--ntasks'] = 1
     elif ('train' in file or
-        'MLP' in file):
+        'MLP' in file or
+        'adv' in file):
         slurm_config['p'] = config.get('MLP_queue',config.get('queue','cpu'))
         cores = config.get('MLP_cores',config.get('cores'))
         slurm_config['n'] = cores

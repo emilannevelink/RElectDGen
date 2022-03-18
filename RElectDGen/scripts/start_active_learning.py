@@ -89,6 +89,16 @@ def main(args=None):
             process = subprocess.run(commands,capture_output=True)
             job_ids.append(int(process.stdout.split(b' ')[-1]))
             job_types.append(shell_file)
+        
+        shell_file = 'submits/adv_sampling.sh'
+        if shell_file.split('/')[-1] in filenames:
+            if len(job_ids)>0:
+                commands = ['sbatch', f'--dependency=afterok:{job_ids[-1]}', shell_file, config.get('directory'),active_learning_config, MLP_config_filename, str(i)]
+            else:
+                commands = ['sbatch', shell_file, config.get('directory'),active_learning_config, MLP_config_filename, str(i)]
+            process = subprocess.run(commands,capture_output=True)
+            job_ids.append(int(process.stdout.split(b' ')[-1]))
+            job_types.append(shell_file)
 
         if 'gpaw_active.sh' in filenames:
             shell_file = 'submits/gpaw_active.sh'
