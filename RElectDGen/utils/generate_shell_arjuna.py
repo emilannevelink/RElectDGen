@@ -150,7 +150,7 @@ def slurm_config_from_config(config, file):
     if 'gpu' in slurm_config['p']:
         slurm_config['A'] = 'venkvis_gpu'
         n_gpu = min(1,max(4,int(slurm_config['n']/16.)))
-        slurm_config[f'--gres=gpu'] = n_gpu
+        slurm_config[f'--gres'] = f'gpu:{n_gpu}'
     else:
         slurm_config['A'] = 'venkvis'
     
