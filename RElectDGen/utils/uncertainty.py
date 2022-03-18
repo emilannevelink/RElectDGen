@@ -178,7 +178,7 @@ class latent_distance_uncertainty_Nequip_adversarial():
         train_embeddings = {}
         test_embeddings = {}
         test_errors = {}
-        train_energies = torch.empty((0))
+        train_energies = torch.empty((0),device=self.device)
         for key in self.config.get('chemical_symbol_to_type'):
             train_embeddings[key] = torch.empty((0,self.latent_size),device=self.device)
             test_embeddings[key] = torch.empty((0,self.latent_size),device=self.device)
@@ -195,7 +195,7 @@ class latent_distance_uncertainty_Nequip_adversarial():
         self.train_embeddings = train_embeddings
         self.train_energies = train_energies
             
-        test_energies = torch.empty((0))
+        test_energies = torch.empty((0),device=self.device)
         for data in dataset[self.config.val_idcs]:
             out = self.model(self.transform_data_input(data))
             test_energies = torch.cat([test_energies, out['total_energy']])
@@ -234,7 +234,7 @@ class latent_distance_uncertainty_Nequip_adversarial():
         self.atom_embedding = out['node_features']
 
         if distances == 'train_val':
-            energies = torch.cat(self.train_energies, self.test_energies)
+            energies = torch.cat([self.train_energies, self.test_energies])
         else:
             energies = self.train_energies
 
@@ -243,9 +243,9 @@ class latent_distance_uncertainty_Nequip_adversarial():
 
         probability = 1/Q * torch.exp(-out['total_energy']/kT)
         
-        uncertainties = self.predict_uncertainty(data['atom_types'], self.atom_embedding, distances=distances)
+        uncertainties = self.predict_uncertainty(data['atom_types'], self.atom_embedding, distances=distances).to(self.device)
 
-        adv_loss = probability * uncertainties
+        adv_loss = (probability * uncertainties).sum()
 
         return adv_loss
 

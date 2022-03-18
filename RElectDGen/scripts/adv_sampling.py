@@ -97,15 +97,23 @@ def main(args=None):
     for i in traj_indices:
         atoms = traj[i]
         
+        # print(i, atoms.get_positions())
         adv_updates = config.get('adversarial_steps', 100)
         for _ in range(adv_updates):
-            data = AtomicData.from_ase(atoms=atoms,r_max=UQ.r_max, self_interaction=UQ.self_interaction)
-            adv_loss = UQ.adversarial_loss(data, T)
-            grads = torch.autograd.grad(adv_loss,data['positions'])
-            atoms.set_positions(
-                atoms.get_positions() + adversarial_learning_rate*grads[0]
-            )
+            data = UQ.transform(AtomicData.from_ase(atoms=atoms,r_max=UQ.r_max, self_interaction=UQ.self_interaction))
+            data['pos'].requires_grad = True
             
+            adv_loss = UQ.adversarial_loss(data, T)
+            
+            grads = torch.autograd.grad(adv_loss,data['pos'])
+            
+            
+            atoms.set_positions(
+                atoms.get_positions() + adversarial_learning_rate*grads[0].cpu().numpy()
+            )
+        
+        # print(grads[0])
+        # print(atoms.get_positions())
         embeddings.append(UQ.atom_embedding)
         traj_updated.append(atoms)
 
