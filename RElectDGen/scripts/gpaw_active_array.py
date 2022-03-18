@@ -32,7 +32,7 @@ def main(args=None):
 
     config, array_index = parse_command_line(args)
     
-    calc_oracle = oracle_from_config(config)
+    # calc_oracle = oracle_from_config(config)
     active_learning_configs = os.path.join(config.get('data_directory'),config.get('active_learning_configs'))
     active_learning_calc = os.path.join(config.get('data_directory'),config.get('active_learning_calc'))
 

@@ -4,10 +4,11 @@ from ase.io.ulm import InvalidULMFileError
 from ase.io.trajectory import Trajectory
 
 from ase.parallel import world
+import numpy as np
 
 from RElectDGen.calculate.recalculate import recalculate_traj_energies
 from RElectDGen.calculate.calculator import oracle_from_config
-
+from RElectDGen.utils.logging import write_to_tmp_dict
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--config_file', dest='config',
@@ -23,7 +24,7 @@ with open(args.config,'r') as fl:
     config = yaml.load(fl,yaml.FullLoader)
 
 
-calc_oracle = oracle_from_config(config)
+# calc_oracle = oracle_from_config(config)
 
 trajectory_file = os.path.join(config.get('data_directory'),config.get('trajectory_file'))
 active_learning_calc = os.path.join(config.get('data_directory'),config.get('active_learning_calc'))
@@ -44,6 +45,25 @@ if os.path.isfile(active_learning_configs):
     traj_writer = Trajectory(trajectory_file,mode='a')
     [traj_writer.write(atoms) for atoms in traj_active]
     
+    try:
+        calculation_times = []
+        for atoms in traj_active:
+            print(atoms)
+            print(atoms.info)
+            calculation_times.append(atoms.info['calculation_time'])
+        
+        print(calculation_times)
+        print(np.mean(calculation_times))
+        logging_dict = {
+            'calculation_times_mean': float(np.mean(calculation_times)),
+            'calculation_times_max': float(np.max(calculation_times)),
+            'calculation_times_min': float(np.min(calculation_times))
+        }
+        tmp_filename = os.path.join(config.get('directory'),config.get('run_dir'),config.get('tmp_file','tmp.json'))
+        write_to_tmp_dict(tmp_filename,logging_dict)
+    except Exception as e:
+        print(e)
+        print('error')
 
     if world.rank == 0:
         os.remove(active_learning_configs)
