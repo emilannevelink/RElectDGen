@@ -22,7 +22,10 @@ def _gen_sbatch_config(config):
     for job_par in config:
         if config[job_par]:
             if job_par.startswith('--'):
-                txt += f'#SBATCH {job_par}={config[job_par]}\n'
+                if 'gres' in job_par:
+                    txt += f'#SBATCH {job_par}:{config[job_par]}\n'
+                else:
+                    txt += f'#SBATCH {job_par}={config[job_par]}\n'
             else:
                 txt += f'#SBATCH -{job_par} {config[job_par]}\n'
     return txt
