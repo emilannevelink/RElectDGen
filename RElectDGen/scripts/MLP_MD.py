@@ -243,7 +243,7 @@ def main(args=None):
                         calc_inds.append(i)
                         embedding_distances.append(embedding_distance)
                     else:
-                        UQ_dist = np.linalg.norm(keep_embeddings[key]-embeddingi_cluster,axis=1).min()*UQ.params[key][1]
+                        UQ_dist = UQ.params[key][0] + np.linalg.norm(keep_embeddings[key]-embeddingi_cluster,axis=1).min()*UQ.params[key][1]
                         if UQ_dist>2*config.get('UQ_min_uncertainty'):
                             for key in MLP_config.get('chemical_symbol_to_type'):
                                 mask = np.array(clusters[i].get_chemical_symbols()) == key
