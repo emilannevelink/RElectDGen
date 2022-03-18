@@ -149,6 +149,7 @@ def main(args=None):
     max_sigma = config.get('UQ_max_uncertainty')
 
     uncertainty_thresholds = [max_sigma, min_sigma]
+    config['uncertainty_thresholds'] = uncertainty_thresholds
 
     try:
         max_index = int((uncertainty.max(axis=1).values>5*max_sigma).nonzero()[0])
