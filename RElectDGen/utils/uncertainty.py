@@ -327,6 +327,8 @@ class latent_distance_uncertainty_Nequip_adversarial():
         
         n = len(self.config.get('chemical_symbol_to_type'))
         fig, ax = plt.subplots(1,n, figsize=(5*n,5))
+        if n == 1:
+            ax = [ax]
         max_x = 0
         max_y = 0
         for i, key in enumerate(self.config.get('chemical_symbol_to_type')):
