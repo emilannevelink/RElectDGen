@@ -1,4 +1,5 @@
 import os
+from collections import OrderedDict
 import torch
 from nequip.utils import Config
 from nequip.ase.nequip_calculator import NequIPCalculator
@@ -89,6 +90,8 @@ def nn_from_results():
     model = model_from_config(
             config=MLP_config, initialize=False, # dataset=dataset
         )
+    if not isinstance(model_state_dict, OrderedDict):
+        model_state_dict = model_state_dict.state_dict() # for backwards capability
     model.load_state_dict(model_state_dict)
     model.to(torch.device(device))
     # if MLP_config.compile_model:
