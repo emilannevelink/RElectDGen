@@ -70,7 +70,7 @@ def main(args=None):
             print(f'Running GPAW, initial MD steps {initial_MD_steps}', flush =True)
         from RElectDGen.calculate.calculator import oracle_from_config
 
-        calc_oracle = oracle_from_config(config)
+        calc_oracle = oracle_from_config(config, atoms=supercell)
         supercell.calc = calc_oracle    
         MaxwellBoltzmannDistribution(supercell, temperature_K=config.get('GPAW_MD_temperature'))
         GPAW_MD_dump_file = os.path.join(config.get('data_directory'),config.get('GPAW_MD_dump_file'))
