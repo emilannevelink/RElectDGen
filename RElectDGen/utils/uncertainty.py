@@ -1,3 +1,4 @@
+import sys
 import torch
 import numpy as np
 from scipy.optimize import minimize
@@ -163,6 +164,7 @@ class latent_distance_uncertainty_Nequip_adversarial():
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
         self.kb = 8.6173e-5 #eV/K
+        self.params_func = getattr(sys.modules[__name__],config.get('params_func','optimize2params'))
             
 
     def transform_data_input(self,data):
@@ -212,20 +214,24 @@ class latent_distance_uncertainty_Nequip_adversarial():
 
         latent_distances = {}
         min_distances = {}
+        min_vectors = {}
         params = {}
         for key in self.config.get('chemical_symbol_to_type'):
             latent_distances[key] = torch.cdist(train_embeddings[key],test_embeddings[key],p=2)
             inds = torch.argmin(latent_distances[key],axis=0)
             min_distances[key] = torch.tensor([latent_distances[key][ind,i] for i, ind in enumerate(inds)]).detach().cpu().numpy()
+            min_vectors[key] = np.abs(torch.vstack([train_embeddings[key][ind]-test_embeddings[key][i] for i, ind in enumerate(inds)]).detach().cpu().numpy())
 
-            params0 = (0.01,0.01)
-            res = minimize(optimizeparams,params0,args=(test_errors[key].reshape(-1).detach().cpu().numpy(),min_distances[key]),method='Nelder-Mead')
-            print(res,flush=True)
-            params[key] = np.abs(res.x)
+            params[key] = self.params_func(test_errors[key].reshape(-1).detach().cpu().numpy(),min_vectors[key])
+            # params0 = [0.01]*(self.latent_size+1)
+            # res = minimize(optimizeparams,params0,args=(test_errors[key].reshape(-1).detach().cpu().numpy(),min_distances[key]),method='Nelder-Mead')
+            # print(res,flush=True)
+            # params[key] = np.abs(res.x)
 
         self.params = params
         if debug:  
             self.min_distances = min_distances
+            self.min_vectors = min_vectors
             self.test_errors = test_errors
 
     def adversarial_loss(self, data, T, distances='train_val'):
@@ -249,29 +255,49 @@ class latent_distance_uncertainty_Nequip_adversarial():
 
         return adv_loss
 
-    def predict_uncertainty(self, atom_types, embedding, distances='train_val'):
+    def predict_uncertainty(self, atom_types, embedding, distances='train_val', extra_embeddings=None):
 
-        uncertainties = torch.zeros(embedding.shape[0])
+        uncertainties = torch.zeros_like(embedding[:,0])
 
         self.test_distances = {}
+        self.min_vectors = {}
         for key in self.config.get('chemical_symbol_to_type'):
             if distances == 'train_val':
                 embeddings = torch.cat([self.train_embeddings[key],self.test_embeddings[key]])
             elif distances == 'train':
                 embeddings = self.train_embeddings[key]
 
+            if extra_embeddings is not None:
+                embeddings = torch.cat([embeddings,extra_embeddings[key]])
+
             mask = (atom_types==self.config.get('chemical_symbol_to_type')[key]).flatten()
 
             latent_force_distances = torch.cdist(embeddings,embedding[mask],p=2)
-        
+
             inds = torch.argmin(latent_force_distances,axis=0)
             min_distance = torch.tensor([latent_force_distances[ind,i] for i, ind in enumerate(inds)])
+            min_vectors = torch.vstack([embeddings[ind]-embedding[mask][i] for i, ind in enumerate(inds)])
 
             self.test_distances[key] = min_distance.detach().cpu().numpy()
+            self.min_vectors[key] = min_vectors.detach().cpu().numpy()
         
-            uncertainties[mask] = self.params[key][0]+min_distance*self.params[key][1]
+            # uncertainties[mask] = self.params[key][0]+min_distance*self.params[key][1]
+            uncertainties[mask] = self.uncertainty_from_vector(min_vectors, key)
 
         return uncertainties
+
+    def uncertainty_from_vector(self,vector, key):
+        if len(self.params[key]) == 2:
+            distance = torch.linalg.norm(vector,axis=1).reshape(-1,1)
+        else:
+            distance = torch.abs(vector)
+
+        sig_1 = torch.tensor(self.params[key][0]).abs().type_as(distance)
+        sig_2 = torch.tensor(self.params[key][1:]).abs().type_as(distance)
+
+        uncertainty = sig_1 + torch.sum(distance*sig_2,axis=1)
+
+        return uncertainty
 
     def predict_from_traj(self, traj, max=True, batch_size=2):
         uncertainty = []
@@ -314,12 +340,33 @@ class latent_distance_uncertainty_Nequip_adversarial():
         ax.set_ylabel('Force Error')
 
 
+def optimize2params(test_errors, min_vectors):
+
+    min_distances = np.linalg.norm(min_vectors,axis=1).reshape(-1,1)
+    params0 = [0.01]*(2)
+    res = minimize(optimizeparams,params0,args=(test_errors,min_distances),method='Nelder-Mead')
+    print(res,flush=True)
+    params = np.abs(res.x)
+
+    return params
+
+def optimizevecparams(test_errors, min_vectors):
+
+    min_vectors = np.abs(min_vectors)
+    params0 = [0.01]*(min_vectors.shape[1]+1)
+    res = minimize(optimizeparams,params0,args=(test_errors,min_vectors),method='Nelder-Mead', options={'maxiter':1000000})
+    print(res,flush=True)
+    params = np.abs(res.x)
+
+    return params
 
 def optimizeparams(params,eps_d,d):
-    sig_1, sig_2 = params[0],params[1]
+    sig_1, sig_2 = params[0],params[1:]
     
-    sd = np.abs(sig_1) + d*np.abs(sig_2)
+    sd = np.abs(sig_1) + (d*np.abs(sig_2)).sum(axis=1)
     
     negLL = -np.sum( stats.norm.logpdf(eps_d, loc=0, scale=sd) )
     
     return negLL    
+
+   

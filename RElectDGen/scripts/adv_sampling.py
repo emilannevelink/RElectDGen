@@ -69,6 +69,7 @@ def main(args=None):
     print('Time to initialize', tmp0-start)
 
     ### Calibrate Uncertainty Quantification
+    MLP_config['params_func'] = config.get('params_func','optimize2params')
     UQ = latent_distance_uncertainty_Nequip_adversarial(model, MLP_config)
     UQ.calibrate()
     print(UQ.params,flush=True)
@@ -127,15 +128,16 @@ def main(args=None):
         keep_embeddings[key] = torch.empty((0,UQ.train_embeddings.shape[-1]))
     for i, (embedding_i, atoms) in enumerate(zip(embeddings,traj_updated)):
         
-        active_uncertainty = []
-        for key in MLP_config.get('chemical_symbol_to_type'): 
-            embeddings_all[key] = torch.cat([UQ.train_embeddings[key].detach(), keep_embeddings[key]])
-            mask = np.array(atoms.get_chemical_symbols()) == key
-            embedding_distance = torch.cdist(embeddings_all[key],embedding_i[mask],p=2).numpy().min(axis=0)
+        # active_uncertainty = []
+        # for key in MLP_config.get('chemical_symbol_to_type'): 
+        #     embeddings_all[key] = torch.cat([UQ.train_embeddings[key].detach(), keep_embeddings[key]])
+        #     mask = np.array(atoms.get_chemical_symbols()) == key
+        #     embedding_distance = torch.cdist(embeddings_all[key],embedding_i[mask],p=2).numpy().min(axis=0)
 
 
-            active_uncertainty.append(UQ.params[0] + embedding_distance*UQ.params[1])
-        active_uncertainty = np.array(active_uncertainty)
+        #     active_uncertainty.append(UQ.params[0] + embedding_distance*UQ.params[1])
+        data = UQ.transform(AtomicData.from_ase(atoms=atoms,r_max=UQ.r_max, self_interaction=UQ.self_interaction))
+        active_uncertainty = UQ.predict_uncertainty(data['atom_types'], embedding_i, extra_embeddings=keep_embeddings).detach().cpu().numpy()
 
         if np.any(active_uncertainty>config.get('UQ_min_uncertainty')):
             calc_inds.append(i)
@@ -143,26 +145,26 @@ def main(args=None):
                 mask = np.array(atoms.get_chemical_symbols()) == key
                 keep_embeddings[key] = torch.cat([keep_embeddings[key],embedding_i[mask]])
 
-        checks = [False, False, False] # Keep for restart
+    checks = [False, False, False] # Keep for restart
 
-        MLP_dict['number_clusters_calculate'] = len(calc_inds)
+    MLP_dict['number_clusters_calculate'] = len(calc_inds)
 
-        # Address first active learning loop over confidence
-        if len(calc_inds) == 0 and get_initial_MD_steps(config)==-1:
-            calc_inds = np.arange(config.get('max_samples'),dtype=int)
+    # Address first active learning loop over confidence
+    if len(calc_inds) == 0 and get_initial_MD_steps(config)==-1:
+        calc_inds = np.arange(config.get('max_samples'),dtype=int)
 
-        if len(calc_inds)>0:
-            traj_calc = [traj_updated[i] for i in torch.tensor(calc_inds).tolist()]
-            
-            active_learning_configs = os.path.join(config.get('data_directory'),config.get('active_learning_configs'))
-            traj_write = Trajectory(active_learning_configs,mode='w')
-            [traj_write.write(atoms) for atoms in traj_calc]
+    if len(calc_inds)>0:
+        traj_calc = [traj_updated[i] for i in torch.tensor(calc_inds).tolist()]
+        
+        active_learning_configs = os.path.join(config.get('data_directory'),config.get('active_learning_configs'))
+        traj_write = Trajectory(active_learning_configs,mode='w')
+        [traj_write.write(atoms) for atoms in traj_calc]
 
-            print(len(calc_inds), calc_inds)
-            checks.append(len(calc_inds)<config.get('max_samples')/2)
-        else:
-            print('No uncertain data points')
-            checks.append(True)
+        print(len(calc_inds), calc_inds)
+        checks.append(len(calc_inds)<config.get('max_samples')/2)
+    else:
+        print('No uncertain data points')
+        checks.append(True)
 
     print('checks: ', checks)
 
