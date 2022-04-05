@@ -12,6 +12,7 @@ from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
 from ase.md.verlet import VelocityVerlet
 from ase import units
 from ase.md import MDLogger
+from sentry_sdk import flush
 
 import yaml
 import torch
@@ -121,6 +122,7 @@ def main(args=None):
  
     print('writing uncertain clusters', flush=True)
     calc_inds = []
+    uncertainties = []
     # embedding_distances = {}
     keep_embeddings = {}
     embeddings_all = {}
@@ -141,12 +143,14 @@ def main(args=None):
 
         if np.any(active_uncertainty>config.get('UQ_min_uncertainty')):
             calc_inds.append(i)
+            uncertainties.append(active_uncertainty.max())
             for key in MLP_config.get('chemical_symbol_to_type'): 
                 mask = np.array(atoms.get_chemical_symbols()) == key
                 keep_embeddings[key] = torch.cat([keep_embeddings[key],embedding_i[mask]])
 
     checks = [False, False, False] # Keep for restart
 
+    print(uncertainties, flush = True)
     MLP_dict['number_clusters_calculate'] = len(calc_inds)
 
     # Address first active learning loop over confidence
