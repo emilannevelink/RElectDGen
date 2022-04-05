@@ -323,21 +323,33 @@ class latent_distance_uncertainty_Nequip_adversarial():
             uncertainty = uncertainty.reshape(len(traj),-1)
             return uncertainty, atom_embeddings.reshape(len(traj),-1,atom_embeddings.shape[-1])
 
-    def plot_fit(self):
+    def plot_fit(self, filename=None):
         
-        fig = plt.figure()
-        ax = plt.gca()
-        for key in self.config.get('chemical_symbol_to_type'):
-            ax.scatter(self.min_distances[key],self.test_errors[key].reshape(-1),alpha=0.2)
+        n = len(self.config.get('chemical_symbol_to_type'))
+        fig, ax = plt.subplots(1,n, figsize=(5*n,5))
+        max_x = 0
+        max_y = 0
+        for i, key in enumerate(self.config.get('chemical_symbol_to_type')):
+            max_x = max([max_x, self.min_distances[key].max()])
+            max_y = max([max_y, self.test_errors[key].reshape(-1).detach().numpy().max()])
+        for i, key in enumerate(self.config.get('chemical_symbol_to_type')):
+            ax[i].scatter(self.min_distances[key],self.test_errors[key].reshape(-1).detach(),alpha=0.2)
 
             sigabs = self.params[key]
-            d_fit = np.linspace(0,self.d_force_test.max())
-            error_fit = sigabs[0] + sigabs[1]*d_fit
-            ax.plot(d_fit,error_fit,label=key)
+            d_fit = np.linspace(0,max_x)
+            if len(sigabs) == 2:
+                error_fit = sigabs[0] + sigabs[1]*d_fit
+            else:
+                error_fit = sigabs[0] + max(sigabs[1:])*d_fit
+            ax[i].plot(d_fit,error_fit,label=key)
 
-        ax.legend()
-        ax.set_xlabel('Embedding Distance')
-        ax.set_ylabel('Force Error')
+            ax[i].legend()
+            ax[i].set_xlabel('Embedding Distance')
+            ax[i].set_ylabel('Force Error')
+            ax[i].set_ylim((0,1.1*max_y))
+            
+        if filename is not None:
+            plt.savefig(filename)
 
 
 def optimize2params(test_errors, min_vectors):
