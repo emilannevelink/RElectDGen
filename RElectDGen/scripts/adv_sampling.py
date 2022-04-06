@@ -106,13 +106,19 @@ def main(args=None):
             data['pos'].requires_grad = True
             
             adv_loss = UQ.adversarial_loss(data, T)
-            
-            grads = torch.autograd.grad(adv_loss,data['pos'],allow_unused=True)
-            
-            
-            atoms.set_positions(
-                atoms.get_positions() + adversarial_learning_rate*grads[0].cpu().numpy()
-            )
+            try:
+                grads = torch.autograd.grad(adv_loss,data['pos'])
+                
+                
+                atoms.set_positions(
+                    atoms.get_positions() + adversarial_learning_rate*grads[0].cpu().numpy()
+                )
+            except Exception as e:
+                print(e)
+                atoms.set_positions(
+                    atoms.get_positions() - adversarial_learning_rate*grads[0].cpu().numpy()
+                )
+                break
         
         # print(grads[0])
         # print(atoms.get_positions())
