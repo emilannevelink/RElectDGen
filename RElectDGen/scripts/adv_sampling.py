@@ -107,7 +107,7 @@ def main(args=None):
             
             adv_loss = UQ.adversarial_loss(data, T)
             
-            grads = torch.autograd.grad(adv_loss,data['pos'])
+            grads = torch.autograd.grad(adv_loss,data['pos'],allow_unused=True)
             
             
             atoms.set_positions(
