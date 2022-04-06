@@ -97,6 +97,7 @@ def main(args=None):
     traj_updated = []
     embeddings = []
     for i in traj_indices:
+        record = True
         atoms = traj[i]
         
         # print(i, atoms.get_positions())
@@ -118,12 +119,14 @@ def main(args=None):
                 atoms.set_positions(
                     atoms.get_positions() - adversarial_learning_rate*grads[0].cpu().numpy()
                 )
+                record = False
                 break
         
         # print(grads[0])
         # print(atoms.get_positions())
-        embeddings.append(UQ.atom_embedding)
-        traj_updated.append(atoms)
+        if record:
+            embeddings.append(UQ.atom_embedding)
+            traj_updated.append(atoms)
 
  
     print('writing uncertain clusters', flush=True)
