@@ -114,19 +114,23 @@ def main(args=None):
                 atoms.set_positions(
                     atoms.get_positions() + adversarial_learning_rate*grads[0].cpu().numpy()
                 )
+                atoms_save = copy.deepcopy(atoms)
             except Exception as e:
                 print(e)
                 atoms.set_positions(
                     atoms.get_positions() - adversarial_learning_rate*grads[0].cpu().numpy()
                 )
-                record = False
+                # record = False
                 break
         
         # print(grads[0])
         # print(atoms.get_positions())
         if record:
+            data = UQ.transform(AtomicData.from_ase(atoms=atoms_save,r_max=UQ.r_max, self_interaction=UQ.self_interaction))
+            data['pos'].requires_grad = True
+            adv_loss = UQ.adversarial_loss(data, T)
             embeddings.append(UQ.atom_embedding)
-            traj_updated.append(atoms)
+            traj_updated.append(atoms_save)
 
  
     print('writing uncertain clusters', flush=True)
