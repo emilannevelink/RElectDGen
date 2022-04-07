@@ -8,6 +8,7 @@ from nequip.data import dataset_from_config
 from nequip.model import model_from_config
 import numpy as np
 from ase.parallel import world
+from nequip.train import Trainer
 
 from RElectDGen.utils.save import get_results_dir
 
@@ -76,33 +77,38 @@ def oracle_from_config(config,atoms=None):
     return calculator
 
 def nn_from_results():
-    
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
     train_directory = get_results_dir()
     
-    file_config = train_directory + "/config_final.yaml"
-    MLP_config = Config.from_file(file_config)
+    # file_config = train_directory + "/config_final.yaml"
+    # MLP_config = Config.from_file(file_config)
 
+    # model_path = train_directory + "/best_model.pth"
+    
+    # model_state_dict = torch.load(model_path, map_location=torch.device(device))
+    # try:
+    #     dataset = dataset_from_config(MLP_config)
+    #     model = model_from_config(
+    #             config=MLP_config, initialize=True, dataset=dataset
+    #         )
+    # except Exception as e:
+    #     print('Model not initialized')
+    #     print(e)
+    #     model = model_from_config(
+    #             config=MLP_config, initialize=False
+    #         )
+    # if not isinstance(model_state_dict, OrderedDict):
+    #     model_state_dict = model_state_dict.state_dict() # for backwards compatability
+    # model.load_state_dict(model_state_dict)
+    # model.to(torch.device(device))
+
+    model, MLP_config = Trainer.load_model_from_training_session(
+        traindir=train_directory
+    )
+    
     chemical_symbol_to_type = MLP_config.get('chemical_symbol_to_type')
     transform = TypeMapper(chemical_symbol_to_type=chemical_symbol_to_type)
 
-    model_path = train_directory + "/best_model.pth"
-    device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    model_state_dict = torch.load(model_path, map_location=torch.device(device))
-    try:
-        dataset = dataset_from_config(MLP_config)
-        model = model_from_config(
-                config=MLP_config, initialize=True, dataset=dataset
-            )
-    except Exception as e:
-        print('Model not initialized')
-        print(e)
-        model = model_from_config(
-                config=MLP_config, initialize=False
-            )
-    if not isinstance(model_state_dict, OrderedDict):
-        model_state_dict = model_state_dict.state_dict() # for backwards compatability
-    model.load_state_dict(model_state_dict)
-    model.to(torch.device(device))
     # if MLP_config.compile_model:
     import e3nn
     model = e3nn.util.jit.compile(model)
