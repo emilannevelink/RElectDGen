@@ -69,8 +69,10 @@ def main(args=None):
         if world.rank == 0:
             print(f'Running GPAW, initial MD steps {initial_MD_steps}', flush =True)
         from RElectDGen.calculate.calculator import oracle_from_config
-
-        supercell = Trajectory(trajectory_file)[-1]
+        
+        if os.path.isfile(trajectory_file):
+            supercell = Trajectory(trajectory_file)[-1]
+        
         calc_oracle = oracle_from_config(config, atoms=supercell)
         supercell.calc = calc_oracle    
         MaxwellBoltzmannDistribution(supercell, temperature_K=config.get('GPAW_MD_temperature'))
