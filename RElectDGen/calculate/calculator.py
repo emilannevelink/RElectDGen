@@ -105,7 +105,7 @@ def nn_from_results():
     model, MLP_config = Trainer.load_model_from_training_session(
         traindir=train_directory
     )
-    
+    model.eval()
     chemical_symbol_to_type = MLP_config.get('chemical_symbol_to_type')
     transform = TypeMapper(chemical_symbol_to_type=chemical_symbol_to_type)
 
