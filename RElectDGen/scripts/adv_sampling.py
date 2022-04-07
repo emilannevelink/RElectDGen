@@ -110,11 +110,11 @@ def main(args=None):
             try:
                 grads = torch.autograd.grad(adv_loss,data['pos'])
                 
-                
+                atoms_save = copy.deepcopy(atoms)
                 atoms.set_positions(
                     atoms.get_positions() + adversarial_learning_rate*grads[0].cpu().numpy()
                 )
-                atoms_save = copy.deepcopy(atoms)
+                
             except Exception as e:
                 print(e)
                 atoms.set_positions(
