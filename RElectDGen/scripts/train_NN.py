@@ -58,7 +58,7 @@ def use_previous_model(MLP_config_new):
         MLP_config_new['num_types'] = transform.num_types
         dataset = dataset_from_config(MLP_config_new)
         model = model_from_config(
-            config=MLP_config_new, initialize=True, dataset=dataset
+            config=MLP_config_new, initialize=False #, dataset=dataset
         )
         model.load_state_dict(model_load.state_dict())
         train = False
