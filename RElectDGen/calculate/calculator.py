@@ -91,7 +91,7 @@ def nn_from_results():
             config=MLP_config, initialize=False, # dataset=dataset
         )
     if not isinstance(model_state_dict, OrderedDict):
-        model_state_dict = model_state_dict.state_dict() # for backwards capability
+        model_state_dict = model_state_dict.state_dict() # for backwards compatability
     model.load_state_dict(model_state_dict)
     model.to(torch.device(device))
     # if MLP_config.compile_model:

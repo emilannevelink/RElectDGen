@@ -10,6 +10,7 @@ import torch
 from nequip.model import model_from_config
 from nequip.data.transforms import TypeMapper
 from nequip.utils import Config
+from nequip.data import dataset_from_config
 
 from RElectDGen.utils.uncertainty import latent_distance_uncertainty_Nequip
 
@@ -55,8 +56,9 @@ def use_previous_model(MLP_config_new):
         transform = TypeMapper(chemical_symbol_to_type=chemical_symbol_to_type)
         MLP_config_new['type_names'] = transform.type_names
         MLP_config_new['num_types'] = transform.num_types
+        dataset = dataset_from_config(MLP_config_new)
         model = model_from_config(
-            config=MLP_config_new, initialize=False, # dataset=dataset
+            config=MLP_config_new, initialize=True, dataset=dataset
         )
         model.load_state_dict(model_load.state_dict())
         train = False
@@ -72,6 +74,8 @@ def use_previous_model(MLP_config_new):
         print(e)
         print('previous model is not the same as state dict', flush=True)
         train = True
+        model = 0
+        MLP_config = {}
 
     return train, model, MLP_config
 
