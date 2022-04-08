@@ -99,7 +99,7 @@ def main(args=None):
     embeddings = []
     for i in traj_indices:
         record = True
-        atoms = traj[i]
+        atoms = copy.deepcopy(traj[i])
         
         # print(i, atoms.get_positions())
         adv_updates = config.get('adversarial_steps', 100)
@@ -124,6 +124,8 @@ def main(args=None):
                 # record = False
                 break
         
+        print(i, atoms.positions-traj[i].positions)
+        print(traj[i].positions)
         # print(grads[0])
         # print(atoms.get_positions())
         if record:
@@ -137,6 +139,7 @@ def main(args=None):
     writer = Trajectory(traj_dump_file, 'w')
     for atoms in traj_updated:
         writer.write(atoms)
+
 
     print('writing uncertain clusters', len(traj_updated), flush=True)
     calc_inds = []
@@ -169,6 +172,7 @@ def main(args=None):
     checks = [False, False, False] # Keep for restart
 
     print(uncertainties, flush = True)
+    print(np.mean(uncertainties), np.max(uncertainties), np.min(uncertainties), flush = True)
     MLP_dict['number_clusters_calculate'] = len(calc_inds)
 
     # Address first active learning loop over confidence
