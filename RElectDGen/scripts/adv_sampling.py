@@ -140,7 +140,7 @@ def main(args=None):
     keep_embeddings = {}
     embeddings_all = {}
     for key in MLP_config.get('chemical_symbol_to_type'): 
-        keep_embeddings[key] = torch.empty((0,UQ.train_embeddings[key].shape[-1]))
+        keep_embeddings[key] = torch.empty((0,UQ.train_embeddings[key].shape[-1])).to(UQ.device)
     for i, (embedding_i, atoms) in enumerate(zip(embeddings,traj_updated)):
         
         # active_uncertainty = []
