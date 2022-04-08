@@ -75,12 +75,13 @@ def main(args=None):
     UQ.calibrate()
     print(UQ.params,flush=True)
     UQ_dict = UQ_params_to_dict(UQ.params,'MLP')
-    for key in UQ.params:
-        print(key, UQ.params[key],flush=True) 
-        if UQ.params[key][1] < config.get('mininmum_uncertainty_scaling',0):
-            UQ.params[key][1] = config.get('mininmum_uncertainty_scaling')
-            print('change sigma to minimum',flush=True)
+    if MLP_config['params_func'] == 'optimize2params':
+        for key in UQ.params:
             print(key, UQ.params[key],flush=True) 
+            if UQ.params[key][1] < config.get('mininmum_uncertainty_scaling',0):
+                UQ.params[key][1] = config.get('mininmum_uncertainty_scaling')
+                print('change sigma to minimum',flush=True)
+                print(key, UQ.params[key],flush=True) 
             
     tmp1 = time.time()
     print('Time to calibrate UQ ', tmp1-tmp0, 'Elapsed time ', tmp1-start, flush=True)
@@ -133,7 +134,7 @@ def main(args=None):
             traj_updated.append(atoms_save)
 
  
-    print('writing uncertain clusters', flush=True)
+    print('writing uncertain clusters', len(traj_updated), flush=True)
     calc_inds = []
     uncertainties = []
     # embedding_distances = {}
