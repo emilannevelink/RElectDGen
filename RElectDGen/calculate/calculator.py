@@ -100,12 +100,13 @@ def nn_from_results():
     # if not isinstance(model_state_dict, OrderedDict):
     #     model_state_dict = model_state_dict.state_dict() # for backwards compatability
     # model.load_state_dict(model_state_dict)
-    # model.to(torch.device(device))
+    
 
     model, MLP_config = Trainer.load_model_from_training_session(
         traindir=train_directory
     )
     model.eval()
+    model.to(torch.device(device))
     chemical_symbol_to_type = MLP_config.get('chemical_symbol_to_type')
     transform = TypeMapper(chemical_symbol_to_type=chemical_symbol_to_type)
 
