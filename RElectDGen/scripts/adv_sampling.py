@@ -133,7 +133,11 @@ def main(args=None):
             embeddings.append(UQ.atom_embedding)
             traj_updated.append(atoms_save)
 
- 
+    traj_dump_file = os.path.join(config.get('data_directory'),config.get('MLP_MD_dump_file'))
+    writer = Trajectory(traj_dump_file, 'w')
+    for atoms in traj_updated:
+        writer.write(atoms)
+
     print('writing uncertain clusters', len(traj_updated), flush=True)
     calc_inds = []
     uncertainties = []
