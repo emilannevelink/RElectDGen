@@ -103,7 +103,7 @@ def main(args=None):
         
         # print(i, atoms.get_positions())
         adv_updates = config.get('adversarial_steps', 100)
-        for _ in range(adv_updates):
+        for i in range(adv_updates):
             data = UQ.transform(AtomicData.from_ase(atoms=atoms,r_max=UQ.r_max, self_interaction=UQ.self_interaction))
             data['pos'].requires_grad = True
             
@@ -112,8 +112,11 @@ def main(args=None):
                 grads = torch.autograd.grad(adv_loss,data['pos'])
                 
                 atoms_save = copy.deepcopy(atoms)
+                d_position = adversarial_learning_rate*grads[0].cpu().numpy()
+                if i==0:
+                    print(d_position, flush=True)
                 atoms.set_positions(
-                    atoms.get_positions() + adversarial_learning_rate*grads[0].cpu().numpy()
+                    atoms.get_positions() + d_position
                 )
                 
             except Exception as e:
@@ -124,8 +127,9 @@ def main(args=None):
                 # record = False
                 break
         
-        print(i, atoms.positions-traj[i].positions)
-        print(traj[i].positions)
+        print(d_position)
+        print(i, atoms.positions-traj[i].positions, flush=True)
+        print(traj[i].positions, flush = True)
         # print(grads[0])
         # print(atoms.get_positions())
         if record:
