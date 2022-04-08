@@ -45,7 +45,7 @@ def use_previous_model(MLP_config_new):
     try:
         calc_nn, model_load, MLP_config = nn_from_results()
         train = False
-    except (FileNotFoundError, OSError, ValueError):
+    except (FileNotFoundError, OSError, ValueError, UnboundLocalError):
         print('No previous results',flush=True)
         train = True
         MLP_config = {}
