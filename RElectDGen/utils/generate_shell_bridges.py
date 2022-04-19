@@ -31,10 +31,10 @@ def shell_from_config(config):
         
         slurm_config = slurm_config_from_config(config,file)
         
-        commands = ["module load openmpi",
-                    "module load anaconda3", 
+        commands = ["module load anaconda3", 
                     f"conda activate {environment}",
                     'export LD_LIBRARY_PATH=/opt/packages/anaconda3/lib:$LD_LIBRARY_PATH',
+                    "module load openmpi",
                     "which mpiexec"]
 
         if 'train' in file:
