@@ -91,7 +91,7 @@ def slurm_config_from_config(config, file):
     if ('summary' in file or
         'restart' in file):
         slurm_config['p'] = 'RM-shared'
-        slurm_config['t'] = '00-00:05'
+        slurm_config['t'] = '00-00:15'
         cores = 1
         slurm_config['N'] = 1
         slurm_config['--ntasks'] = 1
@@ -107,6 +107,14 @@ def slurm_config_from_config(config, file):
         slurm_config['p'] = config.get('gpaw_queue',config.get('queue','RM-shared'))
         cores = config.get('gpaw_cores',config.get('cores'))
         slurm_config['N'] = config.get('gpaw_nodes',config.get('nodes',1))
+        
+        initial_time_limit = config.get('initial_time_limit')
+        if 'MD' in file and initial_time_limit is not None:
+            slurm_config['t'] = initial_time_limit
+        active_time_limit = config.get('active_time_limit')
+        if ('active' in file or 
+            'array' in file) and active_time_limit is not None:
+            slurm_config['t'] = active_time_limit
 
     #Add distinction for RM-shared and GPU-shared
     if 'RM-shared' in slurm_config['p']:

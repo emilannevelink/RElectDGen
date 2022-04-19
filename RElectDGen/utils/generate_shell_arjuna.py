@@ -161,6 +161,14 @@ def slurm_config_from_config(config, file):
         slurm_config['n'] = config.get('gpaw_cores',config.get('cores'))
         slurm_config['N'] = config.get('gpaw_nodes',config.get('nodes',1))
 
+        initial_time_limit = config.get('initial_time_limit')
+        if 'MD' in file and initial_time_limit is not None:
+            slurm_config['t'] = initial_time_limit
+        active_time_limit = config.get('active_time_limit')
+        if ('active' in file or 
+            'array' in file) and active_time_limit is not None:
+            slurm_config['t'] = active_time_limit
+
     if 'gpu' in slurm_config['p']:
         slurm_config['A'] = 'venkvis_gpu'
         n_gpu = min(1,max(4,int(slurm_config['n']/16.)))
