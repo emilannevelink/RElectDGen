@@ -113,7 +113,7 @@ def main(args=None):
                 
                 atoms_save = copy.deepcopy(atoms)
                 d_position = adversarial_learning_rate*grads[0].cpu().numpy()
-                if j==0:
+                if j<5:
                     print(d_position, flush=True)
                 atoms.set_positions(
                     atoms.get_positions() + d_position
@@ -126,6 +126,7 @@ def main(args=None):
                 )
                 # record = False
                 break
+            print(atoms.positions)
         
         print(d_position)
         print(i, atoms.positions-traj[i].positions, flush=True)
