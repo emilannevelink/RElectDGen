@@ -56,7 +56,8 @@ def shell_from_config(config):
         else:
             if 'MLP' in file:
                 commands += ['REDGEN-MLP-MD --config_file $2  --MLP_config_file $3 --loop_learning_count $4']
-                
+            elif 'adv' in file:
+                commands += ['REDGEN-sample-adv --config_file $2  --MLP_config_file $3 --loop_learning_count $4']
             elif 'MD' in file:
                 file = os.path.join(config.get('scripts_path'),'gpaw_MD.py')
                 commands += [f'mpiexec -n {gpaw_cores}' + f' gpaw python {file} --config_file $2 --MLP_config_file $3']
