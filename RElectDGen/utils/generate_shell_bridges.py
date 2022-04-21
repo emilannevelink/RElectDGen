@@ -98,7 +98,8 @@ def slurm_config_from_config(config, file):
         slurm_config['N'] = 1
         slurm_config['--ntasks'] = 1
     elif ('train' in file or
-        'MLP' in file):
+        'MLP' in file or
+        'adv' in file):
         slurm_config['p'] = config.get('MLP_queue',config.get('queue','RM-shared'))
         cores = config.get('MLP_cores',config.get('cores'))
         slurm_config['N'] = config.get('MLP_nodes',config.get('nodes',1))
