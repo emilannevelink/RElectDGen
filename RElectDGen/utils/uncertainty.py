@@ -255,7 +255,7 @@ class latent_distance_uncertainty_Nequip_adversarial():
 
         return adv_loss
 
-    def predict_uncertainty(self, atom_types, embedding, distances='train_val', extra_embeddings=None):
+    def predict_uncertainty(self, atom_types, embedding, distances='train_val', extra_embeddings=None,type='full'):
 
         uncertainties = torch.zeros_like(embedding[:,0])
 
@@ -282,11 +282,11 @@ class latent_distance_uncertainty_Nequip_adversarial():
             self.min_vectors[key] = min_vectors.detach().cpu().numpy()
         
             # uncertainties[mask] = self.params[key][0]+min_distance*self.params[key][1]
-            uncertainties[mask] = self.uncertainty_from_vector(min_vectors, key)
+            uncertainties[mask] = self.uncertainty_from_vector(min_vectors, key, type=type)
 
         return uncertainties
 
-    def uncertainty_from_vector(self,vector, key):
+    def uncertainty_from_vector(self,vector, key, type='full'):
         if len(self.params[key]) == 2:
             distance = torch.linalg.norm(vector,axis=1).reshape(-1,1)
         else:
@@ -294,8 +294,11 @@ class latent_distance_uncertainty_Nequip_adversarial():
 
         sig_1 = torch.tensor(self.params[key][0]).abs().type_as(distance)
         sig_2 = torch.tensor(self.params[key][1:]).abs().type_as(distance)
-
-        uncertainty = sig_1 + torch.sum(distance*sig_2,axis=1)
+        
+        if type == 'full':
+            uncertainty = sig_1 + torch.sum(distance*sig_2,axis=1)
+        elif type == 'distance':
+            uncertainty = torch.sum(distance*sig_2,axis=1)
 
         return uncertainty
 
