@@ -97,7 +97,7 @@ def shell_from_config(config):
                 ]
 
         else:
-            commands = [f'spack load -r {spack_environment}']
+            commands = [f'spack load {spack_environment}']
 
             if 'MD' in file:
                 file = os.path.join(config.get('scripts_path'),'gpaw_MD.py')
