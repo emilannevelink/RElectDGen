@@ -177,7 +177,10 @@ def main(args=None):
     checks = [False, False, False] # Keep for restart
 
     print(uncertainties, flush = True)
-    print(np.mean(uncertainties), np.max(uncertainties), np.min(uncertainties), flush = True)
+    if len(calc_inds)>0:
+        print(np.mean(uncertainties), np.max(uncertainties), np.min(uncertainties), flush = True)
+    else:
+        print(len(calc_inds))
     MLP_dict['number_clusters_calculate'] = len(calc_inds)
 
     # Address first active learning loop over confidence
