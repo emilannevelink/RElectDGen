@@ -113,8 +113,8 @@ def main(args=None):
                 
                 atoms_save = copy.deepcopy(atoms)
                 d_position = adversarial_learning_rate*grads[0].cpu().numpy()
-                if j<5:
-                    print(d_position, flush=True)
+                # if j<5:
+                #     print(d_position, flush=True)
                 atoms.set_positions(
                     atoms.get_positions() + d_position
                 )
@@ -126,9 +126,9 @@ def main(args=None):
                 )
                 # record = False
                 break
-            print(atoms.positions)
+            # print(atoms.positions)
         
-        print(d_position)
+        # print(d_position)
         print(i, atoms.positions-traj[i].positions, flush=True)
         print(traj[i].positions, flush = True)
         # print(grads[0])
@@ -166,7 +166,7 @@ def main(args=None):
         #     active_uncertainty.append(UQ.params[0] + embedding_distance*UQ.params[1])
         data = UQ.transform(AtomicData.from_ase(atoms=atoms,r_max=UQ.r_max, self_interaction=UQ.self_interaction))
         active_uncertainty = UQ.predict_uncertainty(data['atom_types'], embedding_i, extra_embeddings=keep_embeddings, type='distance').detach().cpu().numpy()
-
+        print(active_uncertainty, flush=True)
         if np.any(active_uncertainty>config.get('UQ_min_uncertainty')):
             calc_inds.append(i)
             uncertainties.append(active_uncertainty.max())
