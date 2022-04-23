@@ -185,10 +185,10 @@ def main(args=None):
 
     # Address first active learning loop over confidence
     if len(calc_inds) == 0 and get_initial_MD_steps(config)==-1:
-        calc_inds = np.arange(config.get('max_samples'),dtype=int)
+        calc_inds = [0, 1] #np.arange(config.get('max_samples'),dtype=int)
 
     if len(calc_inds)>0:
-        traj_calc = [traj_updated[i] for i in torch.tensor(calc_inds).tolist()]
+        traj_calc = [traj_updated[i] for i in torch.tensor(calc_inds).tolist() if i < len(traj_updated)]
         
         active_learning_configs = os.path.join(config.get('data_directory'),config.get('active_learning_configs'))
         traj_write = Trajectory(active_learning_configs,mode='w')
