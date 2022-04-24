@@ -174,8 +174,6 @@ def main(args=None):
                 mask = np.array(atoms.get_chemical_symbols()) == key
                 keep_embeddings[key] = torch.cat([keep_embeddings[key],embedding_i[mask]])
 
-    checks = [False, False, False] # Keep for restart
-
     print(uncertainties, flush = True)
     if len(calc_inds)>0:
         print(np.mean(uncertainties), np.max(uncertainties), np.min(uncertainties), flush = True)
@@ -195,10 +193,11 @@ def main(args=None):
         [traj_write.write(atoms) for atoms in traj_calc]
 
         print(len(calc_inds), calc_inds)
-        checks.append(len(calc_inds)<config.get('max_samples')/2)
+        check_bool = len(calc_inds)<config.get('max_samples')/2
+        checks = [check_bool, check_bool, False, check_bool] # Keep for restart
     else:
         print('No uncertain data points')
-        checks.append(True)
+        checks = [True, True, False, True] # Keep for restart
 
     print('checks: ', checks)
 
