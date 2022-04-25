@@ -41,7 +41,11 @@ def UQ_params_to_dict(params, prefix: str = ''):
         prefix += '_'
     out_dict = {}
     for key in params:
-        out_dict[prefix+key+'_base'] = float(params[key][0])
-        out_dict[prefix+key+'_linear'] = float(params[key][1])
+        if isinstance(params[key],list):
+            out_dict[prefix+key+'_base'] = float(params[key][0][0])
+            out_dict[prefix+key+'_linear'] = float(params[key][0][1])
+        else:
+            out_dict[prefix+key+'_base'] = float(params[key][0])
+            out_dict[prefix+key+'_linear'] = float(params[key][1])
     
     return out_dict

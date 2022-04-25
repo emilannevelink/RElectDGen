@@ -75,13 +75,14 @@ def main(args=None):
     UQ = latent_distance_uncertainty_Nequip_adversarial(model, MLP_config)
     UQ.calibrate()
     print(UQ.params,flush=True)
-    UQ_dict = UQ_params_to_dict(UQ.params[0],'MLP')
+    UQ_dict = UQ_params_to_dict(UQ.params,'MLP')
     if MLP_config['params_func'] == 'optimize2params':
-        for i in range(len(UQ.params)):
-            for key in UQ.params[i]:
-                print(key, UQ.params[i][key],flush=True) 
-                if UQ.params[i][key][1] < config.get('mininmum_uncertainty_scaling',0):
-                    UQ.params[i][key][1] = config.get('mininmum_uncertainty_scaling')
+        
+        for key in UQ.params:
+            for i in range(len(UQ.params[key])):
+                print(key, UQ.params[key][i],flush=True) 
+                if UQ.params[key][i][1] < config.get('mininmum_uncertainty_scaling',0):
+                    UQ.params[key][i][1] = config.get('mininmum_uncertainty_scaling')
                     print('change sigma to minimum',flush=True)
                     print(key, UQ.params[i][key],flush=True) 
             
