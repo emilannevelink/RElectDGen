@@ -244,10 +244,13 @@ class latent_distance_uncertainty_Nequip_adversarial():
         else:
             energies = self.train_energies
 
-        kT = self.kb * T
-        Q = torch.exp(-energies/kT).sum()
+        emean = energies.mean()
+        estd = energies.std()
 
-        probability = 1/Q * torch.exp(-out['total_energy']/kT)
+        kT = self.kb * T
+        Q = torch.exp(-(energies-emean)/estd/kT).sum()
+
+        probability = 1/Q * torch.exp(-(out['total_energy']-emean)/estd/kT)
         
         uncertainties = self.predict_uncertainty(data['atom_types'], self.atom_embedding, distances=distances).to(self.device)
 

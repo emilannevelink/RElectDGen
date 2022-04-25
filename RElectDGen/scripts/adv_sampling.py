@@ -12,7 +12,8 @@ from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
 from ase.md.verlet import VelocityVerlet
 from ase import units
 from ase.md import MDLogger
-from sentry_sdk import flush
+
+from scipy.optimize import minimize
 
 import yaml
 import torch
@@ -101,32 +102,68 @@ def main(args=None):
         record = True
         atoms = copy.deepcopy(traj[i])
         
-        # print(i, atoms.get_positions())
-        adv_updates = config.get('adversarial_steps', 100)
-        for j in range(adv_updates):
+        positions = atoms.get_positions().flatten()
+
+        def adv_loss(positions, UQ, atoms, T):
+            atoms.set_positions(
+                positions.reshape(atoms.positions.shape)
+            )
             data = UQ.transform(AtomicData.from_ase(atoms=atoms,r_max=UQ.r_max, self_interaction=UQ.self_interaction))
             data['pos'].requires_grad = True
             
-            adv_loss = UQ.adversarial_loss(data, T)
-            try:
-                grads = torch.autograd.grad(adv_loss,data['pos'])
+            loss = -UQ.adversarial_loss(data, T)
+
+            return loss
+
+        def d_adv_loss(positions, UQ, atoms, T):
+            
+            atoms.set_positions(
+                positions.reshape(atoms.positions.shape)
+            )
+            data = UQ.transform(AtomicData.from_ase(atoms=atoms,r_max=UQ.r_max, self_interaction=UQ.self_interaction))
+            data['pos'].requires_grad = True
+            
+            loss = -UQ.adversarial_loss(data, T)
+
+            grads = torch.autograd.grad(loss,data['pos'])
+
+            return grads[0].flatten()
+
+        res = minimize(adv_loss,positions,args=(UQ, atoms, T),jac=d_adv_loss, method='Nelder-Mead')
+
+        print(res)
+
+        atoms.set_positions(
+                res.x.reshape(atoms.positions.shape)
+            )
+        atoms_save = copy.deepcopy(atoms)
+
+        # # print(i, atoms.get_positions())
+        # adv_updates = config.get('adversarial_steps', 100)
+        # for j in range(adv_updates):
+        #     data = UQ.transform(AtomicData.from_ase(atoms=atoms,r_max=UQ.r_max, self_interaction=UQ.self_interaction))
+        #     data['pos'].requires_grad = True
+            
+        #     adv_loss = UQ.adversarial_loss(data, T)
+        #     try:
+        #         grads = torch.autograd.grad(adv_loss,data['pos'])
                 
-                atoms_save = copy.deepcopy(atoms)
-                d_position = adversarial_learning_rate*grads[0].cpu().numpy()
-                # if j<5:
-                #     print(d_position, flush=True)
-                atoms.set_positions(
-                    atoms.get_positions() + d_position
-                )
+        #         atoms_save = copy.deepcopy(atoms)
+        #         d_position = adversarial_learning_rate*grads[0].cpu().numpy()
+        #         # if j<5:
+        #         #     print(d_position, flush=True)
+        #         atoms.set_positions(
+        #             atoms.get_positions() + d_position
+        #         )
                 
-            except Exception as e:
-                print(e)
-                atoms.set_positions(
-                    atoms.get_positions() - adversarial_learning_rate*grads[0].cpu().numpy()
-                )
-                # record = False
-                break
-            # print(atoms.positions)
+        #     except Exception as e:
+        #         print(e)
+        #         atoms.set_positions(
+        #             atoms.get_positions() - adversarial_learning_rate*grads[0].cpu().numpy()
+        #         )
+        #         # record = False
+        #         break
+        #     # print(atoms.positions)
         
         # print(d_position)
         print(i, atoms.positions-traj[i].positions, flush=True)

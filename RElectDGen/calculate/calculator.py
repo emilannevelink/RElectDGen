@@ -76,9 +76,10 @@ def oracle_from_config(config,atoms=None):
 
     return calculator
 
-def nn_from_results():
+def nn_from_results(train_directory=None):
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    train_directory = get_results_dir()
+    if train_directory is None:
+        train_directory = get_results_dir()
     
     # file_config = train_directory + "/config_final.yaml"
     # MLP_config = Config.from_file(file_config)
