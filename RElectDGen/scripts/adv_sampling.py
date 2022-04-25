@@ -103,6 +103,7 @@ def main(args=None):
         atoms = copy.deepcopy(traj[i])
         
         positions = atoms.get_positions().flatten()
+        positions += 0.01*(np.random.rand(*positions.shape)-0.5)
 
         def adv_loss(positions, UQ, atoms, T):
             atoms.set_positions(
