@@ -91,7 +91,7 @@ def main(args=None):
     tmp0 = tmp1
 
     traj = read(MLP_config.get('dataset_file_name'), index=':')
-    max_samples = int(max([0.1*len(traj), config.get('max_samples')]))
+    max_samples = int(min([0.1*len(traj), config.get('max_samples')]))
     n_adversarial_samples = int(config.get('n_adversarial_samples',2*max_samples))
     
     traj_indices = torch.randperm(len(traj))[:n_adversarial_samples]
