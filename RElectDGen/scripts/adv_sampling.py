@@ -92,6 +92,7 @@ def main(args=None):
 
     traj = read(MLP_config.get('dataset_file_name'), index=':')
     n_adversarial_samples = int(config.get('n_adversarial_samples',2*config.get('max_samples')))
+    max_samples = int(max([0.1*len(traj, config.get('max_samples'))]))
     traj_indices = torch.randperm(len(traj))[:n_adversarial_samples]
 
     MLP_dict['MLP_MD_temperature'] = config.get('MLP_MD_temperature') + (loop_learning_count-1)*config.get('MLP_MD_dT')
@@ -215,6 +216,10 @@ def main(args=None):
             for key in MLP_config.get('chemical_symbol_to_type'): 
                 mask = np.array(atoms.get_chemical_symbols()) == key
                 keep_embeddings[key] = torch.cat([keep_embeddings[key],embedding_i[mask]])
+
+    uncertain_indices = np.argsort(uncertainties)[::-1][:max_samples]
+    uncertainties = uncertainties[uncertain_indices]
+    calc_inds = calc_inds[uncertain_indices]
 
     print(uncertainties, flush = True)
     if len(calc_inds)>0:
