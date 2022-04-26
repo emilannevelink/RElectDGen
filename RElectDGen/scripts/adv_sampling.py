@@ -100,6 +100,7 @@ def main(args=None):
     adversarial_learning_rate = config.get('adversarial_learning_rate')
     traj_updated = []
     embeddings = []
+    positions_differences = []
     for i in traj_indices:
         record = True
         atoms = copy.deepcopy(traj[i])
@@ -169,6 +170,7 @@ def main(args=None):
         #     # print(atoms.positions)
         
         # print(d_position)
+        positions_differences.append(np.max(np.abs(atoms.positions-traj[i].positions)))
         print(i, atoms.positions-traj[i].positions, flush=True)
         print(traj[i].positions, flush = True)
         # print(grads[0])
@@ -238,6 +240,11 @@ def main(args=None):
     else:
         print('No uncertain data points')
         checks = [True, True, False, True] # Keep for restart
+
+    print('positions_differences', np.max(positions_differences), flush=True)
+    if np.max(positions_differences) < config.get('minimum_position_difference', 0.05):
+        checks[0] = True
+        checks[1] = True
 
     print('checks: ', checks)
 
