@@ -92,7 +92,7 @@ def main(args=None):
 
     traj = read(MLP_config.get('dataset_file_name'), index=':')
     n_adversarial_samples = int(config.get('n_adversarial_samples',2*config.get('max_samples')))
-    max_samples = int(max([0.1*len(traj, config.get('max_samples'))]))
+    max_samples = int(max([0.1*len(traj), config.get('max_samples')]))
     traj_indices = torch.randperm(len(traj))[:n_adversarial_samples]
 
     MLP_dict['MLP_MD_temperature'] = config.get('MLP_MD_temperature') + (loop_learning_count-1)*config.get('MLP_MD_dT')
