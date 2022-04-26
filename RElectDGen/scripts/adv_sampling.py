@@ -220,8 +220,8 @@ def main(args=None):
                 keep_embeddings[key] = torch.cat([keep_embeddings[key],embedding_i[mask]])
 
     uncertain_indices = np.argsort(uncertainties)[::-1][:max_samples]
-    uncertainties = uncertainties[uncertain_indices]
-    calc_inds = calc_inds[uncertain_indices]
+    uncertainties = np.array(uncertainties)[uncertain_indices]
+    calc_inds = np.array(calc_inds)[uncertain_indices]
 
     print(uncertainties, flush = True)
     if len(calc_inds)>0:
