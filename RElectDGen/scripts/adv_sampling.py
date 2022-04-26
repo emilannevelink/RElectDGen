@@ -91,8 +91,9 @@ def main(args=None):
     tmp0 = tmp1
 
     traj = read(MLP_config.get('dataset_file_name'), index=':')
-    n_adversarial_samples = int(config.get('n_adversarial_samples',2*config.get('max_samples')))
     max_samples = int(max([0.1*len(traj), config.get('max_samples')]))
+    n_adversarial_samples = int(config.get('n_adversarial_samples',2*max_samples))
+    
     traj_indices = torch.randperm(len(traj))[:n_adversarial_samples]
 
     MLP_dict['MLP_MD_temperature'] = config.get('MLP_MD_temperature') + (loop_learning_count-1)*config.get('MLP_MD_dT')
@@ -173,6 +174,7 @@ def main(args=None):
         # print(d_position)
         positions_differences.append(np.max(np.abs(atoms.positions-traj[i].positions)))
         print(i, atoms.positions-traj[i].positions, flush=True)
+        print(atoms.positions, flush = True)
         print(traj[i].positions, flush = True)
         # print(grads[0])
         # print(atoms.get_positions())
@@ -240,7 +242,7 @@ def main(args=None):
         [traj_write.write(atoms) for atoms in traj_calc]
 
         print(len(calc_inds), calc_inds)
-        check_bool = len(calc_inds)<config.get('max_samples')/2
+        check_bool = len(calc_inds)<max_samples/2
         checks = [check_bool, check_bool, False, check_bool] # Keep for restart
     else:
         print('No uncertain data points')
