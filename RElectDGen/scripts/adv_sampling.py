@@ -89,16 +89,29 @@ def main(args=None):
     tmp1 = time.time()
     print('Time to calibrate UQ ', tmp1-tmp0, 'Elapsed time ', tmp1-start, flush=True)
     tmp0 = tmp1
+    
+    MLP_dict['MLP_MD_temperature'] = config.get('MLP_MD_temperature') + (loop_learning_count-1)*config.get('MLP_MD_dT')
+    T = MLP_dict['MLP_MD_temperature']
 
     traj = read(MLP_config.get('dataset_file_name'), index=':')
     max_samples = int(min([0.1*len(traj), config.get('max_samples')]))
     n_adversarial_samples = int(config.get('n_adversarial_samples',2*max_samples))
     
-    traj_indices = torch.randperm(len(traj))[:n_adversarial_samples]
+    traj_indices = torch.randperm(len(traj))[:2*n_adversarial_samples]
+    adv_losses = []
+    for i in traj_indices:
+        atoms = copy.deepcopy(traj[i])
+        atoms.positions += 0.01*(np.random.rand(*atoms.positions.shape)-0.5)
+        data = UQ.transform(AtomicData.from_ase(atoms=atoms,r_max=UQ.r_max, self_interaction=UQ.self_interaction))
+        data['pos'].requires_grad = True
+        
+        loss = UQ.adversarial_loss(data, T)
+        adv_losses.append(float(loss))
 
-    MLP_dict['MLP_MD_temperature'] = config.get('MLP_MD_temperature') + (loop_learning_count-1)*config.get('MLP_MD_dT')
-
-    T = MLP_dict['MLP_MD_temperature']
+    sort_indices = torch.argsort(torch.tensor(adv_losses), descending=True) #sort highest to lowest
+    traj_indices = traj_indices[sort_indices[:n_adversarial_samples]]
+    
+    max_displacement = config.get('maximum_adversarial_displacement', 1)
     adversarial_learning_rate = config.get('adversarial_learning_rate')
     traj_updated = []
     embeddings = []
@@ -178,10 +191,10 @@ def main(args=None):
         print(traj[i].positions, flush = True)
         # print(grads[0])
         # print(atoms.get_positions())
-        if record:
+        if record and positions_differences[-1]<max_displacement:
             data = UQ.transform(AtomicData.from_ase(atoms=atoms_save,r_max=UQ.r_max, self_interaction=UQ.self_interaction))
             data['pos'].requires_grad = True
-            adv_loss = UQ.adversarial_loss(data, T)
+            val_adv_loss = UQ.adversarial_loss(data, T)
             embeddings.append(UQ.atom_embedding)
             traj_updated.append(atoms_save)
 
