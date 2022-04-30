@@ -71,6 +71,7 @@ def main(args=None):
     print('Time to initialize', tmp0-start)
 
     ### Calibrate Uncertainty Quantification
+    MLP_config['uncertainty_hidden_dimensions'] = config.get('uncertainty_hidden_dimensions',[])
     MLP_config['params_func'] = config.get('params_func','optimize2params')
     # UQ = latent_distance_uncertainty_Nequip_adversarial(model, MLP_config)
     UQ = latent_distance_uncertainty_Nequip_adversarialNN(model, MLP_config)
