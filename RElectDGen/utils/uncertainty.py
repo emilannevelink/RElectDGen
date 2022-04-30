@@ -441,6 +441,12 @@ class latent_distance_uncertainty_Nequip_adversarialNN():
 
         dataset = dataset_from_config(self.config)
 
+        train_energies = torch.empty((0),device=self.device)
+        for data in dataset[self.config.train_idcs]:
+            out = self.model(self.transform_data_input(data))
+            train_energies = torch.cat([train_energies, out['total_energy']])
+        self.train_energies = train_energies
+
         test_embeddings = torch.empty((0,self.latent_size),device=self.device)
         test_errors = torch.empty((0),device=self.device)
         test_energies = torch.empty((0),device=self.device)
@@ -455,6 +461,7 @@ class latent_distance_uncertainty_Nequip_adversarialNN():
         
         self.test_embeddings = test_embeddings
         self.test_errors = test_errors
+        self.test_energies = test_energies
 
 
     def adversarial_loss(self, data, T, distances='train_val'):
