@@ -103,9 +103,11 @@ def nn_from_results(train_directory=None):
     # model.load_state_dict(model_state_dict)
     
 
-    model, MLP_config = Trainer.load_model_from_training_session(
+    model, _ = Trainer.load_model_from_training_session(
         traindir=train_directory
     )
+    MLP_config = Config.from_file(train_directory + "/config_final.yaml")
+    
     model.eval()
     model.to(torch.device(device))
     chemical_symbol_to_type = MLP_config.get('chemical_symbol_to_type')
