@@ -22,7 +22,7 @@ from nequip.data import AtomicData, AtomicDataDict
 # from nequip.utils import Config
 
 # home_directory = '/Users/emil/Google Drive/'
-from ..utils.uncertainty import latent_distance_uncertainty_Nequip_adversarial
+from ..utils.uncertainty import latent_distance_uncertainty_Nequip_adversarial, latent_distance_uncertainty_Nequip_adversarialNN
 # from e3nn_networks.utils.data_helpers import *
 
 from RElectDGen.scripts.gpaw_MD import get_initial_MD_steps
@@ -72,19 +72,24 @@ def main(args=None):
 
     ### Calibrate Uncertainty Quantification
     MLP_config['params_func'] = config.get('params_func','optimize2params')
-    UQ = latent_distance_uncertainty_Nequip_adversarial(model, MLP_config)
+    # UQ = latent_distance_uncertainty_Nequip_adversarial(model, MLP_config)
+    UQ = latent_distance_uncertainty_Nequip_adversarialNN(model, MLP_config)
     UQ.calibrate()
-    print(UQ.params,flush=True)
-    UQ_dict = UQ_params_to_dict(UQ.params,'MLP')
-    if MLP_config['params_func'] == 'optimize2params':
-        
-        for key in UQ.params:
-            for i in range(len(UQ.params[key])):
-                print(key, UQ.params[key][i],flush=True) 
-                if UQ.params[key][i][1] < config.get('mininmum_uncertainty_scaling',0):
-                    UQ.params[key][i][1] = config.get('mininmum_uncertainty_scaling')
-                    print('change sigma to minimum',flush=True)
-                    print(key, UQ.params[i][key],flush=True) 
+    if hasattr(UQ, 'params'):
+        print(UQ.params,flush=True)
+        UQ_dict = UQ_params_to_dict(UQ.params,'MLP')
+        if MLP_config['params_func'] == 'optimize2params':
+            
+            for key in UQ.params:
+                for i in range(len(UQ.params[key])):
+                    print(key, UQ.params[key][i],flush=True) 
+                    if UQ.params[key][i][1] < config.get('mininmum_uncertainty_scaling',0):
+                        UQ.params[key][i][1] = config.get('mininmum_uncertainty_scaling')
+                        print('change sigma to minimum',flush=True)
+                        print(key, UQ.params[i][key],flush=True) 
+
+    else:
+        UQ_dict = {}
             
     tmp1 = time.time()
     print('Time to calibrate UQ ', tmp1-tmp0, 'Elapsed time ', tmp1-start, flush=True)
@@ -211,7 +216,7 @@ def main(args=None):
     keep_embeddings = {}
     embeddings_all = {}
     for key in MLP_config.get('chemical_symbol_to_type'): 
-        keep_embeddings[key] = torch.empty((0,UQ.train_embeddings[key].shape[-1])).to(UQ.device)
+        keep_embeddings[key] = torch.empty((0,UQ.test_embeddings[key].shape[-1])).to(UQ.device)
     for i, (embedding_i, atoms) in enumerate(zip(embeddings,traj_updated)):
         
         # active_uncertainty = []
