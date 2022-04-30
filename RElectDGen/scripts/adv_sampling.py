@@ -215,8 +215,9 @@ def main(args=None):
     # embedding_distances = {}
     keep_embeddings = {}
     embeddings_all = {}
-    for key in MLP_config.get('chemical_symbol_to_type'): 
-        keep_embeddings[key] = torch.empty((0,UQ.test_embeddings[key].shape[-1])).to(UQ.device)
+    if not isinstance(UQ.test_embeddings,torch.Tensor):
+        for key in MLP_config.get('chemical_symbol_to_type'): 
+            keep_embeddings[key] = torch.empty((0,UQ.test_embeddings[key].shape[-1])).to(UQ.device)
     for i, (embedding_i, atoms) in enumerate(zip(embeddings,traj_updated)):
         
         # active_uncertainty = []
@@ -233,9 +234,10 @@ def main(args=None):
         if np.any(active_uncertainty>config.get('UQ_min_uncertainty')):
             calc_inds.append(i)
             uncertainties.append(active_uncertainty.max())
-            for key in MLP_config.get('chemical_symbol_to_type'): 
-                mask = np.array(atoms.get_chemical_symbols()) == key
-                keep_embeddings[key] = torch.cat([keep_embeddings[key],embedding_i[mask]])
+            if not isinstance(UQ.test_embeddings,torch.Tensor):
+                for key in MLP_config.get('chemical_symbol_to_type'): 
+                    mask = np.array(atoms.get_chemical_symbols()) == key
+                    keep_embeddings[key] = torch.cat([keep_embeddings[key],embedding_i[mask]])
 
     uncertain_indices = np.argsort(uncertainties)[::-1][:max_samples]
     uncertainties = np.array(uncertainties)[uncertain_indices]
