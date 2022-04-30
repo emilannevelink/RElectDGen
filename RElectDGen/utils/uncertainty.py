@@ -465,7 +465,9 @@ class latent_distance_uncertainty_Nequip_adversarialNN():
 
 
     def adversarial_loss(self, data, T, distances='train_val'):
-        
+        if not hasattr(self, 'train_energies'):
+            self.parse_data()
+
         out = self.model(self.transform_data_input(data))
         self.atom_embedding = out['node_features']
 
