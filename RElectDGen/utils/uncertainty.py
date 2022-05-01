@@ -635,6 +635,7 @@ class uncertainty_NN():
     def train(self, x, y):
         x = torch.tensor(x) #Break computational graph for training
         y = torch.tensor(y)
+        y = torch.log(y)
 
         n_train = int(len(x)*self.train_percent)
         rand_ind = torch.randperm(len(x))
@@ -694,7 +695,7 @@ class uncertainty_NN():
 
     def predict(self,x):
         self.model.eval()
-        pred = self.model(x)
+        pred = torch.exp(self.model(x))
 
         return pred
 
