@@ -22,7 +22,8 @@ from nequip.data import AtomicData, AtomicDataDict
 # from nequip.utils import Config
 
 # home_directory = '/Users/emil/Google Drive/'
-from ..utils.uncertainty import latent_distance_uncertainty_Nequip_adversarial, latent_distance_uncertainty_Nequip_adversarialNN
+from ..utils import uncertainty
+# from ..utils.uncertainty import latent_distance_uncertainty_Nequip_adversarial, latent_distance_uncertainty_Nequip_adversarialNN
 # from e3nn_networks.utils.data_helpers import *
 
 from RElectDGen.scripts.gpaw_MD import get_initial_MD_steps
@@ -73,8 +74,10 @@ def main(args=None):
     ### Calibrate Uncertainty Quantification
     MLP_config['uncertainty_hidden_dimensions'] = config.get('uncertainty_hidden_dimensions',[])
     MLP_config['params_func'] = config.get('params_func','optimize2params')
+    UQ_func = getattr(uncertainty,config.get('uncertainty_function', 'latent_distance_uncertainty_Nequip_adversarialNN'))
     # UQ = latent_distance_uncertainty_Nequip_adversarial(model, MLP_config)
-    UQ = latent_distance_uncertainty_Nequip_adversarialNN(model, MLP_config)
+    # UQ = latent_distance_uncertainty_Nequip_adversarialNN(model, MLP_config)
+    UQ = UQ_func(model, MLP_config)
     UQ.calibrate()
     if hasattr(UQ, 'params'):
         print(UQ.params,flush=True)
