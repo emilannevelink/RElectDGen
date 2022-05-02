@@ -71,7 +71,9 @@ def main(args=None):
         from RElectDGen.calculate.calculator import oracle_from_config
         
         if os.path.isfile(trajectory_file):
-            supercell = Trajectory(trajectory_file)[-1]
+            traj = Trajectory(trajectory_file)
+            if len(traj)>0:
+                supercell = Trajectory(trajectory_file)[-1]
         
         calc_oracle = oracle_from_config(config, atoms=supercell)
         supercell.calc = calc_oracle    
