@@ -512,7 +512,7 @@ class latent_distance_uncertainty_Nequip_adversarialNN():
             uncertainty_ens = uncertainty_mean + uncertainty_std
         elif type == 'mean':
             uncertainty_ens = uncertainty_mean
-        if type == 'std':
+        elif type == 'std':
             uncertainty_ens = uncertainty_std
 
         return uncertainty_ens
