@@ -230,7 +230,7 @@ def main(args=None):
 
         #     active_uncertainty.append(UQ.params[0] + embedding_distance*UQ.params[1])
         data = UQ.transform(AtomicData.from_ase(atoms=atoms,r_max=UQ.r_max, self_interaction=UQ.self_interaction))
-        active_uncertainty = UQ.predict_uncertainty(data['atom_types'], embedding_i, extra_embeddings=keep_embeddings, type='distance').detach().cpu().numpy()
+        active_uncertainty = UQ.predict_uncertainty(data['atom_types'], embedding_i, extra_embeddings=keep_embeddings, type=config.get('uncertainty_type','distance')).detach().cpu().numpy()
         print(active_uncertainty, flush=True)
         if np.any(active_uncertainty>config.get('UQ_min_uncertainty')):
             calc_inds.append(i)

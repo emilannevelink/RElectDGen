@@ -441,11 +441,20 @@ class latent_distance_uncertainty_Nequip_adversarialNN():
 
         dataset = dataset_from_config(self.config)
 
+        train_embeddings = torch.empty((0,self.latent_size),device=self.device)
+        train_errors = torch.empty((0),device=self.device)
         train_energies = torch.empty((0),device=self.device)
         for data in dataset[self.config.train_idcs]:
             out = self.model(self.transform_data_input(data))
             train_energies = torch.cat([train_energies, out['total_energy']])
+            train_embeddings = torch.cat([train_embeddings,out['node_features']])
+            
+            error = torch.absolute(out['forces'] - data.forces)
+            train_errors = torch.cat([train_errors,error.mean(dim=1)])
+
         self.train_energies = train_energies
+        self.train_embeddings = train_embeddings
+        self.train_errors = train_errors
 
         test_embeddings = torch.empty((0,self.latent_size),device=self.device)
         test_errors = torch.empty((0),device=self.device)
@@ -499,7 +508,12 @@ class latent_distance_uncertainty_Nequip_adversarialNN():
         uncertainty_mean = torch.mean(uncertainty_raw,axis=0)
         uncertainty_std = torch.std(uncertainty_raw,axis=0)
 
-        uncertainty_ens = uncertainty_mean + uncertainty_std
+        if type == 'full':
+            uncertainty_ens = uncertainty_mean + uncertainty_std
+        elif type == 'mean':
+            uncertainty_ens = uncertainty_mean
+        if type == 'std':
+            uncertainty_ens = uncertainty_std
 
         return uncertainty_ens
 
@@ -533,14 +547,35 @@ class latent_distance_uncertainty_Nequip_adversarialNN():
         if not hasattr(self, 'test_errors'):
             self.parse_data()
             
-        pred_errors = self.predict_uncertainty(0,self.test_embeddings).detach()
-        min_err = min([self.test_errors.min(),pred_errors.min()])
-        max_err = max([self.test_errors.max(),pred_errors.max()])
-        plt.scatter(self.test_errors,pred_errors,alpha=0.5)
-        plt.plot([min_err,max_err], [min_err,max_err],'k',linestyle='--')
-        plt.xlabel('True Error')
-        plt.ylabel('Predicted Error')
-        plt.axis('square')
+        fig, ax = plt.subplots(1,3,figsize=(15,5))
+
+        pred_errors = self.predict_uncertainty(0,self.train_embeddings,type='std').detach()
+        min_err = min([self.train_errors.min()])#,pred_errors.min()])
+        max_err = max([self.train_errors.max()])#,pred_errors.max()])
+        ax[0].scatter(self.train_errors,pred_errors,alpha=0.5)
+        ax[0].plot([min_err,max_err], [min_err,max_err],'k',linestyle='--')
+        ax[0].set_xlabel('True Error')
+        ax[0].set_ylabel('Predicted Error')
+        ax[0].axis('square')
+
+        print((pred_errors-self.train_errors).mean())
+        print((pred_errors-self.train_errors).std())
+
+        pred_errors = self.predict_uncertainty(0,self.test_embeddings,type='mean').detach()
+        min_err = min([self.test_errors.min()])#,pred_errors.min()])
+        max_err = max([self.test_errors.max()])#,pred_errors.max()])
+        ax[1].scatter(self.test_errors,pred_errors,alpha=0.5)
+        ax[1].plot([min_err,max_err], [min_err,max_err],'k',linestyle='--')
+        ax[1].set_xlabel('True Error')
+        ax[1].set_ylabel('Predicted Error')
+        ax[1].axis('square')
+
+        ax[2].axhline(0,color='k',linestyle='--')
+        ax[2].scatter(np.arange(len(self.test_errors)),pred_errors-self.test_errors,alpha=0.5)
+        ax[2].set_ylabel('Residual')
+
+        print((pred_errors-self.test_errors).mean())
+        print((pred_errors-self.test_errors).std())
 
         if filename is not None:
             plt.savefig(filename)
@@ -593,6 +628,66 @@ class LRScheduler():
     def __call__(self, val_loss):
         self.lr_scheduler.step(val_loss)
 
+class embed_input(torch.nn.Module):
+    def __init__(self, input_dim, num_basis=8, trainable=True):
+        super().__init__()
+
+        self.input_dim = input_dim
+        self.trainable = trainable
+        self.num_basis = num_basis
+
+        stds = torch.ones((input_dim,num_basis))
+        means = torch.full(size=stds.size(),fill_value=-(num_basis+1)/2.)+stds.cumsum(dim=1)
+
+
+        if self.trainable:
+            self.means = torch.nn.Parameter(means)
+            self.stds = torch.nn.Parameter(stds)
+        else:
+            self.register_buffer("means", means)
+            self.register_buffer("stds", stds)
+
+    def forward(self, x):
+        x = (x[..., None] - self.means[None,...]) / self.stds[None,...]
+        x = x.square().mul(-0.5).exp() / self.stds  # sqrt(2 * pi)
+        x = x.reshape(x.shape[0],-1)
+        return x
+
+    def rewrite(self, x):
+        mean = x.mean(dim=0)
+        std = x.std(dim=0)
+
+        stds = torch.outer(std,torch.ones(self.num_basis))
+        mean_shifts = torch.outer(std,torch.linspace(-(self.num_basis-1)/2.,(self.num_basis-1)/2.,self.num_basis))
+        means = torch.outer(mean,torch.ones(self.num_basis)) + mean_shifts
+
+        self.means = torch.nn.Parameter(means)
+        self.stds = torch.nn.Parameter(stds)
+
+class rescale_input(torch.nn.Module):
+    def __init__(self, x: torch.Tensor=None, input_dim = 1, trainable = True):
+        # super(torch.nn.Module, self).__init__()
+        super(rescale_input, self).__init__()
+
+        self.trainable = trainable
+        if x is not None:
+            # self.mean = torch.tensor(x.mean(dim=0), requires_grad=trainable)
+            # self.std = torch.tensor(x.std(dim=0), requires_grad=trainable)
+            self.mean = torch.nn.Parameter(x.mean(dim=0))
+            self.std = torch.nn.Parameter(x.std(dim=0))
+        else:
+            self.mean = torch.nn.Parameter(torch.zeros((input_dim)))
+            self.std = torch.nn.Parameter(torch.ones((input_dim)))
+
+    def forward(self, x):
+        x = (x-self.mean)/self.std
+        return x
+
+    def rewrite(self, x):
+
+        self.mean = torch.nn.Parameter(x.mean(dim=0))
+        self.std = torch.nn.Parameter(x.std(dim=0))
+
 
 class uncertainty_NN():
     def __init__(self, 
@@ -611,10 +706,15 @@ class uncertainty_NN():
         if min_lr is None:
             self.min_lr = lr/100
         
+        # layers = [rescale_input(input_dim=input_dim)]
+        layers = [embed_input(input_dim=input_dim)]
+        if isinstance(layers[-1],embed_input):
+            input_dim = layers[-1].input_dim*layers[-1].num_basis
+        
         if len(hidden_dimensions)==0:
-            layers = [torch.nn.Linear(input_dim, 1)]
+            layers.append(torch.nn.Linear(input_dim, 1))
         else:
-            layers = []
+            # layers = []
             for i, hd in enumerate(hidden_dimensions):
                 if i == 0:
                     layers.append(torch.nn.Linear(input_dim, hd))
@@ -635,7 +735,11 @@ class uncertainty_NN():
     def train(self, x, y):
         x = torch.tensor(x) #Break computational graph for training
         y = torch.tensor(y)
+
         y = torch.log(y)
+
+        if isinstance(self.model[0], rescale_input) or isinstance(self.model[0], embed_input) :
+            self.model[0].rewrite(x)
 
         n_train = int(len(x)*self.train_percent)
         rand_ind = torch.randperm(len(x))
