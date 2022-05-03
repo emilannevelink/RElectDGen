@@ -78,14 +78,13 @@ def shell_from_config(config):
             commands = [
                 "spack unload -a",
                 "source /home/spack/.spack/opt/spack/linux-centos7-broadwell/gcc-11.2.0/miniconda3-4.9.2-et7ujxrrzevxewx65fnmzqkftwwkrsyc/etc/profile.d/conda.sh",
-                f'conda activate {conda_environment}',
-                'REDGEN-sample-adv --config_file $2  --MLP_config_file $3 --loop_learning_count $4'
-                # 'python ${1}scripts/'+f'{branch}/restart.py --config_file $2 --MLP_config_file $3',
+                f'conda activate {conda_environment}'
             ]
-            # slurm_config['n'] = python_cores
-            # slurm_config['N'] = python_nodes
-            # slurm_config['--ntasks'] = 1
-            # slurm_config['--cpus-per-task'] = python_cores
+
+            if 'MD' in file:
+                commands += ['REDGEN-md-adv --config_file $2  --MLP_config_file $3 --loop_learning_count $4']
+            else:
+                commands += ['REDGEN-sample-adv --config_file $2  --MLP_config_file $3 --loop_learning_count $4']
 
         elif 'summary' in file:
                 commands = [

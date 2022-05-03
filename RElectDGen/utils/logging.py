@@ -49,3 +49,18 @@ def UQ_params_to_dict(params, prefix: str = ''):
             out_dict[prefix+key+'_linear'] = float(params[key][1])
     
     return out_dict
+
+def add_checks_to_config(config, checks):
+    if config.get('checks') is not None:
+        config_checks = config['checks']
+    else:
+        config_checks = {}
+
+    for key in checks:
+        if key in config_checks:
+            config_checks[key].append(checks[key])
+        else:
+            config_checks[key] = [checks[key]]
+
+    config['checks'] = config_checks
+    return config

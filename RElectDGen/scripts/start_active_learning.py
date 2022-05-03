@@ -42,6 +42,7 @@ def main(args=None):
         MLP_config = yaml.load(fl,yaml.FullLoader)
 
     dataset_filename = os.path.join(config.get('data_directory'), config.get('combined_trajectory'))
+    config['dataset_file_name'] = dataset_filename
     assert dataset_filename in MLP_config.get('dataset_file_name'), f'Dataset wrong in MLP.yaml, include {dataset_filename}'
 
     print(config.get('machine'),flush=True)
