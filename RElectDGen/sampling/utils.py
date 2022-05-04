@@ -28,11 +28,17 @@ def sort_by_uncertainty(traj, embeddings, UQ, max_samples, min_uncertainty=0.04)
                     keep_embeddings[key] = torch.cat([keep_embeddings[key],embedding_i[mask]])
 
     traj_sorted = []
+    uncertainties_sorted = []
     embedding_sorted = []
     ind_sorted = np.argsort(uncertainties)[:max_samples]
     for ind in ind_sorted:
         traj_sorted.append(traj[calc_inds[ind]])
+        uncertainties_sorted.append(uncertainties[ind])
         embedding_sorted.append(embeddings[calc_inds[ind]])
+
+    print(len(uncertainties_sorted),uncertainties_sorted)
+    if len(uncertainties_sorted)>0:
+        print(np.mean(uncertainties_sorted), np.std(uncertainties_sorted))
 
     return traj_sorted, embedding_sorted
 
