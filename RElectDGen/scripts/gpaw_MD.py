@@ -3,7 +3,7 @@ from ase.io import trajectory
 
 from ase.io.trajectory import Trajectory
 from ase.io import read, write
-from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
+from ase.md.velocitydistribution import MaxwellBoltzmannDistribution, ZeroRotation
 from ase.md.verlet import VelocityVerlet
 from ase import units
 
@@ -78,6 +78,7 @@ def main(args=None):
         calc_oracle = oracle_from_config(config, atoms=supercell)
         supercell.calc = calc_oracle    
         MaxwellBoltzmannDistribution(supercell, temperature_K=config.get('GPAW_MD_temperature'))
+        ZeroRotation(supercell)
         GPAW_MD_dump_file = os.path.join(config.get('data_directory'),config.get('GPAW_MD_dump_file'))
         dyn = VelocityVerlet(supercell, timestep=config.get('GPAW_MD_timestep') * units.fs, logfile=GPAW_MD_dump_file)
         traj = Trajectory(trajectory_file, 'a', supercell)
