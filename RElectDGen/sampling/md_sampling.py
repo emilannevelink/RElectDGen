@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 
 from ase.io.trajectory import Trajectory
-from ase.md.velocitydistribution import MaxwellBoltzmannDistribution, ZeroRotation
+from ase.md.velocitydistribution import MaxwellBoltzmannDistribution, ZeroRotation, Stationary
 from ase.md.verlet import VelocityVerlet
 from ase import units
 from ase.md import MDLogger
@@ -66,7 +66,8 @@ def MD_sampling(config, loop_learning_count=1):
     MLP_dict['MLP_MD_temperature'] = config.get('MLP_MD_temperature') + (loop_learning_count-1)*config.get('MLP_MD_dT')
     MaxwellBoltzmannDistribution(supercell, temperature_K=MLP_dict['MLP_MD_temperature'])
     ZeroRotation(supercell)
-    
+    Stationary(supercell)
+
     print(MLP_dict['MLP_MD_temperature'],flush=True)
 
     dyn = VelocityVerlet(supercell, timestep=config.get('MLP_MD_timestep') * units.fs)
