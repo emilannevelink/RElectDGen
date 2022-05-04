@@ -45,7 +45,7 @@ def main(args = None):
     # final_MLP = f'logs/output.{job_ids[MLP_MD_inds[-1]]}'
 
     
-    checks = config.get('checks')
+    checks = config.get('checks', {})
     config['checks'] = {}
 
     #default termination limits
@@ -66,34 +66,36 @@ def main(args = None):
     ]
 
     print('checks', checks)
+    if len(checks) == 0:
+        raise RuntimeError('Sampling Error, checks is empty')
     
-    if np.all(checks['MD_mean_uncertainty']+checks['MD_std_uncertainty']):
+    if np.all(checks.get('MD_mean_uncertainty',[False])+checks.get('MD_std_uncertainty',[False])):
         config['MLP_MD_temperature']*=2
         config['MLP_MD_dT']*=1.5
-    if np.all(checks['MD_max_index']):
+    if np.all(checks.get('MD_max_index',[False])):
         config['MLP_MD_steps']*=2
     
 
-    if (np.all(checks['adv_mean_uncertainty']+checks['adv_std_uncertainty']) or
-        np.all(checks['adv_position_difference'])):
+    if (np.all(checks.get('adv_mean_uncertainty',[False])+checks.get('adv_std_uncertainty',[False])) or
+        np.all(checks.get('adv_position_difference',[False]))):
         config['MLP_adv_temperature']*=2
         config['MLP_adv_dT']*=1.5
-    if np.all(checks['MD_count']) and np.all(checks['adv_count']):
+    if np.all(checks.get('MD_count',[False])) and np.all(checks.get('adv_count',[False])):
         config['UQ_min_uncertainty']/=2
 
     # Reset to limits
     
-    if config['MLP_MD_temperature']>max_MLP_MD_temperature:
+    if config.get('MLP_MD_temperature', max_MLP_MD_temperature) > max_MLP_MD_temperature:
         config['MLP_MD_temperature'] = max_MLP_MD_temperature
-    if config['MLP_MD_dT']>max_MLP_MD_dT:
+    if config.get('MLP_MD_dT', max_MLP_MD_dT) > max_MLP_MD_dT:
         config['MLP_MD_dT'] = max_MLP_MD_dT
-    if config['MLP_MD_steps']>max_MLP_MD_steps:
+    if config.get('MLP_MD_steps', max_MLP_MD_steps)>max_MLP_MD_steps:
         config['MLP_MD_steps'] = max_MLP_MD_steps
-    if config['MLP_adv_temperature']>max_adv_temperature:
+    if config.get('MLP_adv_temperature',max_adv_temperature)>max_adv_temperature:
         config['MLP_adv_temperature']=max_adv_temperature
-    if config['MLP_adv_dT']>max_MLP_adv_dT:
+    if config.get('MLP_adv_dT', max_MLP_adv_dT)>max_MLP_adv_dT:
         config['MLP_adv_dT']=max_MLP_adv_dT
-    if config['UQ_min_uncertainty']<min_UQ_min_uncertainty:
+    if config.get('UQ_min_uncertainty', min_UQ_min_uncertainty)<min_UQ_min_uncertainty:
         config['UQ_min_uncertainty'] = min_UQ_min_uncertainty
 
     checks_history = config.get('checks_history',[])
