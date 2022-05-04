@@ -33,7 +33,7 @@ from ..calculate.calculator import nn_from_results
 from ..structure.segment import clusters_from_traj
 from ..utils.logging import write_to_tmp_dict, add_checks_to_config
 from ..structure.build import get_initial_structure
-from .downsample import sort_by_uncertainty
+from .utils import sort_by_uncertainty, sample_from_dataset
 import time
 
 
@@ -67,7 +67,7 @@ def min_func(positions, UQ, atoms, T):
 
     return neg_loss.detach().numpy()
 
-def adv_sampling(config, traj_initial, loop_learning_count=1):
+def adv_sampling(config, traj_initial=[], loop_learning_count=1):
 
     start = time.time()
     adv_dict = {}
@@ -93,6 +93,9 @@ def adv_sampling(config, traj_initial, loop_learning_count=1):
     max_samples = int(config.get('max_samples'))
     n_adversarial_samples = int(config.get('n_adversarial_samples',2*max_samples))
     
+    if len(traj_initial)==0:
+        traj_initial = sample_from_dataset(config)
+
     traj_indices = torch.randperm(len(traj_initial))[:2*n_adversarial_samples]
     adv_losses = []
     for i in traj_indices:

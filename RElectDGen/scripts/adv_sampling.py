@@ -30,15 +30,8 @@ def main(args=None):
     print('Starting timer', flush=True)
     
     config, filename_config, loop_learning_count = parse_command_line(args)
-
-    traj = read(config.get('dataset_file_name'), index=':')
-    max_samples = int(min([0.1*len(traj), config.get('max_samples')]))
-    n_adversarial_samples = int(config.get('n_adversarial_samples',2*max_samples))
     
-    traj_indices = torch.randperm(len(traj))[:2*n_adversarial_samples].numpy()
-    traj_adv = [traj[i] for i in traj_indices]
-    
-    adv_uncertain, _, config = adv_sampling(config, traj_adv, loop_learning_count)
+    adv_uncertain, _, config = adv_sampling(config, loop_learning_count=loop_learning_count)
     
     if len(adv_uncertain)>0:
         active_learning_configs = os.path.join(config.get('data_directory'),config.get('active_learning_configs'))

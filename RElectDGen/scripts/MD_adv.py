@@ -33,7 +33,7 @@ from ..utils.logging import write_to_tmp_dict, add_checks_to_config
 from ..structure.build import get_initial_structure
 import time
 
-from ..sampling.downsample import sort_by_uncertainty
+from ..sampling.utils import sort_by_uncertainty
 from ..uncertainty import models as uncertainty_models
 from ..sampling.md_sampling import MD_sampling
 from ..sampling.adv_sampling import adv_sampling

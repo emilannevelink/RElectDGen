@@ -18,7 +18,7 @@ from ..calculate.calculator import nn_from_results
 from ..utils.logging import write_to_tmp_dict, add_checks_to_config
 from ..structure.build import get_initial_structure
 import time
-from .downsample import sort_by_uncertainty
+from .utils import sort_by_uncertainty
 
 
 def MD_sampling(config, loop_learning_count=1):
