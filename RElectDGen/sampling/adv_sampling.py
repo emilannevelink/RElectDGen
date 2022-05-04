@@ -137,7 +137,8 @@ def adv_sampling(config, traj_initial, loop_learning_count=1):
             embeddings.append(torch.tensor(UQ.atom_embedding))
             traj_adv.append(atoms_save)
 
-    uncertainties = torch.vstack(uncertainties).numpy()
+    print(len(uncertainties), flush=True)
+    uncertainties = torch.tensor(uncertainties).numpy()
     checks = {
         'adv_mean_uncertainty': float(uncertainties.mean())<config.get('UQ_min_uncertainty'),
         'adv_std_uncertainty': float(uncertainties.std())<config.get('UQ_min_uncertainty')/2,
