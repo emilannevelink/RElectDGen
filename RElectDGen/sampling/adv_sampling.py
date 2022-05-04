@@ -143,7 +143,7 @@ def adv_sampling(config, traj_initial=[], loop_learning_count=1):
 
     print(len(uncertainties), len(traj_initial), flush=True)
     print(uncertainties)
-    
+
     if len(uncertainties)>0:
         uncertainties = torch.tensor(uncertainties).numpy()
         checks = {
@@ -167,7 +167,7 @@ def adv_sampling(config, traj_initial=[], loop_learning_count=1):
     max_uncertainty = config.get('UQ_max_uncertainty')
 
     adv_dict['number_uncertain_points'] = len(traj_adv)
-    traj_uncertain, embeddings_uncertain = sort_by_uncertainty(traj_adv, embeddings, UQ, max_samples, min_uncertainty, max_uncertainty)
+    traj_uncertain, embeddings_uncertain = sort_by_uncertainty(traj_adv, embeddings, UQ, max_samples, min_uncertainty, 2*max_uncertainty)
 
     adv_dict['number_adversarial_samples'] = len(traj_uncertain)
 
