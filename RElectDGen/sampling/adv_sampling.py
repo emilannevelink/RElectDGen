@@ -95,7 +95,7 @@ def adv_sampling(config, traj_initial=[], loop_learning_count=1):
     
     if len(traj_initial)<n_adversarial_samples:
         traj_sampled = sample_from_dataset(config)
-        traj_initial = traj_initial + [traj_sampled[i] for i in range(n_adversarial_samples-len(traj_initial))]
+        traj_initial = traj_initial + traj_sampled
 
     traj_indices = torch.randperm(len(traj_initial))[:2*n_adversarial_samples]
     adv_losses = []
@@ -163,7 +163,7 @@ def adv_sampling(config, traj_initial=[], loop_learning_count=1):
 
     min_uncertainty = config.get('UQ_min_uncertainty')
     max_uncertainty = config.get('UQ_max_uncertainty')
-    
+
     adv_dict['number_uncertain_points'] = len(traj_adv)
     traj_uncertain, embeddings_uncertain = sort_by_uncertainty(traj_adv, embeddings, UQ, max_samples, min_uncertainty, max_uncertainty)
 
