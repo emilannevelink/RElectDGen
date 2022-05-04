@@ -142,6 +142,8 @@ def adv_sampling(config, traj_initial=[], loop_learning_count=1):
             traj_adv.append(atoms_save)
 
     print(len(uncertainties), len(traj_initial), flush=True)
+    print(uncertainties)
+    
     if len(uncertainties)>0:
         uncertainties = torch.tensor(uncertainties).numpy()
         checks = {
