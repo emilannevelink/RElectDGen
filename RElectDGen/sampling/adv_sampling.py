@@ -93,8 +93,9 @@ def adv_sampling(config, traj_initial=[], loop_learning_count=1):
     max_samples = int(config.get('max_samples'))
     n_adversarial_samples = int(config.get('n_adversarial_samples',2*max_samples))
     
-    if len(traj_initial)==0:
-        traj_initial = sample_from_dataset(config)
+    if len(traj_initial)<n_adversarial_samples:
+        traj_sampled = sample_from_dataset(config)
+        traj_initial = traj_initial + [traj_sampled[i] for i in range(n_adversarial_samples-len(traj_initial))]
 
     traj_indices = torch.randperm(len(traj_initial))[:2*n_adversarial_samples]
     adv_losses = []
@@ -121,7 +122,7 @@ def adv_sampling(config, traj_initial=[], loop_learning_count=1):
 
         res = minimize(min_func,positions,args=(UQ, atoms, T), jac=d_min_func, method='CG')
 
-        print(res)
+        print(res, flush=True)
 
         atoms.set_positions(
                 res.x.reshape(atoms.positions.shape)
@@ -140,7 +141,7 @@ def adv_sampling(config, traj_initial=[], loop_learning_count=1):
             embeddings.append(torch.tensor(UQ.atom_embedding))
             traj_adv.append(atoms_save)
 
-    print(len(uncertainties), flush=True)
+    print(len(uncertainties), len(traj_initial), flush=True)
     if len(uncertainties)>0:
         uncertainties = torch.tensor(uncertainties).numpy()
         checks = {
@@ -160,8 +161,11 @@ def adv_sampling(config, traj_initial=[], loop_learning_count=1):
     for atoms in traj_adv:
         writer.write(atoms)
 
+    min_uncertainty = config.get('UQ_min_uncertainty')
+    max_uncertainty = config.get('UQ_max_uncertainty')
+    
     adv_dict['number_uncertain_points'] = len(traj_adv)
-    traj_uncertain, embeddings_uncertain = sort_by_uncertainty(traj_adv, embeddings, UQ, max_samples)
+    traj_uncertain, embeddings_uncertain = sort_by_uncertainty(traj_adv, embeddings, UQ, max_samples, min_uncertainty, max_uncertainty)
 
     adv_dict['number_adversarial_samples'] = len(traj_uncertain)
 

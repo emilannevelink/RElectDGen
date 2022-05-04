@@ -4,7 +4,7 @@ import torch
 from ase.io import read
 from nequip.data import AtomicData
 
-def sort_by_uncertainty(traj, embeddings, UQ, max_samples, min_uncertainty=0.04):
+def sort_by_uncertainty(traj, embeddings, UQ, max_samples, min_uncertainty=0.04, max_uncertainty=1):
 
     calc_inds = []
     uncertainties = []
@@ -19,7 +19,7 @@ def sort_by_uncertainty(traj, embeddings, UQ, max_samples, min_uncertainty=0.04)
         # data = UQ.transform(AtomicData.from_ase(atoms=atoms,r_max=UQ.r_max, self_interaction=UQ.self_interaction))
         # active_uncertainty = UQ.predict_uncertainty(data['atom_types'], embedding_i, extra_embeddings=keep_embeddings, type='std').detach().cpu().numpy()
 
-        if np.any(active_uncertainty>min_uncertainty):
+        if np.any(active_uncertainty>min_uncertainty) and np.all(active_uncertainty<max_uncertainty):
             calc_inds.append(i)
             uncertainties.append(float(active_uncertainty.max()))
             if isinstance(UQ.test_embeddings, dict):
@@ -30,7 +30,7 @@ def sort_by_uncertainty(traj, embeddings, UQ, max_samples, min_uncertainty=0.04)
     traj_sorted = []
     uncertainties_sorted = []
     embedding_sorted = []
-    ind_sorted = np.argsort(uncertainties)[:max_samples]
+    ind_sorted = np.argsort(uncertainties)[::-1][:max_samples]
     for ind in ind_sorted:
         traj_sorted.append(traj[calc_inds[ind]])
         uncertainties_sorted.append(uncertainties[ind])

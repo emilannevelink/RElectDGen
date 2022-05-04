@@ -78,7 +78,9 @@ def main(args=None):
     UQ.calibrate()
 
     max_samples = int(config.get('max_samples'))
-    traj_uncertain, traj_embedding = sort_by_uncertainty(uncertain, embeddings, UQ, max_samples)
+    min_uncertainty = config.get('UQ_min_uncertainty')
+    max_uncertainty = config.get('UQ_max_uncertainty')
+    traj_uncertain, traj_embedding = sort_by_uncertainty(uncertain, embeddings, UQ, max_samples, min_uncertainty, max_uncertainty)
 
     if len(traj_uncertain)>0:
         

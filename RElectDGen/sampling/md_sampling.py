@@ -19,14 +19,18 @@ from ..utils.logging import write_to_tmp_dict, add_checks_to_config
 from ..structure.build import get_initial_structure
 import time
 from .utils import sort_by_uncertainty
-
+from ..sampling.utils import sample_from_dataset
 
 def MD_sampling(config, loop_learning_count=1):
     print('Starting timer', flush=True)
     start = time.time()
     MLP_dict = {}
     
-    supercell = get_initial_structure(config)
+    if config.get('cluster', False) or config.get('MD_from_initial', False):
+        supercell = get_initial_structure(config)
+    else:
+        traj_initial = sample_from_dataset(config)
+        supercell = traj_initial[0]
     
     #Delete Bondlength constraints
     supercell.constraints = [constraint for constraint in supercell.constraints if type(constraint)!=ase.constraints.FixBondLengths]
@@ -175,7 +179,9 @@ def MD_sampling(config, loop_learning_count=1):
     else:
         
         # choose most uncertain
-        traj_uncertain, embeddings_uncertain = sort_by_uncertainty(traj, embeddings, UQ, max_samples)
+        min_uncertainty = config.get('UQ_min_uncertainty')
+        max_uncertainty = config.get('UQ_max_uncertainty')
+        traj_uncertain, embeddings_uncertain = sort_by_uncertainty(traj, embeddings, UQ, max_samples, min_uncertainty, max_uncertainty)
 
         MLP_dict['number_MD_samples'] = len(traj_uncertain)
 
