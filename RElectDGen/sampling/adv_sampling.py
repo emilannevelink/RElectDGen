@@ -143,11 +143,13 @@ def adv_sampling(config, traj_initial, loop_learning_count=1):
         checks = {
             'adv_mean_uncertainty': float(uncertainties.mean())<config.get('UQ_min_uncertainty'),
             'adv_std_uncertainty': float(uncertainties.std())<config.get('UQ_min_uncertainty')/2,
+            'adv_position_difference': float(np.max(positions_differences)) < config.get('minimum_position_difference', 0.05)
         }
     else:
         checks = {
             'adv_mean_uncertainty': False,
             'adv_std_uncertainty': False,
+            'adv_position_difference': False,
         }
 
     traj_dump_file = os.path.join(config.get('data_directory'),config.get('adv_trajectory_file'))
@@ -161,7 +163,7 @@ def adv_sampling(config, traj_initial, loop_learning_count=1):
     adv_dict['number_adversarial_samples'] = len(traj_uncertain)
 
     checks['adv_count'] = len(traj_uncertain)<config.get('max_samples')/2
-    checks['adv_position_difference'] = float(np.max(positions_differences)) < config.get('minimum_position_difference', 0.05)
+    
 
     print('checks: ', checks)
 
