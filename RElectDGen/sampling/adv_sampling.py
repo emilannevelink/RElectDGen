@@ -138,13 +138,19 @@ def adv_sampling(config, traj_initial, loop_learning_count=1):
             traj_adv.append(atoms_save)
 
     print(len(uncertainties), flush=True)
-    uncertainties = torch.tensor(uncertainties).numpy()
-    checks = {
-        'adv_mean_uncertainty': float(uncertainties.mean())<config.get('UQ_min_uncertainty'),
-        'adv_std_uncertainty': float(uncertainties.std())<config.get('UQ_min_uncertainty')/2,
-    }
+    if len(uncertainties)>0:
+        uncertainties = torch.tensor(uncertainties).numpy()
+        checks = {
+            'adv_mean_uncertainty': float(uncertainties.mean())<config.get('UQ_min_uncertainty'),
+            'adv_std_uncertainty': float(uncertainties.std())<config.get('UQ_min_uncertainty')/2,
+        }
+    else:
+        checks = {
+            'adv_mean_uncertainty': False,
+            'adv_std_uncertainty': False,
+        }
 
-    traj_dump_file = os.path.join(config.get('data_directory'),config.get('MLP_adv_dump_file'))
+    traj_dump_file = os.path.join(config.get('data_directory'),config.get('adv_trajectory_file'))
     writer = Trajectory(traj_dump_file, 'w')
     for atoms in traj_adv:
         writer.write(atoms)
