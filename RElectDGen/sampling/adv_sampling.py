@@ -120,13 +120,17 @@ def adv_sampling(config, traj_initial=[], loop_learning_count=1):
         positions = atoms.get_positions().flatten()
         positions += 0.01*(np.random.rand(*positions.shape)-0.5)
 
-        res = minimize(min_func,positions,args=(UQ, atoms, T), jac=d_min_func, method='CG')
+        try:
+            res = minimize(min_func,positions,args=(UQ, atoms, T), jac=d_min_func, method='CG')
 
-        print(res, flush=True)
+            print(res, flush=True)
 
-        atoms.set_positions(
-                res.x.reshape(atoms.positions.shape)
-            )
+            atoms.set_positions(
+                    res.x.reshape(atoms.positions.shape)
+                )
+        except Exception as e:
+            print(e, flush=True)
+
         atoms_save = copy.deepcopy(atoms)
         
         positions_differences.append(np.max(np.abs(atoms.positions-traj_initial[i].positions)))
@@ -167,7 +171,7 @@ def adv_sampling(config, traj_initial=[], loop_learning_count=1):
     max_uncertainty = config.get('UQ_max_uncertainty')
 
     adv_dict['number_uncertain_points'] = len(traj_adv)
-    traj_uncertain, embeddings_uncertain = sort_by_uncertainty(traj_adv, embeddings, UQ, max_samples, min_uncertainty, 2*max_uncertainty)
+    traj_uncertain, embeddings_uncertain = sort_by_uncertainty(traj_adv, embeddings, UQ, max_samples, min_uncertainty)
 
     adv_dict['number_adversarial_samples'] = len(traj_uncertain)
 

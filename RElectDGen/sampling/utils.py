@@ -4,7 +4,7 @@ import torch
 from ase.io import read
 from nequip.data import AtomicData
 
-def sort_by_uncertainty(traj, embeddings, UQ, max_samples, min_uncertainty=0.04, max_uncertainty=1):
+def sort_by_uncertainty(traj, embeddings, UQ, max_samples, min_uncertainty=0.04, max_uncertainty=np.inf):
 
     calc_inds = []
     uncertainties = []
