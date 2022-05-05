@@ -147,6 +147,9 @@ class Nequip_latent_distance(uncertainty_base):
 
         if not fail:
             self.params = params
+            for key in params:
+                for i, p in enumerate(params[key]):
+                    print(key, i, p, flush=True)
 
         return fail
                         
