@@ -94,20 +94,22 @@ def MD_sampling(config, loop_learning_count=1):
     # Check temperature stability
     MLP_log = pd.read_csv(MLP_MD_dump_file,delim_whitespace=True)
     try:
-        max_T_index = int(np.argwhere(MLP_log['T[K]'].values>2000)[0])
+        MD_energies = MLP_log['Etot[eV]'].values
+        MD_e0 = MD_energies[0]
+        max_E_index = int(np.argwhere(np.abs((MD_energies-MD_e0)/MD_e0)>1)[0])
     except IndexError:
-        max_T_index = int(config.get('MLP_MD_steps')+1)
+        max_E_index = int(config.get('MLP_MD_steps')+1)
 
-    if max_T_index < config.get('MLP_MD_steps'):
-        print(f'max T index {max_T_index} of {len(MLP_log)} MLP_MD_steps', flush=True)
+    if max_E_index < config.get('MLP_MD_steps'):
+        print(f'max T index {max_E_index} of {len(MLP_log)} MLP_MD_steps', flush=True)
     else:
-        print(f'Temperature stable: max T index {max_T_index}', flush=True)
+        print(f'Temperature stable: max T index {max_E_index}', flush=True)
 
     traj = Trajectory(trajectory_file)
-    traj = traj[:max_T_index] # Only use T stable indices
+    traj = traj[:max_E_index] # Only use E stable indices
     MLP_dict['MLP_MD_steps'] = len(traj)
 
-    max_samples = int(min([0.1*len(traj), config.get('max_samples')]))
+    max_samples = int(config.get('max_samples'))
     max_traj_len = config.get('max_atoms_to_segment',2*max_samples)
 
     expected_max_index = config.get('MLP_MD_steps')+1
