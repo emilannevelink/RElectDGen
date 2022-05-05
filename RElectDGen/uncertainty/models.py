@@ -108,7 +108,7 @@ class Nequip_latent_distance(uncertainty_base):
 
         self.parse_data()
 
-        if fail:
+        if fail or debug:
             latent_distances = {}
             min_distances = {}
             min_vectors = {}

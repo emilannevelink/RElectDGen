@@ -150,6 +150,7 @@ def adv_sampling(config, traj_initial=[], loop_learning_count=1):
 
     if len(uncertainties)>0:
         uncertainties = torch.tensor(uncertainties).numpy()
+        print(uncertainties.mean(), uncertainties.std())
         checks = {
             'adv_mean_uncertainty': float(uncertainties.mean())<config.get('UQ_min_uncertainty'),
             'adv_std_uncertainty': float(uncertainties.std())<config.get('UQ_min_uncertainty')/2,
