@@ -101,9 +101,9 @@ def MD_sampling(config, loop_learning_count=1):
         max_E_index = int(config.get('MLP_MD_steps')+1)
 
     if max_E_index < config.get('MLP_MD_steps'):
-        print(f'max T index {max_E_index} of {len(MLP_log)} MLP_MD_steps', flush=True)
+        print(f'max E index {max_E_index} of {len(MLP_log)} MLP_MD_steps', flush=True)
     else:
-        print(f'Temperature stable: max T index {max_E_index}', flush=True)
+        print(f'Total energy stable: max E index {max_E_index}', flush=True)
 
     traj = Trajectory(trajectory_file)
     traj = traj[:max_E_index] # Only use E stable indices
