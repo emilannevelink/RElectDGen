@@ -12,7 +12,7 @@ from nequip.data.transforms import TypeMapper
 from nequip.utils import Config
 from nequip.data import dataset_from_config
 
-from RElectDGen.utils.uncertainty import latent_distance_uncertainty_Nequip
+from RElectDGen.uncertainty.models import Nequip_latent_distance
 
 from RElectDGen.calculate.calculator import nn_from_results
 from RElectDGen.utils.save import check_NN_parameters
@@ -102,13 +102,12 @@ def main(args=None):
             train = True     
         else:
             gc.collect()
-            UQ = latent_distance_uncertainty_Nequip(model, MLP_config)
+            UQ = Nequip_latent_distance(model, config, MLP_config)
             UQ.calibrate()
-            UQ_dict = UQ_params_to_dict(UQ.params,'train')
             
             uncertainty, embedding = UQ.predict_from_traj(traj)
             
-            uncertain_data = np.argwhere(np.array(uncertainty.detach())>config.get('UQ_min_uncertainty')).flatten()
+            uncertain_data = np.argwhere(uncertainty.detach().numpy()>config.get('UQ_min_uncertainty')).flatten()
 
             if len(uncertain_data)>0:
                 print(f'First uncertaint datapoint {uncertain_data.min()}, of {len(uncertain_data)} uncertain point from {len(traj)} data points',flush=True)
@@ -144,7 +143,6 @@ def main(args=None):
         **mae_dict,
         'train': train,
         'load': 'load' in commands[0],
-        **UQ_dict,
         'train_time': time.time()-start_time
     }
 
