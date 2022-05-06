@@ -199,7 +199,7 @@ class Nequip_latent_distance(uncertainty_base):
             self.atom_embedding = atom_embedding
 
         atom_types = data['atom_types']
-        uncertainties = torch.zeros_like(atom_embedding[:,0])
+        uncertainties = torch.zeros_like(atom_embedding[:,0], device=self.device)
 
         self.test_distances = {}
         self.min_vectors = {}
@@ -229,7 +229,7 @@ class Nequip_latent_distance(uncertainty_base):
 
         return uncertainties
 
-    def uncertainty_from_vector(self,vector, key, type='full'):
+    def uncertainty_from_vector(self, vector, key, type='full'):
         if len(self.params[key]) == 2:
             distance = torch.linalg.norm(vector,axis=1).reshape(-1,1)
         else:
