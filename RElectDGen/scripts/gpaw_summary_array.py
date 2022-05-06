@@ -43,7 +43,7 @@ def main(args=None):
             try:
                 traj_active += list(Trajectory(calc_file))
                 print(f'retrieved {len(traj_active)} calculations from array', flush=True)
-            except InvalidULMFileError:
+            except (InvalidULMFileError, FileNotFoundError):
                 print(f'failed to retrieve {i} calculations from array', flush=True)
         
         try:
