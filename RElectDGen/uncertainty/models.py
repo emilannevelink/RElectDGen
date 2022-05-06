@@ -235,7 +235,7 @@ class Nequip_latent_distance(uncertainty_base):
         else:
             distance = torch.abs(vector)
 
-        uncertainty_raw = torch.zeros(self.n_ensemble,distance.shape[0])
+        uncertainty_raw = torch.zeros(self.n_ensemble,distance.shape[0], device=self.device)
         for i in range(self.n_ensemble):
             sig_1 = torch.tensor(self.params[key][i][0]).abs().type_as(distance)
             sig_2 = torch.tensor(self.params[key][i][1:]).abs().type_as(distance)
