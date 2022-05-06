@@ -44,8 +44,8 @@ class uncertainty_base():
         else:
             raise ValueError('Data type not supported')
 
-        data.to(torch.device(self.device))
         data = self.transform(data)
+        data.to(torch.device(self.device))
         data = AtomicData.to_AtomicDataDict(data)
         
         return data
