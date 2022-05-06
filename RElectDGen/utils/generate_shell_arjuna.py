@@ -153,6 +153,14 @@ def slurm_config_from_config(config, file):
         slurm_config['--cpus-per-task'] = cores
         slurm_config['N'] = config.get('MLP_nodes',config.get('nodes',1))
         slurm_config['--ntasks'] = 1
+
+        train_time_limit = config.get('train_time_limit')
+        if 'train' in file and train_time_limit is not None:
+            slurm_config['t'] = train_time_limit
+        sampling_time_limit = config.get('sampling_time_limit')
+        if ('MLP' in file or 'adv' in file) and sampling_time_limit is not None:
+            slurm_config['t'] = sampling_time_limit
+            
     elif ('MD' in file or #note MLP has already taken out the MLP_MD
         'active' in file or 
         'array' in file):
