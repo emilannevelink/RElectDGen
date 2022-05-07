@@ -65,7 +65,7 @@ def min_func(positions, UQ, atoms, T):
 
     neg_loss = -adv_loss(atoms, UQ, T)
 
-    return neg_loss.detach().numpy()
+    return neg_loss.detach().cpu().numpy()
 
 def adv_sampling(config, traj_initial=[], loop_learning_count=1):
 
