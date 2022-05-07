@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 
 from nequip.data import AtomicData, dataset_from_config, DataLoader
 from nequip.data.transforms import TypeMapper
+from zmq import device
 
 from . import optimization_functions
 from .optimization_functions import uncertainty_NN
@@ -212,6 +213,7 @@ class Nequip_latent_distance(uncertainty_base):
             if extra_embeddings is not None:
                 embeddings = torch.cat([embeddings,extra_embeddings[key]])
 
+            embeddings.to(device=self.device)
             mask = (atom_types==self.MLP_config.get('chemical_symbol_to_type')[key]).flatten()
 
             if torch.any(mask):
