@@ -198,6 +198,8 @@ class Nequip_latent_distance(uncertainty_base):
             out = self.model(data)
             atom_embedding = out['node_features']
             self.atom_embedding = atom_embedding
+        else:
+            atom_embedding = atom_embedding.to(device=torch.device(self.device))
 
         atom_types = data['atom_types']
         uncertainties = torch.zeros_like(atom_embedding[:,0], device=self.device)
@@ -217,11 +219,6 @@ class Nequip_latent_distance(uncertainty_base):
             mask = (atom_types==self.MLP_config.get('chemical_symbol_to_type')[key]).flatten()
 
             if torch.any(mask):
-                print(embeddings.device)
-                
-                print(atom_embedding.device)
-                print(mask.device)
-                print(atom_embedding[mask].device)
                 
                 latent_force_distances = torch.cdist(embeddings,atom_embedding[mask],p=2)
 
