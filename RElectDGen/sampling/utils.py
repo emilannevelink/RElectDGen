@@ -26,7 +26,7 @@ def sort_by_uncertainty(traj, embeddings, UQ, max_samples, min_uncertainty=0.04,
             if isinstance(UQ.test_embeddings, dict):
                 for key in UQ.MLP_config.get('chemical_symbol_to_type'): 
                     mask = np.array(atoms.get_chemical_symbols()) == key
-                    keep_embeddings[key] = torch.cat([keep_embeddings[key],embedding_i[mask]])
+                    keep_embeddings[key] = torch.cat([keep_embeddings[key],embedding_i[mask].to(UQ.device)])
 
     traj_sorted = []
     uncertainties_sorted = []
