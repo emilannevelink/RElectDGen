@@ -26,11 +26,12 @@ def MD_sampling(config, loop_learning_count=1):
     start = time.time()
     MLP_dict = {}
     
-    if config.get('cluster', False) or config.get('MD_from_initial', False):
-        supercell = get_initial_structure(config)
-    else:
-        traj_initial = sample_from_dataset(config)
+    traj_initial = sample_from_dataset(config)
+    if len(traj_initial)>0 and not config.get('cluster', False) and not config.get('MD_from_initial', False): 
         supercell = traj_initial[0]
+    else:
+        supercell = get_initial_structure(config)
+    
     
     #Delete Bondlength constraints
     supercell.constraints = [constraint for constraint in supercell.constraints if type(constraint)!=ase.constraints.FixBondLengths]
