@@ -109,7 +109,7 @@ def main(args=None):
             
             uncertain_data = np.argwhere(uncertainty.detach().numpy()>config.get('UQ_min_uncertainty')).flatten()
 
-            if len(uncertain_data)>0:
+            if len(uncertain_data)>config.get('retrain_uncertainty_percent',0.01)*len(traj):
                 print(f'First uncertaint datapoint {uncertain_data.min()}, of {len(uncertain_data)} uncertain point from {len(traj)} data points',flush=True)
                 train = True
 

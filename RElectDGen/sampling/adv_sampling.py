@@ -141,8 +141,10 @@ def adv_sampling(config, traj_initial=[], loop_learning_count=1):
         if positions_differences[-1]<max_displacement:
         
             val_adv_loss = adv_loss(atoms_save, UQ, T)
-            uncertainties.append(torch.tensor(UQ.uncertainties).mean())
-            embeddings.append(torch.tensor(UQ.atom_embedding))
+            # uncertainties.append(torch.tensor(UQ.uncertainties).mean())
+            uncertainties.append(UQ.uncertainties.clone().detach().mean())
+            # embeddings.append(torch.tensor(UQ.atom_embedding))
+            embeddings.append(UQ.atom_embedding.clone().detach())
             traj_adv.append(atoms_save)
 
     print(len(uncertainties), len(traj_initial), flush=True)
