@@ -123,6 +123,7 @@ def MD_sampling(config, loop_learning_count=1):
 
     uncertainty, embeddings = UQ.predict_from_traj(traj,max=False)
 
+    print(uncertainty)
     MLP_dict['MLP_error_value'] = float(uncertainty.mean())
     MLP_dict['MLP_error_std'] = float(uncertainty.std())
     print('MLP error value', MLP_dict['MLP_error_value'], flush=True)
