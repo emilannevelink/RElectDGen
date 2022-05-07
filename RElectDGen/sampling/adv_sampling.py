@@ -56,7 +56,7 @@ def d_min_func(positions, UQ, atoms, T):
 
         grads = torch.autograd.grad(loss,data['pos'])
 
-        return grads[0].flatten().numpy()
+        return grads[0].flatten().cpu().numpy()
 
 def min_func(positions, UQ, atoms, T):
     atoms.set_positions(
