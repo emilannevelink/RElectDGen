@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import torch
 
@@ -43,11 +44,18 @@ def sort_by_uncertainty(traj, embeddings, UQ, max_samples, min_uncertainty=0.04,
     return traj_sorted, embedding_sorted
 
 def sample_from_dataset(config):
-    traj = read(config.get('dataset_file_name'), index=':')
-    max_samples = int(min([0.1*len(traj), config.get('max_samples')]))
-    n_adversarial_samples = int(config.get('n_adversarial_samples',2*max_samples))
-    
-    traj_indices = torch.randperm(len(traj))[:2*n_adversarial_samples].numpy()
-    traj_adv = [traj[i] for i in traj_indices]
+    trajectory_file_name = os.path.join(
+        config.get('data_directory'),
+        config.get('trajectory_file')
+    )
+    if os.path.isfile(trajectory_file_name):
+        traj = read(trajectory_file_name, index=':')
+        max_samples = int(min([0.1*len(traj), config.get('max_samples')]))
+        n_adversarial_samples = int(config.get('n_adversarial_samples',2*max_samples))
+        
+        traj_indices = torch.randperm(len(traj))[:2*n_adversarial_samples].numpy()
+        traj_adv = [traj[i] for i in traj_indices]
+    else:
+        traj_adv = []
 
     return traj_adv
