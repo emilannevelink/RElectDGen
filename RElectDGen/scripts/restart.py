@@ -99,7 +99,7 @@ def main(args = None):
         config['UQ_min_uncertainty'] = min_UQ_min_uncertainty
 
     checks_history = config.get('checks_history',[])
-    checks_history.append(np.all(list(checks.values()),axis=0).tolist())
+    checks_history.append(np.all(list(checks.values()),axis=1).tolist())
     config['checks_history'] = checks_history
     print('termination conditions', termination_conditions)
     if not np.all(termination_conditions) or not np.all(checks):
