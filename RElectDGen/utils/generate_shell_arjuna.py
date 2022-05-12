@@ -160,7 +160,7 @@ def slurm_config_from_config(config, file):
         sampling_time_limit = config.get('sampling_time_limit')
         if ('MLP' in file or 'adv' in file) and sampling_time_limit is not None:
             slurm_config['t'] = sampling_time_limit
-            
+
     elif ('MD' in file or #note MLP has already taken out the MLP_MD
         'active' in file or 
         'array' in file):
@@ -178,7 +178,8 @@ def slurm_config_from_config(config, file):
 
     if 'gpu' in slurm_config['p']:
         slurm_config['A'] = 'venkvis_gpu'
-        n_gpu = min(1,max(4,int(slurm_config['n']/16.)))
+        n_gpu = max(1,min(4,int(slurm_config['n']/16.)))
+        n_gpu = int(config.get('gpu_cores', n_gpu))
         slurm_config[f'--gres'] = f'gpu:{n_gpu}'
     else:
         slurm_config['A'] = 'venkvis'
