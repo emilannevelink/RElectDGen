@@ -147,7 +147,7 @@ def adv_sampling(config, traj_initial=[], loop_learning_count=1):
             embeddings.append(UQ.atom_embedding.clone().detach())
             traj_adv.append(atoms_save)
 
-    print(len(uncertainties), len(traj_initial), flush=True)
+    print(len(uncertainties), len(traj_indices), flush=True)
     print(uncertainties)
 
     if len(uncertainties)>0:
