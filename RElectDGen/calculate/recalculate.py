@@ -1,7 +1,8 @@
 import time
 from ase.parallel import world
+import numpy as np
 
-def recalculate_traj_energies(traj,calc=None,config=None,writer=None,rewrite_pbc=False):
+def recalculate_traj_energies(traj,calc=None,config=None,writer=None,rewrite_pbc=False,recalculate=True):
 	from copy import deepcopy
 	import gpaw
 	start_time = time.time()
@@ -26,9 +27,15 @@ def recalculate_traj_energies(traj,calc=None,config=None,writer=None,rewrite_pbc
 				print(atoms)
 				print(atoms.info)
 		except gpaw.grid_descriptor.GridBoundsError:
-			print(f'GridBounds box error for {i}th active learning')
+			if world.rank == 0:
+				print(f'GridBounds box error for {i}th active learning')
+			if recalculate:
+				atoms_re = deepcopy(atoms)
+				atoms.positions += np.array([0.1,0.1,0.])
+				recalculate_traj_energies([atoms],calc,config,writer,rewrite_pbc,recalculate=False)
 		except gpaw.KohnShamConvergenceError:
-			print(f'Convergence Error for {i}th active learning')
+			if world.rank == 0:
+				print(f'Convergence Error for {i}th active learning')
 		# except:
 		# 	print(f'Convergence error for {i}th active learning')
 		
