@@ -80,7 +80,7 @@ def main(args = None):
         np.all(checks.get('adv_position_difference',[False]))):
         config['MLP_adv_temperature']*=2
         config['MLP_adv_dT']*=1.5
-    if np.all(checks.get('MD_count',[False])) and np.all(checks.get('adv_count',[False])):
+    if np.all(checks.get('MD_count',[True])) and np.all(checks.get('adv_count',[True])) and np.all(checks.get('sampling_count',[True])):
         config['UQ_min_uncertainty']/=2
 
     # Reset to limits

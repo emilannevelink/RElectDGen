@@ -4,6 +4,8 @@ from ase.io import read, Trajectory
 from ..utils.save import update_config_trainval
 from ..utils.data import reduce_traj
 
+from RElectDGen.utils.logging import write_to_tmp_dict
+
 def parse_command_line(argsin):
     parser = argparse.ArgumentParser()
     parser.add_argument('--config_file', dest='config',
@@ -30,22 +32,35 @@ def main(args=None):
 
         print(len(traj))
 
+    pretraining_size = len(traj)
     try:
         traj += read(trajectory_file,index=':')
     except:
         print('Trajectory file couldnt be appended', flush=True)
         print(trajectory_file, flush=True)
 
+    combined_size = len(traj)
     traj_reduced = reduce_traj(traj)
 
     print(len(traj), len(traj_reduced),flush=True)
     
+    reduced_size = len(traj)
+
     print(combined_trajectory,flush=True)
     writer = Trajectory(combined_trajectory,'w')
     for atoms in traj_reduced:
         writer.write(atoms)
 
     update_config_trainval(config,filename_MLP_config)
+
+    logging_dict = {
+        'dataset_size': combined_size,
+        'combined_dataset_size': combined_size - pretraining_size,
+        'reduced_dataset_size': reduced_size
+    }
+
+    tmp_filename = os.path.join(config.get('directory'),config.get('run_dir'),config.get('tmp_file','tmp.json'))
+    write_to_tmp_dict(tmp_filename,logging_dict)
 
 if __name__ == "__main__":
     main()

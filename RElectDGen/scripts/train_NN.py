@@ -16,7 +16,7 @@ from RElectDGen.uncertainty.models import Nequip_latent_distance
 
 from RElectDGen.calculate.calculator import nn_from_results
 from RElectDGen.utils.save import check_NN_parameters
-from RElectDGen.utils.logging import get_mae_from_results, write_to_tmp_dict, UQ_params_to_dict
+from RElectDGen.utils.logging import get_mae_from_results, write_to_tmp_dict
 
 from memory_profiler import profile
 
@@ -92,7 +92,6 @@ def main(args=None):
 
 
     commands = ['nequip-train', MLP_config_filename]
-    UQ_dict = {}
     if not train:
         device = 'cuda' if torch.cuda.is_available() else 'cpu'
         model.to(torch.device(device))
