@@ -91,6 +91,7 @@ def main(args=None):
         train = True
 
 
+    uncertainty_dict = {}
     commands = ['nequip-train', MLP_config_filename]
     if not train:
         device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -105,8 +106,11 @@ def main(args=None):
             UQ.calibrate()
             
             uncertainty, embedding = UQ.predict_from_traj(traj)
+
+            uncertainty_dict['dataset_uncertainty_mean'] = uncertainty.mean()
+            uncertainty_dict['dataset_uncertainty_mean'] = uncertainty.std()
             
-            uncertain_data = np.argwhere(uncertainty.detach().numpy()>config.get('UQ_min_uncertainty')).flatten()
+            uncertain_data = np.argwhere(uncertainty.numpy()>config.get('UQ_min_uncertainty')).flatten()
 
             if len(uncertain_data)>config.get('retrain_uncertainty_percent',0.01)*len(traj):
                 print(f'First uncertaint datapoint {uncertain_data.min()}, of {len(uncertain_data)} uncertain point from {len(traj)} data points',flush=True)

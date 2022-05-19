@@ -267,12 +267,11 @@ class Nequip_latent_distance(uncertainty_base):
         #     uncertainty.append(self.predict_uncertainty(batch))
         #     atom_embeddings.append(self.atom_embedding)
         for atoms in traj:
-            uncertainty.append(self.predict_uncertainty(atoms))
-            atom_embeddings.append(self.atom_embedding)
+            uncertainty.append(self.predict_uncertainty(atoms).detach())
+            atom_embeddings.append(self.atom_embedding.detach())
         
-        
-        uncertainty = torch.cat(uncertainty).detach().cpu()
-        atom_embeddings = torch.cat(atom_embeddings).detach().cpu()
+        uncertainty = torch.cat(uncertainty).cpu()
+        atom_embeddings = torch.cat(atom_embeddings).cpu()
 
         if max:
             atom_lengths = [len(atoms) for atoms in traj]
@@ -379,7 +378,7 @@ class Nequip_error_NN(uncertainty_base):
         for data in dataset[self.MLP_config.train_idcs]:
             out = self.model(self.transform_data_input(data))
             train_energies = torch.cat([train_energies, out['atomic_energy'].mean().detach().unsqueeze(0)])
-            train_embeddings = torch.cat([train_embeddings,out['node_features']])
+            train_embeddings = torch.cat([train_embeddings,out['node_features'].detach()])
             
             error = torch.absolute(out['forces'] - data.forces)
             train_errors = torch.cat([train_errors,error.mean(dim=1)])
@@ -397,8 +396,8 @@ class Nequip_error_NN(uncertainty_base):
 
             error = torch.absolute(out['forces'] - data.forces)
 
-            test_embeddings = torch.cat([test_embeddings,out['node_features']])
-            test_errors = torch.cat([test_errors,error.mean(dim=1)])
+            test_embeddings = torch.cat([test_embeddings,out['node_features'].detach()])
+            test_errors = torch.cat([test_errors,error.mean(dim=1).detach()])
         
         self.test_embeddings = test_embeddings
         self.test_errors = test_errors
