@@ -123,10 +123,15 @@ def MD_sampling(config, loop_learning_count=1):
 
     uncertainty, embeddings = UQ.predict_from_traj(traj,max=False)
 
-    print(uncertainty.max(axis=1))
-    MLP_dict['MLP_error_value'] = float(uncertainty.mean())
-    MLP_dict['MLP_error_std'] = float(uncertainty.std())
-    print('MLP error value', MLP_dict['MLP_error_value'], flush=True)
+    print(uncertainty.sum(dim=-1).max(axis=1))
+    MLP_dict['MLP_error'] = float(uncertainty.sum(dim=-1).mean())
+    MLP_dict['MLP_error_std'] = float(uncertainty.sum(dim=-1).std())
+    MLP_dict['MLP_error_base'] = float(uncertainty[:,:,0].mean())
+    MLP_dict['MLP_error_base_std'] = float(uncertainty[:,:,0].std())
+    MLP_dict['MLP_error_basestd'] = float(uncertainty[:,:,1].mean())
+    MLP_dict['MLP_error_basestd_std'] = float(uncertainty[:,:,1].std())
+
+    print('MLP error value', MLP_dict['MLP_error'], flush=True)
     print('MLP error std', MLP_dict['MLP_error_std'],flush=True)
 
     min_sigma = config.get('UQ_min_uncertainty')
@@ -136,15 +141,15 @@ def MD_sampling(config, loop_learning_count=1):
     config['uncertainty_thresholds'] = uncertainty_thresholds
 
     try:
-        max_index = int((uncertainty.max(axis=1).values>5*max_sigma).nonzero()[0])
+        max_index = int((uncertainty.sum(dim=-1).max(axis=1).values>5*max_sigma).nonzero()[0])
     except IndexError:
         print('Index Error', uncertainty, flush=True)
         max_index = len(uncertainty)
     print('max index: ', max_index,flush=True)
 
     checks = {
-        'MD_mean_uncertainty': float(uncertainty.mean())<config.get('UQ_min_uncertainty'),
-        'MD_std_uncertainty': float(uncertainty.std())<config.get('UQ_min_uncertainty')/2,
+        'MD_mean_uncertainty': MLP_dict['MLP_error']<config.get('UQ_min_uncertainty'),
+        'MD_std_uncertainty': MLP_dict['MLP_error_std']<config.get('UQ_min_uncertainty')/2,
         'MD_max_index': max_index==expected_max_index,
     }
 

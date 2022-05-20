@@ -17,6 +17,7 @@ def sort_by_uncertainty(traj, embeddings, UQ, max_samples, min_uncertainty=0.04,
     for i, (embedding_i, atoms) in enumerate(zip(embeddings,traj)):
         
         active_uncertainty = UQ.predict_uncertainty(atoms, embedding_i, extra_embeddings=keep_embeddings, type='std').detach().cpu().numpy()
+        active_uncertainty = active_uncertainty.sum(axis=-1)
         # data = UQ.transform(AtomicData.from_ase(atoms=atoms,r_max=UQ.r_max, self_interaction=UQ.self_interaction))
         # active_uncertainty = UQ.predict_uncertainty(data['atom_types'], embedding_i, extra_embeddings=keep_embeddings, type='std').detach().cpu().numpy()
 

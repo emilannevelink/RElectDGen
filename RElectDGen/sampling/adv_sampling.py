@@ -142,7 +142,7 @@ def adv_sampling(config, traj_initial=[], loop_learning_count=1):
         
             val_adv_loss = adv_loss(atoms_save, UQ, T)
             # uncertainties.append(torch.tensor(UQ.uncertainties).mean())
-            uncertainties.append(UQ.uncertainties.clone().detach().mean())
+            uncertainties.append(UQ.uncertainties.clone().detach().mean(dim=0))
             # embeddings.append(torch.tensor(UQ.atom_embedding))
             embeddings.append(UQ.atom_embedding.clone().detach())
             traj_adv.append(atoms_save)
@@ -151,13 +151,18 @@ def adv_sampling(config, traj_initial=[], loop_learning_count=1):
     print(uncertainties)
 
     if len(uncertainties)>0:
-        uncertainties = torch.tensor(uncertainties).numpy()
-        adv_dict['adv_mean_uncertainty'] = float(uncertainties.mean())
-        adv_dict['adv_std_uncertainty'] = float(uncertainties.std())
-        print(uncertainties.mean(), uncertainties.std())
+        uncertainties = torch.vstack(uncertainties).numpy()
+        adv_dict['adv_error'] = float(uncertainties.sum(axis=-1).mean())
+        adv_dict['adv_error_std'] = float(uncertainties.sum(axis=-1).std())
+        adv_dict['adv_error_base'] = float(uncertainties[:,0].mean())
+        adv_dict['adv_error_base_std'] = float(uncertainties[:,0].std())
+        adv_dict['adv_error_basestd'] = float(uncertainties[:,1].mean())
+        adv_dict['adv_error_basestd_std'] = float(uncertainties[:,1].std())
+
+        print(adv_dict['adv_error'], adv_dict['adv_error_std'])
         checks = {
-            'adv_mean_uncertainty': adv_dict['adv_mean_uncertainty']<config.get('UQ_min_uncertainty'),
-            'adv_std_uncertainty': adv_dict['adv_std_uncertainty']<config.get('UQ_min_uncertainty')/2,
+            'adv_mean_uncertainty': adv_dict['adv_error']<config.get('UQ_min_uncertainty'),
+            'adv_std_uncertainty': adv_dict['adv_error_std']<config.get('UQ_min_uncertainty')/2,
             'adv_position_difference': float(np.max(positions_differences)) < config.get('minimum_position_difference', 0.05)
         }
     else:
@@ -175,7 +180,6 @@ def adv_sampling(config, traj_initial=[], loop_learning_count=1):
     min_uncertainty = config.get('UQ_min_uncertainty')
     max_uncertainty = config.get('UQ_max_uncertainty')
 
-    adv_dict['number_uncertain_points'] = len(traj_adv)
     traj_uncertain, embeddings_uncertain = sort_by_uncertainty(traj_adv, embeddings, UQ, max_samples, min_uncertainty,max_uncertainty*5)
 
     adv_dict['number_adversarial_samples'] = len(traj_uncertain)

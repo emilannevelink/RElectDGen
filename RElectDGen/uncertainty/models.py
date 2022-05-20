@@ -186,7 +186,7 @@ class Nequip_latent_distance(uncertainty_base):
             mask = data['atom_types'] == self.chemical_symbol_to_type[key]
             probability = 1/Q * torch.exp(-(out['atomic_energy'][mask]-emean)/estd/kT)
             
-            adv_loss += (probability * self.uncertainties[mask.flatten()]).sum()
+            adv_loss += (probability * self.uncertainties[mask.flatten()].sum(dim=-1)).sum()
 
         return adv_loss
 
@@ -202,7 +202,7 @@ class Nequip_latent_distance(uncertainty_base):
             atom_embedding = atom_embedding.to(device=torch.device(self.device))
 
         atom_types = data['atom_types']
-        uncertainties = torch.zeros_like(atom_embedding[:,0], device=self.device)
+        uncertainties = torch.zeros(atom_embedding.shape[0],2, device=self.device)
 
         self.test_distances = {}
         self.min_vectors = {}
@@ -254,9 +254,10 @@ class Nequip_latent_distance(uncertainty_base):
         uncertainty_mean = torch.mean(uncertainty_raw,axis=0)
         uncertainty_std = torch.std(uncertainty_raw,axis=0)
 
-        uncertainty_ens = uncertainty_mean + uncertainty_std
+        uncertainty = torch.vstack([uncertainty_mean,uncertainty_std]).T
+        # uncertainty_ens = uncertainty_mean + uncertainty_std
 
-        return uncertainty_ens
+        return uncertainty
 
     def predict_from_traj(self, traj, max=True, batch_size=1):
         uncertainty = []
@@ -280,9 +281,9 @@ class Nequip_latent_distance(uncertainty_base):
 
             uncertainty_partition = [uncertainty[si:ei] for si, ei in zip(start_inds,end_inds)]
             embeddings = [atom_embeddings[si:ei] for si, ei in zip(start_inds,end_inds)]
-            return torch.tensor([unc.max() for unc in uncertainty_partition]), embeddings
+            return torch.vstack([unc[torch.argmax(unc.sum(dim=1))] for unc in uncertainty_partition]), embeddings
         else:
-            uncertainty = uncertainty.reshape(len(traj),-1)
+            uncertainty = uncertainty.reshape(len(traj),-1,2)
             return uncertainty, atom_embeddings.reshape(len(traj),-1,atom_embeddings.shape[-1])
 
     def plot_fit(self,filename=None):
