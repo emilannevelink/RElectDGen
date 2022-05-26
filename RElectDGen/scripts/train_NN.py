@@ -107,10 +107,12 @@ def main(args=None):
             
             uncertainty, embedding = UQ.predict_from_traj(traj)
 
-            uncertainty_dict['dataset_uncertainty_mean'] = uncertainty.mean()
-            uncertainty_dict['dataset_uncertainty_mean'] = uncertainty.std()
+            uncertainty_sum = uncertainty.sum(dim=1)
+
+            uncertainty_dict['dataset_uncertainty_mean'] = uncertainty_sum.mean()
+            uncertainty_dict['dataset_uncertainty_std'] = uncertainty_sum.std()
             
-            uncertain_data = np.argwhere(uncertainty.numpy()>config.get('UQ_min_uncertainty')).flatten()
+            uncertain_data = np.argwhere(uncertainty_sum.numpy()>config.get('UQ_min_uncertainty')).flatten()
 
             if len(uncertain_data)>config.get('retrain_uncertainty_percent',0.01)*len(traj):
                 print(f'First uncertaint datapoint {uncertain_data.min()}, of {len(uncertain_data)} uncertain point from {len(traj)} data points',flush=True)
