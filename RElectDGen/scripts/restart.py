@@ -110,6 +110,7 @@ def main(args = None):
         commands = ['REDGEN-start', filename_config]
         process = subprocess.run(commands,capture_output=True)
         print('Job ids',process.stdout)
+        print('Error',process.stderr)
 
     else:
         print(f'reached termination condition {termination_conditions}')
