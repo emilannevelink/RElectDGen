@@ -58,9 +58,10 @@ def main(args=None):
                     print(atoms.info)
 
         else:
-            print('array index larger than number of clusters to calculate', flush=True)
-            if os.path.isfile(calc_file):
-                os.remove(calc_file)
+            if world.rank == 0:
+                print('array index larger than number of clusters to calculate', flush=True)
+                if os.path.isfile(calc_file):
+                    os.remove(calc_file)
     
 if __name__ == '__main__':
     main()
