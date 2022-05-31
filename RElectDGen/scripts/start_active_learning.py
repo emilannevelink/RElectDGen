@@ -97,6 +97,7 @@ def main(args=None):
                 job_types.append(shell_file)
 
                 if 'gpaw_array' in shell_file:
+                    shell_file = 'submits/gpaw_summary.sh'
                     commands = ['sbatch', f'--dependency=afterok:{job_ids[-1]}', shell_file, active_learning_config, MLP_config_filename, str(i)]
 
                     command_string = ' '.join(commands)
