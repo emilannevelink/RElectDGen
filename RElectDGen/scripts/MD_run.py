@@ -67,7 +67,7 @@ def main(args=None):
     
     trajectory_file = os.path.join(config.get('data_directory'),config.get('MLP_trajectory_file'))
     traj = Trajectory(trajectory_file, 'w', supercell)
-    dyn.attach(traj.write, interval=config.get('MLP_MD_dump_interval',1))
+    dyn.attach(traj.write, interval=int(config.get('MLP_MD_dump_interval',1)))
     try:
         dyn.run(config.get('MLP_MD_steps'))
     except ValueError:

@@ -151,7 +151,7 @@ def adv_sampling(config, traj_initial=[], loop_learning_count=1):
     print(uncertainties)
 
     if len(uncertainties)>0:
-        uncertainties = torch.vstack(uncertainties).numpy()
+        uncertainties = torch.vstack(uncertainties).cpu().numpy()
         adv_dict['adv_error'] = float(uncertainties.sum(axis=-1).mean())
         adv_dict['adv_error_std'] = float(uncertainties.sum(axis=-1).std())
         adv_dict['adv_error_base'] = float(uncertainties[:,0].mean())
