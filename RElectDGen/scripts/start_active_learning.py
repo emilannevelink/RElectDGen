@@ -48,7 +48,8 @@ def main(args=None):
     print(config.get('machine'),flush=True)
 
     generate_shell_command = ['REDGEN-generate-shell', '--config_file', active_learning_config]
-    process = subprocess.run(generate_shell_command, check=True,capture_output=True, shell=True)
+    command_string = ' '.join(generate_shell_command)
+    process = subprocess.run(command_string, check=True,capture_output=True, shell=True)
 
     filenames = config.get('shell_filenames')
     job_ids = []
@@ -64,7 +65,8 @@ def main(args=None):
     shell_file = 'submits/gpaw_MD.sh'
     if shell_file.split('/')[-1] in filenames and get_initial_MD_steps(config)>0:
         commands = ['sbatch', shell_file, config.get("directory"), active_learning_config, MLP_config_filename]
-        process = subprocess.run(commands, capture_output=True, shell=True)
+        command_string = ' '.join(commands)
+        process = subprocess.run(command_string, capture_output=True, shell=True)
         job_ids.append(int(process.stdout.split(b' ')[-1]))
         job_types.append(shell_file)
 
@@ -78,7 +80,6 @@ def main(args=None):
             'submits/MD_adv_sampling.sh',
             'submits/gpaw_active.sh',
             'submits/gpaw_array.sh',
-            
         ]
 
         for shell_file in shell_filenames:
@@ -90,14 +91,16 @@ def main(args=None):
                 else:
                     commands = ['sbatch', shell_file, active_learning_config, MLP_config_filename, str(i)]
 
-                process = subprocess.run(commands,capture_output=True, shell=True)
+                command_string = ' '.join(commands)
+                process = subprocess.run(command_string, capture_output=True, shell=True)
                 job_ids.append(int(process.stdout.split(b' ')[-1]))
                 job_types.append(shell_file)
 
                 if 'gpaw_array' in shell_file:
                     commands = ['sbatch', f'--dependency=afterok:{job_ids[-1]}', shell_file, active_learning_config, MLP_config_filename, str(i)]
 
-                    process = subprocess.run(commands,capture_output=True, shell=True)
+                    command_string = ' '.join(commands)
+                    process = subprocess.run(command_string, capture_output=True, shell=True)
                     job_ids.append(int(process.stdout.split(b' ')[-1]))
                     job_types.append(shell_file)
             
@@ -106,7 +109,9 @@ def main(args=None):
 
         shell_file = 'submits/restart.sh'
         commands = ['sbatch', f'--dependency=afterok:{job_ids[-1]}', shell_file, config.get('directory'), active_learning_config, MLP_config_filename]
-        process = subprocess.run(commands,capture_output=True, shell=True)
+        
+        command_string = ' '.join(commands)
+        process = subprocess.run(command_string, capture_output=True, shell=True)
         job_ids.append(int(process.stdout.split(b' ')[-1]))
         job_types.append(shell_file)
 
