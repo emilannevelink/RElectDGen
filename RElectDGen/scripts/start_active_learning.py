@@ -48,7 +48,7 @@ def main(args=None):
     print(config.get('machine'),flush=True)
 
     generate_shell_command = ['REDGEN-generate-shell', '--config_file', active_learning_config]
-    process = subprocess.run(generate_shell_command, check=True,capture_output=True)
+    process = subprocess.run(generate_shell_command, check=True,capture_output=True, shell=True)
 
     filenames = config.get('shell_filenames')
     job_ids = []
