@@ -43,42 +43,42 @@ def shell_from_config(config):
                 # 'python ${1}scripts/'+f'{branch}/combine_datasets.py --config_file $2 --MLP_config_file $3',
                 # 'nequip-train $3',
                 # 'python ${1}scripts/'+f'{branch}/train_NN.py --config_file $2 --MLP_config_file $3',
-                'REDGEN-combine-datasets --config_file $2 --MLP_config_file $3',
-                'REDGEN-train-NN --config_file $2 --MLP_config_file $3',
+                'REDGEN-combine-datasets --config_file $1 --MLP_config_file $2',
+                'REDGEN-train-NN --config_file $1 --MLP_config_file $2',
             ]
             
         elif 'restart' in file:
             commands += [
                 # 'python ${1}scripts/'+f'{branch}/restart.py --config_file $2 --MLP_config_file $3',
-                'REDGEN-restart --config_file $2 --MLP_config_file $3'
+                'REDGEN-restart --config_file $1 --MLP_config_file $2'
             ]
             
         else:
             if 'MLP' in file:
-                commands += ['REDGEN-MLP-MD --config_file $2  --MLP_config_file $3 --loop_learning_count $4']
+                commands += ['REDGEN-MLP-MD --config_file $1  --MLP_config_file $2 --loop_learning_count $3']
             elif 'adv' in file:
                 if 'MD' in file:
-                    commands += ['REDGEN-md-adv --config_file $2  --MLP_config_file $3 --loop_learning_count $4']
+                    commands += ['REDGEN-md-adv --config_file $1  --MLP_config_file $2 --loop_learning_count $3']
                 else:
-                    commands += ['REDGEN-sample-adv --config_file $2  --MLP_config_file $3 --loop_learning_count $4']
+                    commands += ['REDGEN-sample-adv --config_file $1  --MLP_config_file $2 --loop_learning_count $3']
         
             elif 'MD' in file:
                 file = os.path.join(config.get('scripts_path'),'gpaw_MD.py')
-                commands += [f'mpiexec -n {gpaw_cores}' + f' gpaw python {file} --config_file $2 --MLP_config_file $3']
+                commands += [f'mpiexec -n {gpaw_cores}' + f' gpaw python {file} --config_file $1 --MLP_config_file $2']
                 
             elif 'active' in file:
                 file = os.path.join(config.get('scripts_path'),'gpaw_active.py')
-                commands += [f'mpiexec -n {gpaw_cores}' + f' gpaw python {file} --config_file $2 --MLP_config_file $3 --loop_learning_count $4']
+                commands += [f'mpiexec -n {gpaw_cores}' + f' gpaw python {file} --config_file $1 --MLP_config_file $2 --loop_learning_count $3']
                 
             elif 'array' in file:
                 file = os.path.join(config.get('scripts_path'),'gpaw_active_array.py')
-                commands += [f'mpiexec -n {gpaw_cores}' + f' gpaw python {file} --config_file $2 --MLP_config_file $3 --loop_learning_count $4' + " --array_index ${SLURM_ARRAY_TASK_ID}"]
+                commands += [f'mpiexec -n {gpaw_cores}' + f' gpaw python {file} --config_file $1 --MLP_config_file $2 --loop_learning_count $3' + " --array_index ${SLURM_ARRAY_TASK_ID}"]
                 
             elif 'summary' in file:
                 file = os.path.join(config.get('scripts_path'),'gpaw_summary_array.py')
                 # commands += [f'mpiexec -n {gpaw_cores}' + f' gpaw python {file} --config_file $2 --MLP_config_file $3 --loop_learning_count $4']
-                commands += ['REDGEN-gpaw-summary --config_file $2  --MLP_config_file $3 --loop_learning_count $4']
-                commands += ['REDGEN-log --config_file $2']
+                commands += ['REDGEN-gpaw-summary --config_file $1  --MLP_config_file $2 --loop_learning_count $3']
+                commands += ['REDGEN-log --config_file $1']
             
         if 'array' in fname:
             gen_job_array(commands,'',slurm_config,fname=fname)

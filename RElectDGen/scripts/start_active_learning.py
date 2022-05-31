@@ -64,84 +64,49 @@ def main(args=None):
     shell_file = 'submits/gpaw_MD.sh'
     if shell_file.split('/')[-1] in filenames and get_initial_MD_steps(config)>0:
         commands = ['sbatch', shell_file, config.get("directory"), active_learning_config, MLP_config_filename]
-        process = subprocess.run(commands, capture_output=True)
+        process = subprocess.run(commands, capture_output=True, shell=True)
         job_ids.append(int(process.stdout.split(b' ')[-1]))
         job_types.append(shell_file)
 
 
     for i in range(1,1+config.get('n_temperature_sweep')):
-
-        shell_file = 'submits/train_NN.sh'
-        if shell_file.split('/')[-1] in filenames:
-            if len(job_ids)>0:
-                commands = ['sbatch', f'--dependency=afterok:{job_ids[-1]}', shell_file, config.get('directory'),active_learning_config, MLP_config_filename]
-            else:
-                commands = ['sbatch', shell_file, config.get('directory'),active_learning_config, MLP_config_filename]
-            process = subprocess.run(commands,capture_output=True)
-            job_ids.append(int(process.stdout.split(b' ')[-1]))
-            job_types.append(shell_file)
-
-        shell_file = 'submits/MLP_MD.sh'
-        if shell_file.split('/')[-1] in filenames:
-            if len(job_ids)>0:
-                commands = ['sbatch', f'--dependency=afterok:{job_ids[-1]}', shell_file, config.get('directory'),active_learning_config, MLP_config_filename, str(i)]
-            else:
-                commands = ['sbatch', shell_file, config.get('directory'),active_learning_config, MLP_config_filename, str(i)]
-            process = subprocess.run(commands,capture_output=True)
-            job_ids.append(int(process.stdout.split(b' ')[-1]))
-            job_types.append(shell_file)
         
-        shell_file = 'submits/adv_sampling.sh'
-        if shell_file.split('/')[-1] in filenames:
-            if len(job_ids)>0:
-                commands = ['sbatch', f'--dependency=afterok:{job_ids[-1]}', shell_file, config.get('directory'),active_learning_config, MLP_config_filename, str(i)]
-            else:
-                commands = ['sbatch', shell_file, config.get('directory'),active_learning_config, MLP_config_filename, str(i)]
-            process = subprocess.run(commands,capture_output=True)
-            job_ids.append(int(process.stdout.split(b' ')[-1]))
-            job_types.append(shell_file)
+        shell_filenames = [
+            'submits/train_NN.sh',
+            'submits/MLP_MD.sh',
+            'submits/adv_sampling.sh',
+            'submits/MD_adv_sampling.sh',
+            'submits/gpaw_active.sh',
+            'submits/gpaw_array.sh',
+            
+        ]
 
-        shell_file = 'submits/MD_adv_sampling.sh'
-        if shell_file.split('/')[-1] in filenames:
-            if len(job_ids)>0:
-                commands = ['sbatch', f'--dependency=afterok:{job_ids[-1]}', shell_file, config.get('directory'),active_learning_config, MLP_config_filename, str(i)]
-            else:
-                commands = ['sbatch', shell_file, config.get('directory'),active_learning_config, MLP_config_filename, str(i)]
-            process = subprocess.run(commands,capture_output=True)
-            job_ids.append(int(process.stdout.split(b' ')[-1]))
-            job_types.append(shell_file)
+        for shell_file in shell_filenames:
+            commands = []
 
-        if 'gpaw_active.sh' in filenames:
-            shell_file = 'submits/gpaw_active.sh'
-            if len(job_ids)>0:
-                commands = ['sbatch', f'--dependency=afterok:{job_ids[-1]}', shell_file, config.get('directory'),active_learning_config, MLP_config_filename, str(i)]
-            else:
-                commands = ['sbatch', shell_file, config.get('directory'),active_learning_config, MLP_config_filename, str(i)]
-            process = subprocess.run(commands,capture_output=True)
-            job_ids.append(int(process.stdout.split(b' ')[-1]))
-            job_types.append(shell_file)
-        elif 'gpaw_array.sh' in filenames:
-            shell_file = 'submits/gpaw_array.sh'
-            narray = int(config.get('max_samples')-1)
-            if len(job_ids)>0:
-                commands = ['sbatch', f'--dependency=afterok:{job_ids[-1]}', f'--array=0-{narray}', shell_file, config.get('directory'),active_learning_config, MLP_config_filename, str(i)]
-            else:
-                commands = ['sbatch', f'--array=0-{narray}', shell_file, config.get('directory'),active_learning_config, MLP_config_filename, str(i)]
-            process = subprocess.run(commands,capture_output=True)
-            job_ids.append(int(process.stdout.split(b' ')[-1]))
-            job_types.append(shell_file)
+            if shell_file.split('/')[-1] in filenames:
+                if len(job_ids)>0:
+                    commands = ['sbatch', f'--dependency=afterok:{job_ids[-1]}', shell_file, active_learning_config, MLP_config_filename, str(i)]
+                else:
+                    commands = ['sbatch', shell_file, active_learning_config, MLP_config_filename, str(i)]
 
-            shell_file = 'submits/gpaw_summary.sh'
-            commands = ['sbatch', f'--dependency=afterok:{job_ids[-1]}', shell_file, config.get('directory'),active_learning_config, MLP_config_filename, str(i)]
-            process = subprocess.run(commands,capture_output=True)
-            job_ids.append(int(process.stdout.split(b' ')[-1]))
-            job_types.append(shell_file)
+                process = subprocess.run(commands,capture_output=True, shell=True)
+                job_ids.append(int(process.stdout.split(b' ')[-1]))
+                job_types.append(shell_file)
+
+                if 'gpaw_array' in shell_file:
+                    commands = ['sbatch', f'--dependency=afterok:{job_ids[-1]}', shell_file, active_learning_config, MLP_config_filename, str(i)]
+
+                    process = subprocess.run(commands,capture_output=True, shell=True)
+                    job_ids.append(int(process.stdout.split(b' ')[-1]))
+                    job_types.append(shell_file)
+            
         
     if config.get('restart',False) and 'restart.sh' in filenames and len(job_ids)>0:
 
         shell_file = 'submits/restart.sh'
         commands = ['sbatch', f'--dependency=afterok:{job_ids[-1]}', shell_file, config.get('directory'), active_learning_config, MLP_config_filename]
-        process = subprocess.run(commands,capture_output=True)
+        process = subprocess.run(commands,capture_output=True, shell=True)
         job_ids.append(int(process.stdout.split(b' ')[-1]))
         job_types.append(shell_file)
 
