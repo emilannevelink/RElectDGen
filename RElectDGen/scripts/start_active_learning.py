@@ -86,19 +86,34 @@ def main(args=None):
             commands = []
 
             if shell_file.split('/')[-1] in filenames:
-                if len(job_ids)>0:
-                    commands = ['sbatch', f'--dependency=afterok:{job_ids[-1]}', shell_file, active_learning_config, MLP_config_filename, str(i)]
-                else:
-                    commands = ['sbatch', shell_file, active_learning_config, MLP_config_filename, str(i)]
-
-                command_string = ' '.join(commands)
-                process = subprocess.run(command_string, capture_output=True, shell=True)
-                job_ids.append(int(process.stdout.split(b' ')[-1]))
-                job_types.append(shell_file)
-
+                
                 if 'gpaw_array' in shell_file:
+                    narray = int(config.get('max_samples')-1)
+                    if len(job_ids)>0:
+                        commands = ['sbatch', f'--dependency=afterok:{job_ids[-1]}', f'--array=0-{narray}', shell_file, config.get('directory'),active_learning_config, MLP_config_filename, str(i)]
+                    else:
+                        commands = ['sbatch', f'--array=0-{narray}', shell_file, config.get('directory'),active_learning_config, MLP_config_filename, str(i)]
+                    
+                    command_string = ' '.join(commands)
+                    process = subprocess.run(command_string, capture_output=True, shell=True)
+                    job_ids.append(int(process.stdout.split(b' ')[-1]))
+                    job_types.append(shell_file)
+                    
                     shell_file = 'submits/gpaw_summary.sh'
                     commands = ['sbatch', f'--dependency=afterok:{job_ids[-1]}', shell_file, active_learning_config, MLP_config_filename, str(i)]
+
+                    command_string = ' '.join(commands)
+                    process = subprocess.run(command_string, capture_output=True, shell=True)
+                    job_ids.append(int(process.stdout.split(b' ')[-1]))
+                    job_types.append(shell_file)
+
+                else:
+                    
+                
+                    if len(job_ids)>0:
+                        commands = ['sbatch', f'--dependency=afterok:{job_ids[-1]}', shell_file, active_learning_config, MLP_config_filename, str(i)]
+                    else:
+                        commands = ['sbatch', shell_file, active_learning_config, MLP_config_filename, str(i)]
 
                     command_string = ' '.join(commands)
                     process = subprocess.run(command_string, capture_output=True, shell=True)
