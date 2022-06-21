@@ -260,3 +260,129 @@ class uncertainty_NN():
 
     def load_state_dict(self, state_dict):
         self.model.load_state_dict(state_dict)
+
+class uncertaintydistance_NN():
+    def __init__(self, 
+    input_dim, 
+    hidden_dimensions=[], 
+    act=torch.nn.ReLU, 
+    train_percent = 0.8,
+    epochs=1000, 
+    lr = 0.001, 
+    momentum=0.9,
+    patience= None,
+    min_lr = None) -> None:
+        self.train_percent = train_percent
+        if patience is None:
+            patience = epochs/10
+        if min_lr is None:
+            self.min_lr = lr/100
+        
+        # layers = [rescale_input(input_dim=input_dim)]
+        layers = [embed_input(input_dim=input_dim)]
+        if isinstance(layers[-1],embed_input):
+            input_dim = layers[-1].input_dim*layers[-1].num_basis
+        
+        if len(hidden_dimensions)==0:
+            layers.append(torch.nn.Linear(input_dim, 1))
+        else:
+            # layers = []
+            for i, hd in enumerate(hidden_dimensions):
+                if i == 0:
+                    layers.append(torch.nn.Linear(input_dim, hd))
+                else:
+                    layers.append(torch.nn.Linear(hidden_dimensions[i-1], hd))
+                layers.append(act())
+
+            layers.append(torch.nn.Linear(hidden_dimensions[-1], 1))
+        
+        self.model = torch.nn.Sequential(*layers)
+        # self.model = Network(input_dim, hidden_dimensions, act)
+        print('Trainable parameters:', sum(p.numel() for p in self.model.parameters() if p.requires_grad))
+        self.epochs = epochs
+        self.prob = lambda value, std: torch.max(torch.hstack([torch.exp(-value.pow(2)/2/std.pow(2))/std/(2*np.pi)**0.5,1e-10*torch.ones_like(value)]),dim=-1).values
+        self.loss = lambda error, pred_std: -torch.sum( torch.log( self.prob(error, pred_std)) )
+        self.optim = torch.optim.Adam(self.model.parameters(), lr = lr)
+        self.lr_scheduler = LRScheduler(self.optim, patience, self.min_lr)
+
+    def train(self, x, y):
+        x = torch.tensor(x) #Break computational graph for training
+        y = torch.tensor(y)
+
+        # y = torch.log(y)
+
+        if isinstance(self.model[0], rescale_input) or isinstance(self.model[0], embed_input) :
+            self.model[0].rewrite(x)
+
+        n_train = int(len(x)*self.train_percent)
+        rand_ind = torch.randperm(len(x))
+        train_ind = rand_ind[:n_train]
+        training_data = unc_Dataset(x[train_ind],y[train_ind])
+        val_ind = rand_ind[n_train:]
+        validation_data = unc_Dataset(x[val_ind],y[val_ind])
+
+        train_dataloader = DataLoader(training_data, batch_size=1000, shuffle=True)
+        validation_dataloader = DataLoader(validation_data, batch_size=1000, shuffle=True)
+
+        metrics = {
+            'lr': [],
+            'train_loss': [],
+            'validation_loss': [],
+        }
+        for n in range(self.epochs):
+            running_loss = 0
+            for i, data in enumerate(train_dataloader):
+                inputs, outputs = data
+                self.model.train()
+                self.model.zero_grad()
+                pred = self.model(inputs)
+
+                # loss = self.loss(pred,outputs.unsqueeze(1))
+                loss = self.loss(outputs.unsqueeze(1), torch.abs(pred))
+                # loss = self.loss(pred.squeeze(),outputs)
+
+                # self.optim.zero_grad()
+                loss.backward()
+
+                self.optim.step()
+                running_loss += loss.item()*len(inputs)
+            
+            train_loss = running_loss/n_train
+            running_loss = 0
+            for i, data in enumerate(validation_dataloader):
+                inputs, outputs = data
+                self.model.eval()
+                pred = self.model(inputs)
+
+                loss = self.loss(outputs.unsqueeze(1), torch.abs(pred))
+
+                running_loss += loss.item()*len(inputs)
+            validation_loss = running_loss/len(val_ind)
+            
+            self.lr_scheduler(validation_loss)
+            
+            metrics['lr'].append(self.optim.param_groups[0]['lr'])
+            metrics['train_loss'].append(train_loss)
+            metrics['validation_loss'].append(validation_loss)
+
+            if self.optim.param_groups[0]['lr'] == self.min_lr:
+                break
+        
+        self.metrics = metrics
+        self.train_loss = train_loss
+        self.validation_loss = validation_loss
+
+    def predict(self,x):
+        x = torch.tensor(x)
+        self.model.eval()
+        pred = self.model(x)
+        pred = torch.abs(pred)
+        # pred = torch.exp(pred)
+
+        return pred
+
+    def get_state_dict(self):
+        return self.model.state_dict()
+
+    def load_state_dict(self, state_dict):
+        self.model.load_state_dict(state_dict)
