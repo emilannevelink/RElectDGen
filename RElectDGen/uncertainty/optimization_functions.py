@@ -307,8 +307,8 @@ class uncertaintydistance_NN():
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
     def train(self, x, y):
-        x = torch.tensor(x).device(self.device) #Break computational graph for training
-        y = torch.tensor(y).device(self.device)
+        x = torch.tensor(x).to(self.device) #Break computational graph for training
+        y = torch.tensor(y).to(self.device)
 
         # y = torch.log(y)
 
