@@ -64,7 +64,7 @@ def main(args=None):
 
     shell_file = 'submits/gpaw_MD.sh'
     if shell_file.split('/')[-1] in filenames and get_initial_MD_steps(config)>0:
-        commands = ['sbatch', shell_file, config.get("directory"), active_learning_config, MLP_config_filename]
+        commands = ['sbatch', shell_file, active_learning_config, MLP_config_filename]
         command_string = ' '.join(commands)
         process = subprocess.run(command_string, capture_output=True, shell=True)
         job_ids.append(int(process.stdout.split(b' ')[-1]))
