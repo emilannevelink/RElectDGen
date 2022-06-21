@@ -304,10 +304,11 @@ class uncertaintydistance_NN():
         self.loss = lambda error, pred_std: -torch.sum( torch.log( self.prob(error, pred_std)) )
         self.optim = torch.optim.Adam(self.model.parameters(), lr = lr)
         self.lr_scheduler = LRScheduler(self.optim, patience, self.min_lr)
+        self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
     def train(self, x, y):
-        x = torch.tensor(x) #Break computational graph for training
-        y = torch.tensor(y)
+        x = torch.tensor(x).device(self.device) #Break computational graph for training
+        y = torch.tensor(y).device(self.device)
 
         # y = torch.log(y)
 
@@ -338,7 +339,7 @@ class uncertaintydistance_NN():
                 pred = self.model(inputs)
 
                 # loss = self.loss(pred,outputs.unsqueeze(1))
-                loss = self.loss(outputs.unsqueeze(1), torch.abs(pred))
+                loss = self.loss(outputs.unsqueeze(1), pred.abs())
                 # loss = self.loss(pred.squeeze(),outputs)
 
                 # self.optim.zero_grad()
@@ -354,7 +355,7 @@ class uncertaintydistance_NN():
                 self.model.eval()
                 pred = self.model(inputs)
 
-                loss = self.loss(outputs.unsqueeze(1), torch.abs(pred))
+                loss = self.loss(outputs.unsqueeze(1), pred.abs())
 
                 running_loss += loss.item()*len(inputs)
             validation_loss = running_loss/len(val_ind)
