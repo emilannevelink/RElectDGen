@@ -282,9 +282,9 @@ class uncertaintydistance_NN():
             self.min_lr = lr/100
         
         # layers = [rescale_input(input_dim=input_dim)]
-        layers = [embed_input(input_dim=input_dim)]
-        if isinstance(layers[-1],embed_input):
-            input_dim = layers[-1].input_dim*layers[-1].num_basis
+        layers = []
+        # if isinstance(layers[-1],embed_input):
+        #     input_dim = layers[-1].input_dim*layers[-1].num_basis
         
         if len(hidden_dimensions)==0:
             layers.append(torch.nn.Linear(input_dim, 1))
