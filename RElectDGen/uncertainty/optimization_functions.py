@@ -272,6 +272,9 @@ class uncertaintydistance_NN():
     momentum=0.9,
     patience= None,
     min_lr = None) -> None:
+
+        self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
         self.train_percent = train_percent
         if patience is None:
             patience = epochs/10
@@ -296,7 +299,7 @@ class uncertaintydistance_NN():
 
             layers.append(torch.nn.Linear(hidden_dimensions[-1], 1))
         
-        self.model = torch.nn.Sequential(*layers)
+        self.model = torch.nn.Sequential(*layers).to(self.device)
         # self.model = Network(input_dim, hidden_dimensions, act)
         print('Trainable parameters:', sum(p.numel() for p in self.model.parameters() if p.requires_grad))
         self.epochs = epochs
@@ -304,7 +307,8 @@ class uncertaintydistance_NN():
         self.loss = lambda error, pred_std: -torch.sum( torch.log( self.prob(error, pred_std)) )
         self.optim = torch.optim.Adam(self.model.parameters(), lr = lr)
         self.lr_scheduler = LRScheduler(self.optim, patience, self.min_lr)
-        self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        
+        
 
     def train(self, x, y):
         x = torch.tensor(x).to(self.device) #Break computational graph for training
