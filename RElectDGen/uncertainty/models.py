@@ -654,10 +654,11 @@ class Nequip_latent_distanceNN(uncertainty_base):
         atom_types = data['atom_types']
         uncertainties = torch.zeros(atom_embedding.shape[0],2, device=self.device)
 
-        latent_distances = torch.cdist(atom_embedding,embeddings,p=2)
+        latent_distances = torch.cdist(embeddings,atom_embedding,p=2)
         inds = torch.argmin(latent_distances,axis=0)
 
-        min_vectors = np.abs(torch.vstack([self.train_embeddings[ind]-self.test_embeddings[i] for i, ind in enumerate(inds)]).detach().cpu().numpy())
+        # min_vectors = np.abs(torch.vstack([self.train_embeddings[ind]-self.test_embeddings[i] for i, ind in enumerate(inds)]).detach().cpu().numpy())
+        min_vectors = torch.vstack([embeddings[ind]-atom_embedding[i] for i, ind in enumerate(inds)]).abs()
 
         uncertainties = self.uncertainty_from_vector(min_vectors, type=type)
 
