@@ -925,9 +925,10 @@ class Nequip_ensemble_NN(uncertainty_base):
 
             uncertainty_partition = [uncertainty[si:ei] for si, ei in zip(start_inds,end_inds)]
             embeddings = [atom_embeddings[si:ei] for si, ei in zip(start_inds,end_inds)]
-            return torch.tensor([unc.max() for unc in uncertainty_partition]), embeddings
+            
+            return torch.vstack([unc[torch.argmax(unc.sum(dim=1))] for unc in uncertainty_partition]), embeddings
         else:
-            uncertainty = uncertainty.reshape(len(traj),-1)
+            uncertainty = uncertainty.reshape(len(traj),-1, 2)
             return uncertainty, atom_embeddings.reshape(len(traj),-1,atom_embeddings.shape[-1])
 
     def plot_fit(self, filename=None):
