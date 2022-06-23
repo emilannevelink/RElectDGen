@@ -431,7 +431,7 @@ class uncertainty_ensemble_NN():
 
             layers.append(torch.nn.Linear(hidden_dimensions[-1], 1))
         
-        self.model = torch.nn.Sequential(*layers)
+        self.model = torch.nn.Sequential(*layers).to(self.device)
         # self.model = Network(input_dim, hidden_dimensions, act)
         print('Trainable parameters:', sum(p.numel() for p in self.model.parameters() if p.requires_grad))
         self.epochs = epochs
@@ -568,7 +568,7 @@ class uncertainty_ensemble_NN():
 
                 ind_start = int(train_indices[i-1] if i>0 else 0)
                 ind_final = int(train_indices[i])
-                latents = train_latents[ind_start:ind_final]
+                latents = train_latents[ind_start:ind_final].to(self.device)
                 # NN_inputs = torch.hstack([latents, atom_one_hot])
                 pred = self.model(latents).sum() #pred atomic energies and sum to get total energies
                 loss = self.loss(pred,train_energies[i])
@@ -603,7 +603,7 @@ class uncertainty_ensemble_NN():
 
                 ind_start = int(validation_indices[i-1] if i>0 else 0)
                 ind_final = int(validation_indices[i])
-                latents = validation_latents[ind_start:ind_final]
+                latents = validation_latents[ind_start:ind_final].to(self.device)
                 # NN_inputs = torch.hstack([latents, atom_one_hot])
                 pred = self.model(latents).sum() #pred atomic energies and sum to get total energies
                 loss = self.loss(pred,validation_energies[i])
