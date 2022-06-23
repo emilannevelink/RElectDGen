@@ -878,9 +878,9 @@ class Nequip_ensemble_NN(uncertainty_base):
 
         probability = 1/Q * torch.exp(-(out['atomic_energy'].mean()-emean)/estd/kT)
         
-        uncertainties = self.predict_uncertainty(data).to(self.device)
+        self.uncertainties = self.predict_uncertainty(data).to(self.device)
 
-        adv_loss = (probability * uncertainties).sum()
+        adv_loss = (probability * self.uncertainties).sum()
 
         return adv_loss
 
