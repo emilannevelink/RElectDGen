@@ -569,7 +569,7 @@ class Nequip_latent_distanceNN(uncertainty_base):
         for n in range(self.n_ensemble):
             state_dict_name = self.state_dict_func(n)
             if os.path.isfile(state_dict_name):
-                NN = uncertainty_NN(self.latent_size, self.hidden_dimensions)
+                NN = uncertaintydistance_NN(self.latent_size, self.hidden_dimensions)
                 try:
                     NN.load_state_dict(torch.load(state_dict_name))
                     self.NNs.append(NN)
