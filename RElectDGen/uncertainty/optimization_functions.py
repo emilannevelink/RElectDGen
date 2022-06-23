@@ -4,6 +4,8 @@ from scipy.optimize import minimize
 from scipy import stats
 
 from torch.utils.data import Dataset, DataLoader
+from nequip.data import AtomicData
+import copy
 
 def optimize2params(test_errors, min_vectors):
 
@@ -386,6 +388,260 @@ class uncertaintydistance_NN():
 
         return pred
 
+    def get_state_dict(self):
+        return self.model.state_dict()
+
+    def load_state_dict(self, state_dict):
+        self.model.load_state_dict(state_dict)
+
+class uncertainty_ensemble_NN():
+    def __init__(self, 
+    nequip_model,
+    input_dim,
+    natoms,
+    hidden_dimensions=[], 
+    act=torch.nn.ReLU, 
+    epochs=1000, 
+    lr = 0.001, 
+    momentum=0.9,
+    patience= None,
+    min_lr = None) -> None:
+        self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        self.nequip_model = nequip_model.train()
+        self.nequip_model.train()
+        self.natoms = natoms
+        self.input_dim = input_dim
+        
+        if patience is None:
+            patience = epochs/10
+        if min_lr is None:
+            self.min_lr = lr/10000
+        
+        layers = []
+        if len(hidden_dimensions)==0:
+            layers.append(torch.nn.Linear(input_dim+natoms, 1))
+        else:
+            # layers = []
+            for i, hd in enumerate(hidden_dimensions):
+                if i == 0:
+                    layers.append(torch.nn.Linear(input_dim+natoms, hd))
+                else:
+                    layers.append(torch.nn.Linear(hidden_dimensions[i-1], hd))
+                layers.append(act())
+
+            layers.append(torch.nn.Linear(hidden_dimensions[-1], 1))
+        
+        self.model = torch.nn.Sequential(*layers)
+        # self.model = Network(input_dim, hidden_dimensions, act)
+        print('Trainable parameters:', sum(p.numel() for p in self.model.parameters() if p.requires_grad))
+        self.epochs = epochs
+        self.loss = torch.nn.MSELoss()
+        self.optim = torch.optim.Adam(self.model.parameters(), lr = lr)
+        self.lr_scheduler = LRScheduler(self.optim, patience, self.min_lr)
+
+    def train(self,
+        train_latents,
+        train_indices,
+        train_energies,
+        validation_latents,
+        validation_indices,
+        validation_energies,
+        energy_factor=1,
+        force_factor=0):
+
+        self.energy_factor = energy_factor
+        self.force_factor = force_factor
+        
+        # train_latents = torch.empty(0,self.input_dim).to(self.device)
+        # train_latent_sensitivities = torch.empty(0,3,self.input_dim).to(self.device)
+        # train2_latent_sensitivities = torch.empty(0,self.input_dim,3).to(self.device)
+        # train3_latent_sensitivities = []
+        # train_indices = torch.empty(0,dtype=int).to(self.device)
+        # for i, data in enumerate(self.train_dataset):
+        #     data['pos'].requires_grad = True
+        #     out = self.nequip_model(self.transform_data_input(data))
+
+        #     tmp_latent_sensititivies = torch.zeros(*data['pos'].shape,self.input_dim)
+        #     tmp2_latent_sensititivies = torch.zeros(self.input_dim,*data['pos'].shape)
+        #     for j, feat in enumerate(out['node_features']):
+        #         for k, dd in enumerate(feat):
+        #             latent_senstivities = torch.autograd.grad(
+        #                 dd, data['pos'],  retain_graph=True
+        #             )[0]
+        #             tmp2_latent_sensititivies[k,:,:] = latent_senstivities
+
+        #         train3_latent_sensitivities.append(tmp2_latent_sensititivies.unsqueeze(0))
+
+        #     tmp2_latent_sensititivies = torch.zeros(self.input_dim,3)
+        #     for j, feat in enumerate(out['node_features'].T):
+        #         latent_senstivities = torch.autograd.grad(
+        #             feat, data['pos'], grad_outputs=torch.ones(len(data['pos'])), retain_graph=True
+        #         )[0]
+        #         tmp_latent_sensititivies[:,:,j] = latent_senstivities
+
+        #         latent_senstivities = torch.autograd.grad(
+        #             feat, data['pos'], grad_outputs=torch.ones(len(data['pos'])), retain_graph=True
+        #         )[0]
+        #         tmp2_latent_sensititivies[j,:] = latent_senstivities.sum(dim=0)
+
+
+        #     train_latents = torch.cat([train_latents, out['node_features']],dim=0).to(self.device)
+        #     train_latent_sensitivities = torch.cat([train_latent_sensitivities, tmp_latent_sensititivies],dim=0).to(self.device)
+        #     train2_latent_sensitivities = torch.cat([train2_latent_sensitivities, tmp2_latent_sensititivies[None,:,:]],dim=0).to(self.device)
+        #     npoints = torch.tensor([train_indices[-1]+len(data['pos']) if i>0 else len(data['pos'])]).to(self.device)
+        #     train_indices = torch.cat([train_indices,npoints]).to(self.device)
+
+        # validation_latents = torch.empty(0,self.input_dim).to(self.device)
+        # validation_latent_sensitivities = torch.empty(0,3,self.input_dim).to(self.device)
+        # validation_indices = torch.empty(0,dtype=int).to(self.device)
+        # for i, data in enumerate(self.validation_dataset):
+        #     data['pos'].requires_grad = True
+        #     out = self.nequip_model(self.transform_data_input(data))
+
+        #     tmp_latent_sensititivies = torch.zeros(*data['pos'].shape,self.input_dim)
+        #     # tmp2_latent_sensititivies = torch.zeros(*data['pos'].shape,self.input_dim)
+        #     for j, feat in enumerate(out['node_features'].T):
+        #         latent_senstivities = torch.autograd.grad(
+        #             feat, data['pos'], grad_outputs=torch.ones(len(data['pos'])), retain_graph=True
+        #         )[0]
+        #         tmp_latent_sensititivies[:,:,j] = latent_senstivities
+        #         # for k, dd in enumerate(feat):
+        #         #     latent_senstivities = torch.autograd.grad(
+        #         #         dd, data['pos'],  retain_graph=True
+        #         #     )[0]
+        #         #     tmp2_latent_sensititivies[:,:,j] += latent_senstivities
+
+
+        #     validation_latents = torch.cat([validation_latents, out['node_features']],dim=0).to(self.device)
+        #     validation_latent_sensitivities = torch.cat([validation_latent_sensitivities, tmp_latent_sensititivies],dim=0).to(self.device)
+        #     npoints = torch.tensor([validation_indices[-1]+len(data['pos']) if i>0 else len(data['pos'])]).to(self.device)
+        #     validation_indices = torch.cat([validation_indices,npoints]).to(self.device)
+
+        self.best_model = copy.deepcopy(self.model)
+        self.best_loss = torch.tensor(np.inf)
+
+        metrics = {
+            'lr': [],
+            'train_loss': [],
+            'validation_loss': [],
+        }
+        for n in range(self.epochs):
+            running_loss = 0
+            for i, data in enumerate(train_indices):
+                # if 'batch' in data:
+                #     n_inputs = max(data['batch'])+1
+                # else:
+                #     n_inputs = 1
+                self.model.train()
+                self.model.zero_grad()
+
+                # atom_one_hot = torch.nn.functional.one_hot(data['atom_types'].squeeze(),num_classes=self.natoms)
+
+                # data['pos'].requires_grad = True
+                # out = self.nequip_model(self.transform_data_input(data))
+
+                # NN_inputs = torch.hstack([out['node_features'], atom_one_hot])
+                # pred = self.model(NN_inputs).sum() #pred atomic energies and sum to get total energies
+                # pred_forces = torch.autograd.grad(
+                #     pred, data['pos'], retain_graph=True
+                # )[0]
+                # ind_start = int(train_indices[i-1] if i>0 else 0)
+                # ind_final = int(train_indices[i])
+                # latents = train_latents[ind_start:ind_final]
+                # NN_inputs = torch.hstack([latents, atom_one_hot])
+                # pred = self.model(NN_inputs).sum() #pred atomic energies and sum to get total energies
+
+                # dl_dx = train_latent_sensitivities[ind_start:ind_final]
+                # dE_dl = torch.autograd.grad(
+                #     pred, latents, retain_graph=True
+                # )[0]
+
+                # dl_dx2 = torch.vstack(train3_latent_sensitivities[ind_start:ind_final])
+
+                # dE_dx4 = torch.einsum('ijkl,ij->kl', dl_dx2, dE_dl)
+                # dE_dx3 = torch.einsum('ik,kj->ij',dE_dl,train2_latent_sensitivities[i])
+                # dE_dx2 = torch.einsum('ik,jk->ij',dE_dl,dl_dx.sum(dim=0))
+                # dE_dx = torch.einsum('ik,ijk->ij',dE_dl,dl_dx)
+
+                # loss = (self.energy_factor * self.loss(pred,data['total_energy']) + 
+                #     self.force_factor * self.loss(pred_forces, data['forces']))
+
+                ind_start = int(train_indices[i-1] if i>0 else 0)
+                ind_final = int(train_indices[i])
+                latents = train_latents[ind_start:ind_final]
+                # NN_inputs = torch.hstack([latents, atom_one_hot])
+                pred = self.model(latents).sum() #pred atomic energies and sum to get total energies
+                loss = self.loss(pred,train_energies[i])
+
+                # self.optim.zero_grad()
+                loss.backward()
+
+                self.optim.step()
+                running_loss += loss.item()
+            
+            train_loss = running_loss/len(train_indices)
+            running_loss = 0
+            for i, data in enumerate(validation_indices):
+                # if 'batch' in data:
+                #     n_inputs = max(data['batch'])+1
+                # else:
+                #     n_inputs = 1
+
+                # data['pos'].requires_grad = True
+                # out = self.nequip_model(self.transform_data_input(data))
+
+                # atom_one_hot = torch.nn.functional.one_hot(data['atom_types'].squeeze(),num_classes=self.natoms)
+
+                # NN_inputs = torch.hstack([out['node_features'], atom_one_hot])
+                # pred = self.model(NN_inputs).sum() #pred atomic energies and sum to get total energies
+                # pred_forces = torch.autograd.grad(
+                #     pred, data['pos'], retain_graph=True
+                # )[0]
+
+                # loss = (self.energy_factor * self.loss(pred,data['total_energy']) + 
+                #         self.force_factor * self.loss(pred_forces, data['forces']))
+
+                ind_start = int(validation_indices[i-1] if i>0 else 0)
+                ind_final = int(validation_indices[i])
+                latents = validation_latents[ind_start:ind_final]
+                # NN_inputs = torch.hstack([latents, atom_one_hot])
+                pred = self.model(latents).sum() #pred atomic energies and sum to get total energies
+                loss = self.loss(pred,validation_energies[i])
+
+                running_loss += loss.item()
+            validation_loss = running_loss/len(validation_indices)
+            
+            if validation_loss < self.best_loss:
+                self.best_model = copy.deepcopy(self.model)
+            self.lr_scheduler(validation_loss)
+            
+            metrics['lr'].append(self.optim.param_groups[0]['lr'])
+            metrics['train_loss'].append(train_loss)
+            metrics['validation_loss'].append(validation_loss)
+
+            if self.optim.param_groups[0]['lr'] == self.min_lr:
+                break
+        
+        self.metrics = metrics
+        self.train_loss = train_loss
+        self.validation_loss = validation_loss
+        self.model = self.best_model
+
+    def predict(self,data):
+        data['pos'].requires_grad = True
+        out = self.nequip_model(self.transform_data_input(data))
+        atom_one_hot = torch.nn.functional.one_hot(data['atom_types'].squeeze(),num_classes=self.natoms)
+
+        NN_inputs = torch.hstack([out['node_features'], atom_one_hot])
+        pred = self.model(NN_inputs)#.sum() #pred atomic energies and sum to get total energies
+
+        return pred #, pred_forces
+
+    def transform_data_input(self, data):
+        assert len(data['total_energy']) == 1
+        data = AtomicData.to_AtomicDataDict(data)
+        
+        return data
     def get_state_dict(self):
         return self.model.state_dict()
 

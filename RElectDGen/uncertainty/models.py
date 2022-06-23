@@ -15,7 +15,7 @@ from nequip.data.transforms import TypeMapper
 from zmq import device
 
 from . import optimization_functions
-from .optimization_functions import uncertainty_NN, uncertaintydistance_NN
+from .optimization_functions import uncertainty_NN, uncertaintydistance_NN, uncertainty_ensemble_NN
 
 class uncertainty_base():
     def __init__(self, model, config, MLP_config):
@@ -616,22 +616,21 @@ class Nequip_latent_distanceNN(uncertainty_base):
         self.uncertainties = self.predict_uncertainty(data, self.atom_embedding, distances=distances).to(self.device)
 
         adv_loss = 0
-        for key in self.chemical_symbol_to_type:
-            if distances == 'train_val':
-                energies = torch.cat([self.train_energies[key], self.test_energies[key]])
-            else:
-                energies = self.train_energies[key]
-            
-            emean = energies.mean()
-            estd = max([energies.std(),1]) # Only allow contraction
+        if distances == 'train_val':
+            energies = torch.cat([self.train_energies, self.test_energies])
+        else:
+            energies = self.train_energies
+        
+        emean = energies.mean()
+        estd = max([energies.std(),1]) # Only allow contraction
 
-            kT = self.kb * T
-            Q = torch.exp(-(energies-emean)/estd/kT).sum()
+        kT = self.kb * T
+        Q = torch.exp(-(energies-emean)/estd/kT).sum()
 
-            mask = data['atom_types'] == self.chemical_symbol_to_type[key]
-            probability = 1/Q * torch.exp(-(out['atomic_energy'][mask]-emean)/estd/kT)
-            
-            adv_loss += (probability * self.uncertainties[mask.flatten()].sum(dim=-1)).sum()
+        # mask = data['atom_types'] == self.chemical_symbol_to_type
+        probability = 1/Q * torch.exp(-(out['atomic_energy']-emean)/estd/kT)
+        
+        adv_loss += (probability * self.uncertainties.sum(dim=-1)).sum()
 
         return adv_loss
 
@@ -740,6 +739,200 @@ class Nequip_latent_distanceNN(uncertainty_base):
         fig, ax = plt.subplots(1,3,figsize=(15,5))
 
         pred_errors = self.predict_uncertainty(0,self.train_embeddings,type='std').detach()
+        min_err = min([self.train_errors.min()])#,pred_errors.min()])
+        max_err = max([self.train_errors.max()])#,pred_errors.max()])
+        ax[0].scatter(self.train_errors,pred_errors,alpha=0.5)
+        ax[0].plot([min_err,max_err], [min_err,max_err],'k',linestyle='--')
+        ax[0].set_xlabel('True Error')
+        ax[0].set_ylabel('Predicted Error')
+        ax[0].axis('square')
+
+        print((pred_errors-self.train_errors).mean())
+        print((pred_errors-self.train_errors).std())
+
+        pred_errors = self.predict_uncertainty(0,self.test_embeddings,type='mean').detach()
+        min_err = min([self.test_errors.min()])#,pred_errors.min()])
+        max_err = max([self.test_errors.max()])#,pred_errors.max()])
+        ax[1].scatter(self.test_errors,pred_errors,alpha=0.5)
+        ax[1].plot([min_err,max_err], [min_err,max_err],'k',linestyle='--')
+        ax[1].set_xlabel('True Error')
+        ax[1].set_ylabel('Predicted Error')
+        ax[1].axis('square')
+
+        ax[2].axhline(0,color='k',linestyle='--')
+        ax[2].scatter(np.arange(len(self.test_errors)),pred_errors-self.test_errors,alpha=0.5)
+        ax[2].set_ylabel('Residual')
+
+        print((pred_errors-self.test_errors).mean())
+        print((pred_errors-self.test_errors).std())
+
+        if filename is not None:
+            plt.savefig(filename)
+
+class Nequip_ensemble_NN(uncertainty_base):
+    def __init__(self, model, config, MLP_config):
+        super().__init__(model, config, MLP_config)
+
+        self.nequip_model = model
+        self.hidden_dimensions = self.config.get('uncertainty_hidden_dimensions', [])
+        self.unc_epochs = self.config.get('uncertainty_epochs', 2000)
+
+        self.natoms = len(MLP_config['type_names'])
+        uncertainty_dir = os.path.join(self.MLP_config['workdir'],self.config.get('uncertainty_dir', 'uncertainty'))
+        os.makedirs(uncertainty_dir,exist_ok=True)
+        self.state_dict_func = lambda n: os.path.join(uncertainty_dir, f'uncertainty_state_dict_{n}.pth')
+        self.metrics_func = lambda n: os.path.join(uncertainty_dir, f'uncertainty_metrics_{n}.csv')
+
+    def load_NNs(self):
+        self.NNs = []
+        train_indices = []
+        for n in range(self.n_ensemble):
+            state_dict_name = self.state_dict_func(n)
+            if os.path.isfile(state_dict_name):
+                NN = uncertainty_ensemble_NN(self.nequip_model, self.latent_size, self.natoms, self.hidden_dimensions)
+                try:
+                    NN.load_state_dict(torch.load(state_dict_name))
+                    self.NNs.append(NN)
+                except:
+                    print(f'Loading uncertainty {n} failed')
+                    train_indices.append(n)
+            else:
+                train_indices.append(n)
+
+        return train_indices
+
+    def calibrate(self, debug = False):
+        
+        train_indices = self.load_NNs()
+        self.parse_data()
+
+        if len(train_indices)>0:
+            
+            for n in train_indices:    
+                #train NN to fit energies
+                NN = uncertainty_ensemble_NN(self.nequip_model, self.latent_size, self.natoms, self.hidden_dimensions)
+                # NN = uncertainty_ensemble_NN(self.nequip_model, self.latent_size, self.hidden_dimensions)
+                NN.train(self.train_latents, self.train_indices, self.train_energies, self.validation_latents, self.validation_indices, self.validation_energies)
+                self.NNs.append(NN)
+                torch.save(NN.get_state_dict(), self.state_dict_func(n))
+                pd.DataFrame(NN.metrics).to_csv( self.metrics_func(n))
+
+    def parse_data(self):
+
+        dataset = dataset_from_config(self.MLP_config)
+        self.train_dataset = dataset[self.MLP_config.train_idcs]
+        self.validation_dataset = dataset[self.MLP_config.val_idcs]
+
+        train_latents = torch.empty(0,self.latent_size+self.natoms).to(self.device)
+        train_indices = torch.empty(0,dtype=int).to(self.device)
+        train_energies = torch.empty(len(self.train_dataset)).to(self.device)
+        for i, data in enumerate(self.train_dataset):
+            data['pos'].requires_grad = True
+            out = self.nequip_model(self.transform_data_input(data))
+            train_energies[i] = data['total_energy'].squeeze()
+
+            atom_one_hot = torch.nn.functional.one_hot(data['atom_types'].squeeze(),num_classes=self.natoms)
+            NN_inputs = torch.hstack([out['node_features'].detach(), atom_one_hot])
+            train_latents = torch.cat([train_latents, NN_inputs],dim=0).to(self.device)
+            npoints = torch.tensor([train_indices[-1]+len(data['pos']) if i>0 else len(data['pos'])]).to(self.device)
+            train_indices = torch.cat([train_indices,npoints]).to(self.device)
+
+        validation_latents = torch.empty(0,self.latent_size+self.natoms).to(self.device)
+        validation_indices = torch.empty(0,dtype=int).to(self.device)
+        validation_energies = torch.empty(len(self.validation_dataset)).to(self.device)
+        for i, data in enumerate(self.validation_dataset):
+            data['pos'].requires_grad = True
+            out = self.nequip_model(self.transform_data_input(data))
+            validation_energies[i] = data['total_energy'].squeeze()
+
+            atom_one_hot = torch.nn.functional.one_hot(data['atom_types'].squeeze(),num_classes=self.natoms)
+            NN_inputs = torch.hstack([out['node_features'].detach(), atom_one_hot])
+            validation_latents = torch.cat([validation_latents, NN_inputs],dim=0).to(self.device)
+            npoints = torch.tensor([validation_indices[-1]+len(data['pos']) if i>0 else len(data['pos'])]).to(self.device)
+            validation_indices = torch.cat([validation_indices,npoints]).to(self.device)
+
+        self.train_latents = train_latents
+        self.train_indices = train_indices
+        self.train_energies = train_energies
+        self.validation_latents = validation_latents
+        self.validation_indices = validation_indices
+        self.validation_energies = validation_energies
+
+    def adversarial_loss(self, data, T, distances='train_val'):
+
+        out = self.model(self.transform_data_input(data))
+        self.atom_embedding = out['node_features']
+
+        if distances == 'train_val':
+            energies = torch.cat([self.train_energies, self.validation_energies])
+        else:
+            energies = self.train_energies
+
+        emean = energies.mean()
+        estd = max([energies.std(),1]) # Only allow contraction
+
+        kT = self.kb * T
+        Q = torch.exp(-(energies-emean)/estd/kT).sum()
+
+        probability = 1/Q * torch.exp(-(out['atomic_energy'].mean()-emean)/estd/kT)
+        
+        uncertainties = self.predict_uncertainty(data).to(self.device)
+
+        adv_loss = (probability * uncertainties).sum()
+
+        return adv_loss
+
+    def predict_uncertainty(self, data, atom_embedding=None, distances='train_val', extra_embeddings=None,type='full'):
+
+        
+        data = self.transform_data_input(data)
+        out = self.model(data)
+        self.atom_embedding = out['node_features']
+        
+        pred_atom_energies = torch.zeros((self.n_ensemble,out['atomic_energy'].shape[0]))
+        for i, NN in enumerate(self.NNs):
+            pred_atom_energies[i] = NN.predict(data).squeeze()
+        
+        uncertainty_mean = (pred_atom_energies-out['atomic_energy'].squeeze()[None,:]).abs().max(dim=0).values
+        uncertainty_std = pred_atom_energies.std(axis=0)#.sum(axis=-1)
+
+        uncertainty = torch.vstack([uncertainty_mean,uncertainty_std]).T
+
+        return uncertainty
+
+    def predict_from_traj(self, traj, max=True, batch_size=1):
+        uncertainty = []
+        atom_embeddings = []
+        # data = [self.transform(atoms) for atoms in traj]
+        # dataset = DataLoader(data, batch_size=batch_size)
+        # for i, batch in enumerate(dataset):
+        #     uncertainty.append(self.predict_uncertainty(batch))
+        #     atom_embeddings.append(self.atom_embedding)
+        for atoms in traj:
+            uncertainty.append(self.predict_uncertainty(atoms))
+            atom_embeddings.append(self.atom_embedding)
+        
+        
+        uncertainty = torch.cat(uncertainty).detach().cpu()
+        atom_embeddings = torch.cat(atom_embeddings).detach().cpu()
+
+        if max:
+            atom_lengths = [len(atoms) for atoms in traj]
+            start_inds = [0] + np.cumsum(atom_lengths[:-1]).tolist()
+            end_inds = np.cumsum(atom_lengths).tolist()
+
+            uncertainty_partition = [uncertainty[si:ei] for si, ei in zip(start_inds,end_inds)]
+            embeddings = [atom_embeddings[si:ei] for si, ei in zip(start_inds,end_inds)]
+            return torch.tensor([unc.max() for unc in uncertainty_partition]), embeddings
+        else:
+            uncertainty = uncertainty.reshape(len(traj),-1)
+            return uncertainty, atom_embeddings.reshape(len(traj),-1,atom_embeddings.shape[-1])
+
+    def plot_fit(self, filename=None):
+            
+        fig, ax = plt.subplots(1,3,figsize=(15,5))
+
+        pred_errors = self.predict_uncertainty(0,self.train_embeddings,type='mean').detach()
         min_err = min([self.train_errors.min()])#,pred_errors.min()])
         max_err = max([self.train_errors.max()])#,pred_errors.max()])
         ax[0].scatter(self.train_errors,pred_errors,alpha=0.5)
