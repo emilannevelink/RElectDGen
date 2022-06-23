@@ -401,7 +401,7 @@ class uncertainty_ensemble_NN():
     natoms,
     hidden_dimensions=[], 
     act=torch.nn.ReLU, 
-    epochs=1000, 
+    epochs=2000, 
     lr = 0.001, 
     momentum=0.9,
     patience= None,
@@ -527,7 +527,7 @@ class uncertainty_ensemble_NN():
         }
         for n in range(self.epochs):
             running_loss = 0
-            for i, data in enumerate(train_indices):
+            for i, data in enumerate(train_indices[list(train_indices.keys())[0]]):
                 # if 'batch' in data:
                 #     n_inputs = max(data['batch'])+1
                 # else:
@@ -565,13 +565,17 @@ class uncertainty_ensemble_NN():
 
                 # loss = (self.energy_factor * self.loss(pred,data['total_energy']) + 
                 #     self.force_factor * self.loss(pred_forces, data['forces']))
-
-                ind_start = int(train_indices[i-1] if i>0 else 0)
-                ind_final = int(train_indices[i])
-                latents = train_latents[ind_start:ind_final].to(self.device)
+                latents = torch.empty(0,self.input_dim+self.natoms, device=self.device)
+                energies = torch.empty(0, device=self.device)
+                for key in train_latents:
+                    ind_start = int(train_indices[key][i-1] if i>0 else 0)
+                    ind_final = int(train_indices[key][i])
+                    latents = torch.cat([latents, train_latents[key][ind_start:ind_final]])
+                    energies = torch.cat([energies, train_energies[key][ind_start:ind_final]])
+                
                 # NN_inputs = torch.hstack([latents, atom_one_hot])
-                pred = self.model(latents).sum() #pred atomic energies and sum to get total energies
-                loss = self.loss(pred,train_energies[i])
+                pred = self.model(latents) #pred atomic energies and sum to get total energies
+                loss = self.loss(pred,energies)
 
                 # self.optim.zero_grad()
                 loss.backward()
@@ -579,9 +583,9 @@ class uncertainty_ensemble_NN():
                 self.optim.step()
                 running_loss += loss.item()
             
-            train_loss = running_loss/len(train_indices)
+            train_loss = running_loss/(i+1)
             running_loss = 0
-            for i, data in enumerate(validation_indices):
+            for i, data in enumerate(validation_indices[list(validation_indices.keys())[0]]):
                 # if 'batch' in data:
                 #     n_inputs = max(data['batch'])+1
                 # else:
@@ -597,21 +601,26 @@ class uncertainty_ensemble_NN():
                 # pred_forces = torch.autograd.grad(
                 #     pred, data['pos'], retain_graph=True
                 # )[0]
-
+                
                 # loss = (self.energy_factor * self.loss(pred,data['total_energy']) + 
                 #         self.force_factor * self.loss(pred_forces, data['forces']))
+                latents = torch.empty(0,self.input_dim+self.natoms, device=self.device)
+                energies = torch.empty(0, device=self.device)
+                for key in validation_latents:
+                    ind_start = int(validation_indices[key][i-1] if i>0 else 0)
+                    ind_final = int(validation_indices[key][i])
+                    latents = torch.cat([latents, validation_latents[key][ind_start:ind_final]])
+                    energies = torch.cat([energies, validation_energies[key][ind_start:ind_final]])
 
-                ind_start = int(validation_indices[i-1] if i>0 else 0)
-                ind_final = int(validation_indices[i])
-                latents = validation_latents[ind_start:ind_final].to(self.device)
-                # NN_inputs = torch.hstack([latents, atom_one_hot])
-                pred = self.model(latents).sum() #pred atomic energies and sum to get total energies
-                loss = self.loss(pred,validation_energies[i])
+                pred = self.model(latents) #pred atomic energies and sum to get total energies
+                loss = self.loss(pred,energies)
 
                 running_loss += loss.item()
-            validation_loss = running_loss/len(validation_indices)
+            validation_loss = running_loss/(i+1)
             
             if validation_loss < self.best_loss:
+                self.best_epoch = n
+                self.best_loss = validation_loss
                 self.best_model = copy.deepcopy(self.model)
             self.lr_scheduler(validation_loss)
             

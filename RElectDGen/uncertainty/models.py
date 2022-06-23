@@ -811,76 +811,103 @@ class Nequip_ensemble_NN(uncertainty_base):
             for n in train_indices:
                 print('training ensemble network ', n, flush=True)    
                 #train NN to fit energies
-                NN = uncertainty_ensemble_NN(self.nequip_model, self.latent_size, self.natoms, self.hidden_dimensions)
+                NN = uncertainty_ensemble_NN(self.nequip_model, self.latent_size, self.natoms, self.hidden_dimensions, epochs=self.unc_epochs)
                 # NN = uncertainty_ensemble_NN(self.nequip_model, self.latent_size, self.hidden_dimensions)
-                NN.train(self.train_latents, self.train_indices, self.train_energies, self.validation_latents, self.validation_indices, self.validation_energies)
+                NN.train(self.train_embeddings, self.train_indices, self.train_energies, self.test_embeddings, self.test_indices, self.test_energies)
                 print('Best loss ', NN.best_loss, flush=True)
                 self.NNs.append(NN)
                 torch.save(NN.get_state_dict(), self.state_dict_func(n))
                 pd.DataFrame(NN.metrics).to_csv( self.metrics_func(n))
 
     def parse_data(self):
-
         dataset = dataset_from_config(self.MLP_config)
+
         self.train_dataset = dataset[self.MLP_config.train_idcs]
         self.validation_dataset = dataset[self.MLP_config.val_idcs]
 
-        train_latents = torch.empty(0,self.latent_size+self.natoms).to(self.device)
-        train_indices = torch.empty(0,dtype=int).to(self.device)
-        train_energies = torch.empty(len(self.train_dataset)).to(self.device)
+        train_embeddings = {}
+        train_energies = {}
+        train_indices = {}
+        test_embeddings = {}
+        test_errors = {}
+        test_energies = {}
+        test_indices = {}
+
+        for key in self.chemical_symbol_to_type:
+            train_embeddings[key] = torch.empty((0,self.latent_size+self.natoms),device=self.device)
+            train_energies[key] = torch.empty((0),device=self.device)
+            train_indices[key] = torch.empty(0,dtype=int).to(self.device)
+
+            test_embeddings[key] = torch.empty((0,self.latent_size+self.natoms),device=self.device)
+            test_errors[key] = torch.empty((0),device=self.device)
+            test_energies[key] = torch.empty((0),device=self.device)
+            test_indices[key] = torch.empty(0,dtype=int).to(self.device)
+    
         for i, data in enumerate(self.train_dataset):
-            data['pos'].requires_grad = True
-            out = self.nequip_model(self.transform_data_input(data))
-            train_energies[i] = data['total_energy'].squeeze()
+            out = self.model(self.transform_data_input(data))
 
-            atom_one_hot = torch.nn.functional.one_hot(data['atom_types'].squeeze(),num_classes=self.natoms)
-            NN_inputs = torch.hstack([out['node_features'].detach(), atom_one_hot])
-            train_latents = torch.cat([train_latents, NN_inputs],dim=0).to(self.device)
-            npoints = torch.tensor([train_indices[-1]+len(data['pos']) if i>0 else len(data['pos'])]).to(self.device)
-            train_indices = torch.cat([train_indices,npoints]).to(self.device)
+            for key in self.MLP_config.get('chemical_symbol_to_type'):
+                mask = (data['atom_types']==self.MLP_config.get('chemical_symbol_to_type')[key]).flatten()
+                
+                atom_one_hot = torch.nn.functional.one_hot(data['atom_types'].squeeze()[mask],num_classes=self.natoms).to(self.device)
+                NN_inputs = torch.hstack([out['node_features'][mask].detach(), atom_one_hot])
+                
+                train_embeddings[key] = torch.cat([train_embeddings[key],NN_inputs])
+                train_energies[key] = torch.cat([train_energies[key], out['atomic_energy'][mask].detach()])
 
-        validation_latents = torch.empty(0,self.latent_size+self.natoms).to(self.device)
-        validation_indices = torch.empty(0,dtype=int).to(self.device)
-        validation_energies = torch.empty(len(self.validation_dataset)).to(self.device)
-        for i, data in enumerate(self.validation_dataset):
-            data['pos'].requires_grad = True
-            out = self.nequip_model(self.transform_data_input(data))
-            validation_energies[i] = data['total_energy'].squeeze()
+                npoints = torch.tensor([train_indices[key][-1]+sum(mask) if i>0 else sum(mask)]).to(self.device)
+                train_indices[key] = torch.cat([train_indices[key],npoints]).to(self.device)
 
-            atom_one_hot = torch.nn.functional.one_hot(data['atom_types'].squeeze(),num_classes=self.natoms)
-            NN_inputs = torch.hstack([out['node_features'].detach(), atom_one_hot])
-            validation_latents = torch.cat([validation_latents, NN_inputs],dim=0).to(self.device)
-            npoints = torch.tensor([validation_indices[-1]+len(data['pos']) if i>0 else len(data['pos'])]).to(self.device)
-            validation_indices = torch.cat([validation_indices,npoints]).to(self.device)
-
-        self.train_latents = train_latents
-        self.train_indices = train_indices
+        self.train_embeddings = train_embeddings
         self.train_energies = train_energies
-        self.validation_latents = validation_latents
-        self.validation_indices = validation_indices
-        self.validation_energies = validation_energies
+        self.train_indices = train_indices
+
+        for i, data in enumerate(self.validation_dataset):
+            out = self.model(self.transform_data_input(data))
+            
+            for key in self.MLP_config.get('chemical_symbol_to_type'):
+                mask = (data['atom_types']==self.MLP_config.get('chemical_symbol_to_type')[key]).flatten()
+
+                atom_one_hot = torch.nn.functional.one_hot(data['atom_types'].squeeze()[mask],num_classes=self.natoms).to(self.device)
+                NN_inputs = torch.hstack([out['node_features'][mask].detach(), atom_one_hot])
+
+                test_embeddings[key] = torch.cat([test_embeddings[key],NN_inputs])
+                test_energies[key] = torch.cat([test_energies[key], out['atomic_energy'][mask].detach()])
+                
+                npoints = torch.tensor([test_indices[key][-1]+sum(mask) if i>0 else sum(mask)]).to(self.device)
+                test_indices[key] = torch.cat([test_indices[key],npoints]).to(self.device)
+        
+        self.test_embeddings = test_embeddings
+        self.test_energies = test_energies
+        self.test_indices = test_indices
 
     def adversarial_loss(self, data, T, distances='train_val'):
 
-        out = self.model(self.transform_data_input(data))
-        self.atom_embedding = out['node_features']
-
-        if distances == 'train_val':
-            energies = torch.cat([self.train_energies, self.validation_energies])
-        else:
-            energies = self.train_energies
-
-        emean = energies.mean()
-        estd = max([energies.std(),1]) # Only allow contraction
-
-        kT = self.kb * T
-        Q = torch.exp(-(energies-emean)/estd/kT).sum()
-
-        probability = 1/Q * torch.exp(-(out['atomic_energy'].mean()-emean)/estd/kT)
+        data = self.transform_data_input(data)
         
-        self.uncertainties = self.predict_uncertainty(data).to(self.device)
+        out = self.model(data)
+        atom_embedding = out['node_features']
+        self.atom_embedding = atom_embedding
 
-        adv_loss = (probability * self.uncertainties).sum()
+        self.uncertainties = self.predict_uncertainty(data, self.atom_embedding, distances=distances).to(self.device)
+
+        adv_loss = 0
+        for key in self.chemical_symbol_to_type:
+            if distances == 'train_val':
+                energies = torch.cat([self.train_energies[key], self.test_energies[key]])
+            else:
+                energies = self.train_energies[key]
+            
+            emean = energies.mean()
+            estd = max([energies.std(),1]) # Only allow contraction
+
+            kT = self.kb * T
+            Q = torch.exp(-(energies-emean)/estd/kT).sum()
+
+            mask = data['atom_types'] == self.chemical_symbol_to_type[key]
+            probability = 1/Q * torch.exp(-(out['atomic_energy'][mask]-emean)/estd/kT)
+            
+            adv_loss += (probability * self.uncertainties[mask.flatten()].sum(dim=-1)).sum()
 
         return adv_loss
 
@@ -895,10 +922,16 @@ class Nequip_ensemble_NN(uncertainty_base):
         for i, NN in enumerate(self.NNs):
             pred_atom_energies[i] = NN.predict(data).squeeze()
         
-        uncertainty_mean = (pred_atom_energies-out['atomic_energy'].squeeze().unsqueeze(0)).abs().max(dim=0).values
-        uncertainty_std = pred_atom_energies.std(axis=0)#.sum(axis=-1)
+        uncertainties_mean = (pred_atom_energies.mean(dim=0)-out['atomic_energy'].squeeze()).abs()
+        # uncertainties_mean = (pred_atom_energies-out['atomic_energy'].squeeze().unsqueeze(0)).abs().max(dim=0).values
+        # uncertainty_mean = (pred_atom_energies.sum(dim=1)-out['total_energy'].squeeze()).abs().max(dim=0).values
+        # uncertainties_mean = torch.ones(pred_atom_energies.shape[1]).to(self.device)*uncertainty_mean
+        
+        uncertainties_std = pred_atom_energies.std(axis=0)#.sum(axis=-1)
+        # uncertainty_std = pred_atom_energies.sum(dim=1).std(axis=0)#.sum(axis=-1)
+        # uncertainties_std = torch.ones(pred_atom_energies.shape[1]).to(self.device)*uncertainty_std
 
-        uncertainty = torch.vstack([uncertainty_mean,uncertainty_std]).T
+        uncertainty = torch.vstack([uncertainties_mean,uncertainties_std]).T
 
         return uncertainty
 
