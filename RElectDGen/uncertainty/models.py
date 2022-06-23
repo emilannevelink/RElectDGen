@@ -891,7 +891,7 @@ class Nequip_ensemble_NN(uncertainty_base):
         out = self.model(data)
         self.atom_embedding = out['node_features']
         
-        pred_atom_energies = torch.zeros((self.n_ensemble,out['atomic_energy'].shape[0]))
+        pred_atom_energies = torch.zeros((self.n_ensemble,out['atomic_energy'].shape[0])).to(self.device)
         for i, NN in enumerate(self.NNs):
             pred_atom_energies[i] = NN.predict(data).squeeze()
         
