@@ -628,7 +628,8 @@ class uncertainty_ensemble_NN():
         self.model = self.best_model
 
     def predict(self,data):
-        data['pos'].requires_grad = True
+        if not data['pos'].requires_grad:
+            data['pos'].requires_grad = True
         out = self.nequip_model(self.transform_data_input(data))
         atom_one_hot = torch.nn.functional.one_hot(data['atom_types'].squeeze(),num_classes=self.natoms)
 
