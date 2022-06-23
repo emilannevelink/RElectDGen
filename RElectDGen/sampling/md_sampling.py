@@ -42,7 +42,7 @@ def MD_sampling(config, loop_learning_count=1):
     supercell.calc = calc_nn
 
     tmp0 = time.time()
-    print('Time to initialize', tmp0-start)
+    print('Time to initialize', tmp0-start,flush=True)
 
     ### Calibrate Uncertainty Quantification
     UQ_func = getattr(uncertainty_models,config.get('uncertainty_function', 'Nequip_latent_distance'))

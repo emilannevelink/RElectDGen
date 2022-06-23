@@ -808,11 +808,13 @@ class Nequip_ensemble_NN(uncertainty_base):
 
         if len(train_indices)>0:
             
-            for n in train_indices:    
+            for n in train_indices:
+                print('training ensemble network ', n, flush=True)    
                 #train NN to fit energies
                 NN = uncertainty_ensemble_NN(self.nequip_model, self.latent_size, self.natoms, self.hidden_dimensions)
                 # NN = uncertainty_ensemble_NN(self.nequip_model, self.latent_size, self.hidden_dimensions)
                 NN.train(self.train_latents, self.train_indices, self.train_energies, self.validation_latents, self.validation_indices, self.validation_energies)
+                print('Best loss ', NN.best_loss, flush=True)
                 self.NNs.append(NN)
                 torch.save(NN.get_state_dict(), self.state_dict_func(n))
                 pd.DataFrame(NN.metrics).to_csv( self.metrics_func(n))
