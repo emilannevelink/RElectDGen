@@ -895,7 +895,7 @@ class Nequip_ensemble_NN(uncertainty_base):
         for i, NN in enumerate(self.NNs):
             pred_atom_energies[i] = NN.predict(data).squeeze()
         
-        uncertainty_mean = (pred_atom_energies-out['atomic_energy'].squeeze()[None,:]).abs().max(dim=0).values
+        uncertainty_mean = (pred_atom_energies-out['atomic_energy'].squeeze().unsqueeze(0)).abs().max(dim=0).values
         uncertainty_std = pred_atom_energies.std(axis=0)#.sum(axis=-1)
 
         uncertainty = torch.vstack([uncertainty_mean,uncertainty_std]).T
