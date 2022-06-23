@@ -11,9 +11,10 @@ def sort_by_uncertainty(traj, embeddings, UQ, max_samples, min_uncertainty=0.04,
     uncertainties = []
     # embedding_distances = {}
     keep_embeddings = {}
-    if isinstance(UQ.test_embeddings, dict):
-        for key in UQ.MLP_config.get('chemical_symbol_to_type'): 
-            keep_embeddings[key] = torch.empty((0,UQ.test_embeddings[key].shape[-1])).to(UQ.device)
+    if hasattr(UQ,'test_embeddings'):
+        if isinstance(UQ.test_embeddings, dict):
+            for key in UQ.MLP_config.get('chemical_symbol_to_type'): 
+                keep_embeddings[key] = torch.empty((0,UQ.test_embeddings[key].shape[-1])).to(UQ.device)
     for i, (embedding_i, atoms) in enumerate(zip(embeddings,traj)):
         
         active_uncertainty = UQ.predict_uncertainty(atoms, embedding_i, extra_embeddings=keep_embeddings, type='std').detach().cpu().numpy()
@@ -24,10 +25,11 @@ def sort_by_uncertainty(traj, embeddings, UQ, max_samples, min_uncertainty=0.04,
         if np.any(active_uncertainty>min_uncertainty) and np.all(active_uncertainty<max_uncertainty):
             calc_inds.append(i)
             uncertainties.append(float(active_uncertainty.max()))
-            if isinstance(UQ.test_embeddings, dict):
-                for key in UQ.MLP_config.get('chemical_symbol_to_type'): 
-                    mask = np.array(atoms.get_chemical_symbols()) == key
-                    keep_embeddings[key] = torch.cat([keep_embeddings[key],embedding_i[mask].to(UQ.device)])
+            if hasattr(UQ,'test_embeddings'):
+                if isinstance(UQ.test_embeddings, dict):
+                    for key in UQ.MLP_config.get('chemical_symbol_to_type'): 
+                        mask = np.array(atoms.get_chemical_symbols()) == key
+                        keep_embeddings[key] = torch.cat([keep_embeddings[key],embedding_i[mask].to(UQ.device)])
 
     traj_sorted = []
     uncertainties_sorted = []
