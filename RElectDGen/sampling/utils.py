@@ -87,9 +87,9 @@ def embedding_downselect(traj, embeddings, UQ, min_uncertainty=0.04, max_uncerta
                     embed_distances = torch.cdist(embedding_i[mask],dataset_embeddings,p=2)
                     add_atoms = add_atoms or embed_distances.max()>embedding_distances[key]
 
-                print(key, embedding_distances[key])
-                print(embed_distances)
-                print(embedding_i[mask], flush=True)
+                # print(key, embedding_distances[key])
+                # print(embed_distances)
+                # print(embedding_i[mask], flush=True)
 
             if add_atoms:
                 calc_inds.append(i)
@@ -98,6 +98,7 @@ def embedding_downselect(traj, embeddings, UQ, min_uncertainty=0.04, max_uncerta
                     mask = torch.tensor(np.array(atoms.get_chemical_symbols()) == key, device=UQ.device)
                     keep_embeddings[key] = torch.cat([keep_embeddings[key],embedding_i[mask]])
             
+    print(calc_inds, flush = True)
     return uncertainties, calc_inds
 
 
