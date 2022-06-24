@@ -12,7 +12,7 @@ from nequip.data.transforms import TypeMapper
 from nequip.utils import Config
 from nequip.data import dataset_from_config
 
-from RElectDGen.uncertainty.models import Nequip_latent_distance
+from ..uncertainty import models as uncertainty_models
 
 from RElectDGen.calculate.calculator import nn_from_results
 from RElectDGen.utils.save import check_NN_parameters
@@ -102,7 +102,10 @@ def main(args=None):
             train = True     
         else:
             gc.collect()
-            UQ = Nequip_latent_distance(model, config, MLP_config)
+            ### Calibrate Uncertainty Quantification
+            UQ_func = getattr(uncertainty_models,config.get('uncertainty_function', 'Nequip_latent_distance'))
+
+            UQ = UQ_func(model, config, MLP_config)
             UQ.calibrate()
             
             uncertainty, embedding = UQ.predict_from_traj(traj)
