@@ -74,6 +74,8 @@ def embedding_downselect(traj, embeddings, UQ, min_uncertainty=0.04, max_uncerta
 
         if np.any(active_uncertainty>min_uncertainty) and np.all(active_uncertainty<max_uncertainty):
             add_atoms = False
+            if not embedding_i.device.type ==UQ.device:
+                embedding_i = embedding_i.to(UQ.device)
             for key in UQ.MLP_config.get('chemical_symbol_to_type'): 
                 mask = torch.tensor(np.array(atoms.get_chemical_symbols()) == key, device=UQ.device)
                 if mask.sum()>0:

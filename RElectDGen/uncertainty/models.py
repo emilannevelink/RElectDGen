@@ -944,12 +944,12 @@ class Nequip_ensemble_NN(uncertainty_base):
         #     uncertainty.append(self.predict_uncertainty(batch))
         #     atom_embeddings.append(self.atom_embedding)
         for atoms in traj:
-            uncertainty.append(self.predict_uncertainty(atoms))
-            atom_embeddings.append(self.atom_embedding)
+            uncertainty.append(self.predict_uncertainty(atoms).detach())
+            atom_embeddings.append(self.atom_embedding.detach())
         
         
-        uncertainty = torch.cat(uncertainty).detach().cpu()
-        atom_embeddings = torch.cat(atom_embeddings).detach().cpu()
+        uncertainty = torch.cat(uncertainty).cpu()
+        atom_embeddings = torch.cat(atom_embeddings).cpu()
 
         if max:
             atom_lengths = [len(atoms) for atoms in traj]
