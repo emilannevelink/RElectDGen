@@ -8,8 +8,10 @@ from nequip.data import AtomicData
 def sort_by_uncertainty(traj, embeddings, UQ, max_samples, min_uncertainty=0.04, max_uncertainty=np.inf):
 
     if UQ.__class__.__name__ in ['Nequip_ensemble_NN']:
+        print('embedding downselect', flush = True)
         uncertainties, calc_inds = embedding_downselect(traj, embeddings, UQ, min_uncertainty=min_uncertainty, max_uncertainty=max_uncertainty)
     else:
+        print('uncertainty downselect', flush = True)
         uncertainties, calc_inds = uncertainty_downselect(traj, embeddings, UQ, min_uncertainty=min_uncertainty, max_uncertainty=max_uncertainty)
 
     traj_sorted = []
@@ -82,6 +84,10 @@ def embedding_downselect(traj, embeddings, UQ, min_uncertainty=0.04, max_uncerta
                     ], dim=0)
                     embed_distances = torch.cdist(embedding_i[mask],dataset_embeddings,p=2)
                     add_atoms = add_atoms or embed_distances.max()>embedding_distances[key]
+
+                print(key, embedding_distances[key])
+                print(embed_distances)
+                print(embedding_i[mask], flush=True)
 
             if add_atoms:
                 calc_inds.append(i)
