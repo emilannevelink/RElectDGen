@@ -73,7 +73,7 @@ def embedding_downselect(traj, embeddings, UQ, min_uncertainty=0.04, max_uncerta
         if np.any(active_uncertainty>min_uncertainty) and np.all(active_uncertainty<max_uncertainty):
             add_atoms = False
             for key in UQ.MLP_config.get('chemical_symbol_to_type'): 
-                mask = np.array(atoms.get_chemical_symbols()) == key
+                mask = torch.tensor(np.array(atoms.get_chemical_symbols()) == key, device=UQ.device)
                 if mask.sum()>0:
                     dataset_embeddings = torch.cat([
                         UQ.train_embeddings[key][:,:UQ.latent_size],
@@ -87,7 +87,7 @@ def embedding_downselect(traj, embeddings, UQ, min_uncertainty=0.04, max_uncerta
                 calc_inds.append(i)
                 uncertainties.append(float(active_uncertainty.max()))
                 for key in UQ.MLP_config.get('chemical_symbol_to_type'): 
-                    mask = np.array(atoms.get_chemical_symbols()) == key
+                    mask = torch.tensor(np.array(atoms.get_chemical_symbols()) == key, device=UQ.device)
                     keep_embeddings[key] = torch.cat([keep_embeddings[key],embedding_i[mask]])
             
     return uncertainties, calc_inds
