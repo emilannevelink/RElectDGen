@@ -407,7 +407,7 @@ class uncertainty_ensemble_NN():
     patience= None,
     min_lr = None) -> None:
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        # self.nequip_model = nequip_model.train()
+        self.nequip_model = nequip_model #.train()
         # self.nequip_model.train()
         self.natoms = natoms
         self.input_dim = input_dim
