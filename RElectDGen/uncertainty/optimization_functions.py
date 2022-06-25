@@ -648,7 +648,7 @@ class uncertainty_ensemble_NN():
         return pred #, pred_forces
 
     def transform_data_input(self, data):
-        assert len(data['total_energy']) == 1
+        # assert len(data['total_energy']) == 1
         data = AtomicData.to_AtomicDataDict(data)
         
         return data
