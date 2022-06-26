@@ -40,7 +40,7 @@ def parse_command_line(argsin):
 
 
 def use_previous_model(MLP_config_new):
-
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
     ### Check for previous model
     try:
         calc_nn, model_load, MLP_config = nn_from_results()
@@ -61,6 +61,8 @@ def use_previous_model(MLP_config_new):
             config=MLP_config_new, initialize=True, dataset=dataset
         )
         model.load_state_dict(model_load.state_dict())
+        model.eval()
+        model.to(torch.device(device))
         train = False
         # if MLP_config.compile_model:
         import e3nn
@@ -94,8 +96,6 @@ def main(args=None):
     uncertainty_dict = {}
     commands = ['nequip-train', MLP_config_filename]
     if not train:
-        device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        model.to(torch.device(device))
         
         traj = Trajectory(MLP_config['dataset_file_name'])
         if max(max(MLP_config.get('train_idcs')),max(MLP_config.get('val_idcs'))) > len(traj):
