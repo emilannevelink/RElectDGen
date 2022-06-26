@@ -76,6 +76,7 @@ def embedding_downselect(traj, embeddings, UQ, min_uncertainty=0.04, max_uncerta
 
         if np.any(active_uncertainty>min_uncertainty) and np.all(active_uncertainty<max_uncertainty):
             add_atoms = False
+            embed_distances_i = []
             if not embedding_i.device.type ==UQ.device:
                 embedding_i = embedding_i.to(UQ.device)
             for key in UQ.MLP_config.get('chemical_symbol_to_type'): 
@@ -88,12 +89,16 @@ def embedding_downselect(traj, embeddings, UQ, min_uncertainty=0.04, max_uncerta
                     ], dim=0)
                     embed_distances = torch.cdist(embedding_i[mask],dataset_embeddings,p=2)
                     add_atoms = add_atoms or embed_distances.max()>embedding_distances[key]
+                    embed_distances_i.append(embed_distances.max())
 
                 # print(key, embedding_distances[key])
                 # print(embed_distances)
                 # print(embedding_i[mask], flush=True)
 
             if add_atoms:
+                print('embedding distance')
+                print(embedding_distances)
+                print(embed_distances_i, flush=True)
                 calc_inds.append(i)
                 uncertainties.append(float(active_uncertainty.max()))
                 for key in UQ.MLP_config.get('chemical_symbol_to_type'): 
