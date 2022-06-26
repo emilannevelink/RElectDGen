@@ -88,8 +88,8 @@ def embedding_downselect(traj, embeddings, UQ, min_uncertainty=0.04, max_uncerta
                         keep_embeddings[key]
                     ], dim=0)
                     embed_distances = torch.cdist(embedding_i[mask],dataset_embeddings,p=2)
-                    add_atoms = add_atoms or embed_distances.max()>embedding_distances[key]
-                    embed_distances_i.append(embed_distances.max())
+                    add_atoms = add_atoms or embed_distances.min(dim=1).values.max()>embedding_distances[key]
+                    embed_distances_i.append(embed_distances.min(dim=1).values.max())
 
                 # print(key, embedding_distances[key])
                 # print(embed_distances)
