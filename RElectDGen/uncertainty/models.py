@@ -791,10 +791,11 @@ class Nequip_ensemble_NN(uncertainty_base):
             if os.path.isfile(state_dict_name):
                 NN = uncertainty_ensemble_NN(self.model, self.latent_size, self.natoms, self.hidden_dimensions)
                 try:
-                    NN.load_state_dict(torch.load(state_dict_name))
+                    NN.load_state_dict(torch.load(state_dict_name, map_location=self.device))
                     self.NNs.append(NN)
-                except:
-                    print(f'Loading uncertainty {n} failed')
+                except Exception as e:
+                    print(e)
+                    print(f'Loading uncertainty {n} failed', flush=True)
                     train_indices.append(n)
             else:
                 train_indices.append(n)
