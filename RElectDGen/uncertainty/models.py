@@ -933,6 +933,7 @@ class Nequip_ensemble_NN(uncertainty_base):
 
         uncertainty = torch.vstack([uncertainties_mean,uncertainties_std]).T
 
+        uncertainty *= self.config.get('uncertainty_factor',10)
         return uncertainty
 
     def predict_from_traj(self, traj, max=True, batch_size=1):

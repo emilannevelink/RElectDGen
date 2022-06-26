@@ -118,7 +118,7 @@ def main(args=None):
             uncertain_data = np.argwhere(uncertainty_sum.numpy()>config.get('UQ_min_uncertainty')).flatten()
 
             if len(uncertain_data)>config.get('retrain_uncertainty_percent',0.01)*len(traj):
-                print(f'First uncertaint datapoint {uncertain_data.min()}, of {len(uncertain_data)} uncertain point from {len(traj)} data points',flush=True)
+                print(f'First uncertain datapoint {uncertain_data.min()}, of {len(uncertain_data)} uncertain point from {len(traj)} data points',flush=True)
                 train = True
 
                 if MLP_config_new.get('load_previous') and check_NN_parameters(MLP_config_new, MLP_config):
@@ -149,6 +149,7 @@ def main(args=None):
 
     logging_dict = {
         **mae_dict,
+        **uncertainty_dict,
         'train': train,
         'load': 'load' in commands[0],
         'train_time': time.time()-start_time

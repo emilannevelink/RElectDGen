@@ -65,7 +65,9 @@ def embedding_downselect(traj, embeddings, UQ, min_uncertainty=0.04, max_uncerta
         keep_embeddings[key] = torch.empty((0,UQ.latent_size)).to(UQ.device)
         embed_distances = torch.cdist(UQ.train_embeddings[key],UQ.train_embeddings[key],p=2)
         mask = embed_distances!=0
-        embedding_distances[key] = embed_distances[mask].mean()
+        # embedding_distances[key] = embed_distances[mask].mean()
+        # set distance to the 90th percentile
+        embedding_distances[key] = embed_distances[mask].sort().values[int(mask.sum()*0.9)] 
 
     for i, (embedding_i, atoms) in enumerate(zip(embeddings,traj)):
         
@@ -97,6 +99,8 @@ def embedding_downselect(traj, embeddings, UQ, min_uncertainty=0.04, max_uncerta
                 for key in UQ.MLP_config.get('chemical_symbol_to_type'): 
                     mask = torch.tensor(np.array(atoms.get_chemical_symbols()) == key, device=UQ.device)
                     keep_embeddings[key] = torch.cat([keep_embeddings[key],embedding_i[mask]])
+            else:
+                print(f'Embedding of {i} was too close')
             
     print(calc_inds, flush = True)
     return uncertainties, calc_inds
