@@ -401,6 +401,7 @@ class uncertainty_ensemble_NN():
     natoms,
     hidden_dimensions=[], 
     act=torch.nn.ReLU, 
+    batch_size=100,
     epochs=2000, 
     lr = 0.001, 
     momentum=0.9,
@@ -411,6 +412,7 @@ class uncertainty_ensemble_NN():
         # self.nequip_model.train()
         self.natoms = natoms
         self.input_dim = input_dim
+        self.batch_size = batch_size
         
         if patience is None:
             patience = epochs/10
@@ -451,6 +453,25 @@ class uncertainty_ensemble_NN():
 
         self.energy_factor = energy_factor
         self.force_factor = force_factor
+
+        all_train_latents = torch.empty(0,self.input_dim+self.natoms, device=self.device)
+        all_train_energies = torch.empty(0, device=self.device)
+        for key in train_latents:
+            all_train_latents = torch.cat([all_train_latents, train_latents[key]])
+            all_train_energies = torch.cat([all_train_energies, train_energies[key]])
+
+        training_data = unc_Dataset(all_train_latents,all_train_energies)
+        train_dataloader = DataLoader(training_data, batch_size=self.batch_size, shuffle=True)
+
+        all_validation_latents = torch.empty(0,self.input_dim+self.natoms, device=self.device)
+        all_validation_energies = torch.empty(0, device=self.device)
+        for key in validation_latents:
+            all_validation_latents = torch.cat([all_validation_latents, validation_latents[key]])
+            all_validation_energies = torch.cat([all_validation_energies, validation_energies[key]])
+                
+
+        validation_data = unc_Dataset(all_validation_latents,all_validation_energies)
+        validation_dataloader = DataLoader(validation_data, batch_size=self.batch_size, shuffle=True)
         
         # train_latents = torch.empty(0,self.input_dim).to(self.device)
         # train_latent_sensitivities = torch.empty(0,3,self.input_dim).to(self.device)
@@ -527,11 +548,8 @@ class uncertainty_ensemble_NN():
         }
         for n in range(self.epochs):
             running_loss = 0
-            for i, data in enumerate(train_indices[list(train_indices.keys())[0]]):
-                # if 'batch' in data:
-                #     n_inputs = max(data['batch'])+1
-                # else:
-                #     n_inputs = 1
+            for i, data in enumerate(train_dataloader):
+                latents, energies = data
                 self.model.train()
                 self.model.zero_grad()
 
@@ -565,13 +583,13 @@ class uncertainty_ensemble_NN():
 
                 # loss = (self.energy_factor * self.loss(pred,data['total_energy']) + 
                 #     self.force_factor * self.loss(pred_forces, data['forces']))
-                latents = torch.empty(0,self.input_dim+self.natoms, device=self.device)
-                energies = torch.empty(0, device=self.device)
-                for key in train_latents:
-                    ind_start = int(train_indices[key][i-1] if i>0 else 0)
-                    ind_final = int(train_indices[key][i])
-                    latents = torch.cat([latents, train_latents[key][ind_start:ind_final]])
-                    energies = torch.cat([energies, train_energies[key][ind_start:ind_final]])
+                # latents = torch.empty(0,self.input_dim+self.natoms, device=self.device)
+                # energies = torch.empty(0, device=self.device)
+                # for key in train_latents:
+                #     ind_start = int(train_indices[key][i-1] if i>0 else 0)
+                #     ind_final = int(train_indices[key][i])
+                #     latents = torch.cat([latents, train_latents[key][ind_start:ind_final]])
+                #     energies = torch.cat([energies, train_energies[key][ind_start:ind_final]])
                 
                 # NN_inputs = torch.hstack([latents, atom_one_hot])
                 pred = self.model(latents) #pred atomic energies and sum to get total energies
@@ -585,7 +603,8 @@ class uncertainty_ensemble_NN():
             
             train_loss = running_loss/(i+1)
             running_loss = 0
-            for i, data in enumerate(validation_indices[list(validation_indices.keys())[0]]):
+            for i, data in enumerate(validation_dataloader):
+                latents, energies = data
                 # if 'batch' in data:
                 #     n_inputs = max(data['batch'])+1
                 # else:
@@ -604,13 +623,13 @@ class uncertainty_ensemble_NN():
                 
                 # loss = (self.energy_factor * self.loss(pred,data['total_energy']) + 
                 #         self.force_factor * self.loss(pred_forces, data['forces']))
-                latents = torch.empty(0,self.input_dim+self.natoms, device=self.device)
-                energies = torch.empty(0, device=self.device)
-                for key in validation_latents:
-                    ind_start = int(validation_indices[key][i-1] if i>0 else 0)
-                    ind_final = int(validation_indices[key][i])
-                    latents = torch.cat([latents, validation_latents[key][ind_start:ind_final]])
-                    energies = torch.cat([energies, validation_energies[key][ind_start:ind_final]])
+                # latents = torch.empty(0,self.input_dim+self.natoms, device=self.device)
+                # energies = torch.empty(0, device=self.device)
+                # for key in validation_latents:
+                #     ind_start = int(validation_indices[key][i-1] if i>0 else 0)
+                #     ind_final = int(validation_indices[key][i])
+                #     latents = torch.cat([latents, validation_latents[key][ind_start:ind_final]])
+                #     energies = torch.cat([energies, validation_energies[key][ind_start:ind_final]])
 
                 pred = self.model(latents) #pred atomic energies and sum to get total energies
                 loss = self.loss(pred,energies)
@@ -637,9 +656,12 @@ class uncertainty_ensemble_NN():
         self.model = self.best_model
 
     def predict(self,data):
-        if not data['pos'].requires_grad:
-            data['pos'].requires_grad = True
-        out = self.nequip_model(self.transform_data_input(data))
+        if 'node_features' in data:
+            out = data
+        else:
+            if not data['pos'].requires_grad:
+                data['pos'].requires_grad = True
+            out = self.nequip_model(self.transform_data_input(data))
         atom_one_hot = torch.nn.functional.one_hot(data['atom_types'].squeeze(),num_classes=self.natoms)
 
         NN_inputs = torch.hstack([out['node_features'], atom_one_hot])
