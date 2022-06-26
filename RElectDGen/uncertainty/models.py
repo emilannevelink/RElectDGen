@@ -773,7 +773,7 @@ class Nequip_ensemble_NN(uncertainty_base):
     def __init__(self, model, config, MLP_config):
         super().__init__(model, config, MLP_config)
 
-        self.nequip_model = model
+        # self.nequip_model = model
         self.hidden_dimensions = self.config.get('uncertainty_hidden_dimensions', [])
         self.unc_epochs = self.config.get('uncertainty_epochs', 2000)
 
@@ -789,7 +789,7 @@ class Nequip_ensemble_NN(uncertainty_base):
         for n in range(self.n_ensemble):
             state_dict_name = self.state_dict_func(n)
             if os.path.isfile(state_dict_name):
-                NN = uncertainty_ensemble_NN(self.nequip_model, self.latent_size, self.natoms, self.hidden_dimensions)
+                NN = uncertainty_ensemble_NN(self.model, self.latent_size, self.natoms, self.hidden_dimensions)
                 try:
                     NN.load_state_dict(torch.load(state_dict_name))
                     self.NNs.append(NN)
@@ -811,8 +811,8 @@ class Nequip_ensemble_NN(uncertainty_base):
             for n in train_indices:
                 print('training ensemble network ', n, flush=True)    
                 #train NN to fit energies
-                NN = uncertainty_ensemble_NN(self.nequip_model, self.latent_size, self.natoms, self.hidden_dimensions, epochs=self.unc_epochs)
-                # NN = uncertainty_ensemble_NN(self.nequip_model, self.latent_size, self.hidden_dimensions)
+                NN = uncertainty_ensemble_NN(self.model, self.latent_size, self.natoms, self.hidden_dimensions, epochs=self.unc_epochs)
+                # NN = uncertainty_ensemble_NN(self.model, self.latent_size, self.hidden_dimensions)
                 NN.train(self.train_embeddings, self.train_indices, self.train_energies, self.test_embeddings, self.test_indices, self.test_energies)
                 print('Best loss ', NN.best_loss, flush=True)
                 self.NNs.append(NN)
@@ -920,7 +920,7 @@ class Nequip_ensemble_NN(uncertainty_base):
         
         pred_atom_energies = torch.zeros((self.n_ensemble,out['atomic_energy'].shape[0])).to(self.device)
         for i, NN in enumerate(self.NNs):
-            pred_atom_energies[i] = NN.predict(data).squeeze()
+            pred_atom_energies[i] = NN.predict(out).squeeze()
         
         uncertainties_mean = (pred_atom_energies.mean(dim=0)-out['atomic_energy'].squeeze()).abs()
         # uncertainties_mean = (pred_atom_energies-out['atomic_energy'].squeeze().unsqueeze(0)).abs().max(dim=0).values
