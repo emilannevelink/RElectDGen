@@ -67,8 +67,9 @@ def embedding_downselect(traj, embeddings, UQ, min_uncertainty=0.04, max_uncerta
         mask = embed_distances!=0
         # embedding_distances[key] = embed_distances[mask].mean()
         # set distance to the 90th percentile
-        embedding_distances[key] = embed_distances[mask].sort().values[int(mask.sum()*0.9)] 
+        embedding_distances[key] = embed_distances[mask].sort().values[int(mask.sum()*0.5)] 
 
+    print(embedding_distances)
     for i, (embedding_i, atoms) in enumerate(zip(embeddings,traj)):
         
         active_uncertainty = UQ.predict_uncertainty(atoms, embedding_i, extra_embeddings=keep_embeddings, type='std').detach().cpu().numpy()
@@ -88,8 +89,11 @@ def embedding_downselect(traj, embeddings, UQ, min_uncertainty=0.04, max_uncerta
                         keep_embeddings[key]
                     ], dim=0)
                     embed_distances = torch.cdist(embedding_i[mask],dataset_embeddings,p=2)
-                    add_atoms = add_atoms or embed_distances.min(dim=1).values.max()>embedding_distances[key]
-                    embed_distances_i.append(embed_distances.min(dim=1).values.max())
+                    atom_emb_dis = embed_distances.min(dim=1).values.max()
+                    if len(calc_inds) == 0 and atom_emb_dis < embedding_distances[key]:
+                        embedding_distances[key] = atom_emb_dis/2.
+                    add_atoms = add_atoms or atom_emb_dis>embedding_distances[key]
+                    embed_distances_i.append(atom_emb_dis)
 
                 # print(key, embedding_distances[key])
                 # print(embed_distances)
@@ -106,6 +110,8 @@ def embedding_downselect(traj, embeddings, UQ, min_uncertainty=0.04, max_uncerta
                     keep_embeddings[key] = torch.cat([keep_embeddings[key],embedding_i[mask]])
             else:
                 print(f'Embedding of {i} was too close')
+                print(embedding_distances)
+                print(embed_distances_i, flush=True)
             
     print(calc_inds, flush = True)
     return uncertainties, calc_inds
