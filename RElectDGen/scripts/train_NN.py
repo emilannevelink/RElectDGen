@@ -112,8 +112,8 @@ def main(args=None):
 
             uncertainty_sum = uncertainty.sum(dim=1)
 
-            uncertainty_dict['dataset_uncertainty_mean'] = uncertainty_sum.mean()
-            uncertainty_dict['dataset_uncertainty_std'] = uncertainty_sum.std()
+            uncertainty_dict['dataset_uncertainty_mean'] = float(uncertainty_sum.mean())
+            uncertainty_dict['dataset_uncertainty_std'] = float(uncertainty_sum.std())
             
             uncertain_data = np.argwhere(uncertainty_sum.numpy()>config.get('UQ_min_uncertainty')).flatten()
 
