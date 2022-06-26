@@ -98,7 +98,7 @@ def main(args=None):
         model.to(torch.device(device))
         
         traj = Trajectory(MLP_config['dataset_file_name'])
-        if max(MLP_config.get('train_idcs').max(),MLP_config.get('val_idcs').max()) > len(traj):
+        if max(max(MLP_config.get('train_idcs')),max(MLP_config.get('val_idcs'))) > len(traj):
             train = True     
         else:
             gc.collect()
@@ -111,7 +111,8 @@ def main(args=None):
             uncertainty, embedding = UQ.predict_from_traj(traj)
 
             uncertainty_sum = uncertainty.sum(dim=1)
-
+            print(uncertainty)
+            print(uncertainty_sum, flush = True)
             uncertainty_dict['dataset_uncertainty_mean'] = float(uncertainty_sum.mean())
             uncertainty_dict['dataset_uncertainty_std'] = float(uncertainty_sum.std())
             
