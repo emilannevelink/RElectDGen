@@ -150,6 +150,9 @@ def finetune_downselect(traj, embeddings, UQ, min_uncertainty=0.04, max_uncertai
 
             
             UQ.fine_tune(keep_embeddings, keep_energies)
+            active_uncertainty_after = UQ.predict_uncertainty(atoms, embedding_i, extra_embeddings=keep_embeddings, type='std').detach().cpu().numpy()
+            active_uncertainty_after = active_uncertainty.sum(axis=-1)
+            print(active_uncertainty, active_uncertainty_after, flush=True)
             
             
     print(calc_inds, flush = True)
