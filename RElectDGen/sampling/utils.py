@@ -9,7 +9,7 @@ def sort_by_uncertainty(traj, embeddings, UQ, max_samples, min_uncertainty=0.04,
 
     if UQ.__class__.__name__ in ['Nequip_ensemble_NN']:
         print('embedding downselect', flush = True)
-        uncertainties, calc_inds = embedding_downselect(traj, embeddings, UQ, min_uncertainty=min_uncertainty, max_uncertainty=max_uncertainty)
+        uncertainties, calc_inds = finetune_downselect(traj, embeddings, UQ, min_uncertainty=min_uncertainty, max_uncertainty=max_uncertainty)
     else:
         print('uncertainty downselect', flush = True)
         uncertainties, calc_inds = uncertainty_downselect(traj, embeddings, UQ, min_uncertainty=min_uncertainty, max_uncertainty=max_uncertainty)
@@ -116,6 +116,44 @@ def embedding_downselect(traj, embeddings, UQ, min_uncertainty=0.04, max_uncerta
     print(calc_inds, flush = True)
     return uncertainties, calc_inds
 
+def finetune_downselect(traj, embeddings, UQ, min_uncertainty=0.04, max_uncertainty=np.inf):
+    calc_inds = []
+    uncertainties = []
+    embedding_distances = {}
+    keep_embeddings = {}
+    keep_energies = {}
+    for key in UQ.MLP_config.get('chemical_symbol_to_type'): 
+        keep_embeddings[key] = torch.empty((0,UQ.latent_size+UQ.natoms)).to(UQ.device)
+        keep_energies[key] = torch.empty(0, device=UQ.device)
+
+    for i, (embedding_i, atoms) in enumerate(zip(embeddings,traj)):
+        
+        active_uncertainty = UQ.predict_uncertainty(atoms, embedding_i, extra_embeddings=keep_embeddings, type='std').detach().cpu().numpy()
+        active_uncertainty = active_uncertainty.sum(axis=-1)
+
+        if np.any(active_uncertainty>min_uncertainty) and np.all(active_uncertainty<max_uncertainty):
+            if not embedding_i.device.type ==UQ.device:
+                embedding_i = embedding_i.to(UQ.device)
+            
+            calc_inds.append(i)
+            uncertainties.append(float(active_uncertainty.max()))
+            
+            data = UQ.transform_data_input(atoms)
+            out = UQ.model(data)
+            atom_one_hot = torch.nn.functional.one_hot(data['atom_types'].squeeze(),num_classes=UQ.natoms).to(UQ.device)
+            for key in UQ.MLP_config.get('chemical_symbol_to_type'): 
+                mask = torch.tensor(np.array(atoms.get_chemical_symbols()) == key, device=UQ.device)
+
+                NN_inputs = torch.hstack([embedding_i[mask], atom_one_hot[mask]])
+                keep_embeddings[key] = torch.cat([keep_embeddings[key],NN_inputs])
+                keep_energies[key] = torch.cat([keep_energies[key], out['atomic_energy'].detach()[mask]])
+
+            
+            UQ.fine_tune(keep_embeddings, keep_energies)
+            
+            
+    print(calc_inds, flush = True)
+    return uncertainties, calc_inds
 
 def sample_from_dataset(config):
     trajectory_file_name = os.path.join(

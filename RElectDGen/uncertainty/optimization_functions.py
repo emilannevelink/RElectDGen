@@ -413,11 +413,15 @@ class uncertainty_ensemble_NN():
         self.natoms = natoms
         self.input_dim = input_dim
         self.batch_size = batch_size
+        self.initial_lr = lr
+        
         
         if patience is None:
             patience = epochs/10
         if min_lr is None:
             self.min_lr = lr/10000
+
+        self.patience = patience
         
         layers = []
         if len(hidden_dimensions)==0:
@@ -441,6 +445,18 @@ class uncertainty_ensemble_NN():
         self.optim = torch.optim.Adam(self.model.parameters(), lr = lr)
         self.lr_scheduler = LRScheduler(self.optim, patience, self.min_lr)
 
+    def make_dataloader(self, latents, energies):
+        all_latents = torch.empty(0,self.input_dim+self.natoms, device=self.device)
+        all_energies = torch.empty(0, device=self.device)
+        for key in latents:
+            all_latents = torch.cat([all_latents, latents[key]])
+            all_energies = torch.cat([all_energies, energies[key]])
+
+        data = unc_Dataset(all_latents,all_energies)
+        dataloader = DataLoader(data, batch_size=self.batch_size, shuffle=True)
+
+        return dataloader
+
     def train(self,
         train_latents,
         train_indices,
@@ -454,24 +470,8 @@ class uncertainty_ensemble_NN():
         self.energy_factor = energy_factor
         self.force_factor = force_factor
 
-        all_train_latents = torch.empty(0,self.input_dim+self.natoms, device=self.device)
-        all_train_energies = torch.empty(0, device=self.device)
-        for key in train_latents:
-            all_train_latents = torch.cat([all_train_latents, train_latents[key]])
-            all_train_energies = torch.cat([all_train_energies, train_energies[key]])
-
-        training_data = unc_Dataset(all_train_latents,all_train_energies)
-        train_dataloader = DataLoader(training_data, batch_size=self.batch_size, shuffle=True)
-
-        all_validation_latents = torch.empty(0,self.input_dim+self.natoms, device=self.device)
-        all_validation_energies = torch.empty(0, device=self.device)
-        for key in validation_latents:
-            all_validation_latents = torch.cat([all_validation_latents, validation_latents[key]])
-            all_validation_energies = torch.cat([all_validation_energies, validation_energies[key]])
-                
-
-        validation_data = unc_Dataset(all_validation_latents,all_validation_energies)
-        validation_dataloader = DataLoader(validation_data, batch_size=self.batch_size, shuffle=True)
+        train_dataloader = self.make_dataloader(train_latents, train_energies)
+        validation_dataloader = self.make_dataloader(validation_latents, validation_energies)
         
         # train_latents = torch.empty(0,self.input_dim).to(self.device)
         # train_latent_sensitivities = torch.empty(0,3,self.input_dim).to(self.device)
@@ -668,6 +668,92 @@ class uncertainty_ensemble_NN():
         pred = self.model(NN_inputs)#.sum() #pred atomic energies and sum to get total energies
 
         return pred #, pred_forces
+
+    def fine_tune(self,
+        train_latents,
+        train_energies,
+        validation_latents,
+        validation_energies,
+        fine_tune_latents, 
+        fine_tune_energies, 
+        fine_tune_epochs=100):
+
+        initial_lr = max(self.initial_lr/10, self.min_lr*10)
+        optim = torch.optim.Adam(self.model.parameters(), lr = initial_lr/10)
+        lr_scheduler = LRScheduler(optim, self.patience, self.min_lr)
+
+        train_dataloader = self.make_dataloader(train_latents, train_energies)
+        validation_dataloader = self.make_dataloader(validation_latents, validation_energies)
+        fine_tune_dataloader = self.make_dataloader(fine_tune_latents, fine_tune_energies)
+
+        self.best_model = copy.deepcopy(self.model)
+        self.best_loss = torch.tensor(np.inf)
+
+        fine_tune_metrics = {
+            'lr': [],
+            'fine_tune_loss': [],
+            'train_loss': [],
+            'validation_loss': [],
+        }
+        for n in range(fine_tune_epochs):
+            running_loss = 0
+            for i, data in enumerate(fine_tune_dataloader):
+                latents, energies = data
+                self.model.train()
+                self.model.zero_grad()
+
+                pred = self.model(latents) #pred atomic energies and sum to get total energies
+                loss = self.loss(pred,energies)
+
+                loss.backward()
+
+                optim.step()
+                running_loss += loss.item()
+            
+            fine_tune_loss = running_loss/(i+1)
+            running_loss = 0
+            for i, data in enumerate(train_dataloader):
+                latents, energies = data
+                self.model.train()
+                self.model.zero_grad()
+
+                pred = self.model(latents) #pred atomic energies and sum to get total energies
+                loss = self.loss(pred,energies)
+
+                loss.backward()
+
+                optim.step()
+                running_loss += loss.item()
+            
+            train_loss = running_loss/(i+1)
+            running_loss = 0
+            for i, data in enumerate(validation_dataloader):
+                latents, energies = data
+                
+                pred = self.model(latents) #pred atomic energies and sum to get total energies
+                loss = self.loss(pred,energies)
+
+                running_loss += loss.item()
+            validation_loss = running_loss/(i+1)
+            
+            if validation_loss < self.best_loss:
+                self.best_epoch = n
+                self.best_loss = validation_loss
+                self.best_model = copy.deepcopy(self.model)
+            lr_scheduler(validation_loss)
+            
+            fine_tune_metrics['lr'].append(optim.param_groups[0]['lr'])
+            fine_tune_metrics['fine_tune_loss'].append(fine_tune_loss)
+            fine_tune_metrics['train_loss'].append(train_loss)
+            fine_tune_metrics['validation_loss'].append(validation_loss)
+
+            if optim.param_groups[0]['lr'] == self.min_lr:
+                break
+        
+        self.fine_tune_metrics = fine_tune_metrics
+        self.train_loss = train_loss
+        self.validation_loss = validation_loss
+        self.model = self.best_model
 
     def transform_data_input(self, data):
         # assert len(data['total_energy']) == 1

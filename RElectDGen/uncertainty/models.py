@@ -820,6 +820,11 @@ class Nequip_ensemble_NN(uncertainty_base):
                 torch.save(NN.get_state_dict(), self.state_dict_func(n))
                 pd.DataFrame(NN.metrics).to_csv( self.metrics_func(n))
 
+    def fine_tune(self, embeddings, energies):
+        print('Fine Tuning Ensemble', flush=True)
+        for NN in self.NNs:
+            NN.fine_tune(self.train_embeddings,self.train_energies,self.test_embeddings,self.test_energies,embeddings, energies)
+        
     def parse_data(self):
         dataset = dataset_from_config(self.MLP_config)
 
