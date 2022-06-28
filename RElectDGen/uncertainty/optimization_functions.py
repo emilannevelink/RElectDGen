@@ -676,11 +676,14 @@ class uncertainty_ensemble_NN():
         validation_energies,
         fine_tune_latents, 
         fine_tune_energies, 
-        fine_tune_epochs=100):
+        fine_tune_epochs=None):
+        
+        if fine_tune_epochs is None:
+            fine_tune_epochs = int(self.epochs/10)
 
         initial_lr = max(self.initial_lr/10, self.min_lr*10)
-        optim = torch.optim.Adam(self.model.parameters(), lr = initial_lr/10)
-        lr_scheduler = LRScheduler(optim, self.patience, self.min_lr)
+        optim = torch.optim.Adam(self.model.parameters(), lr = initial_lr)
+        lr_scheduler = LRScheduler(optim, self.patience/10, self.min_lr)
 
         train_dataloader = self.make_dataloader(train_latents, train_energies)
         validation_dataloader = self.make_dataloader(validation_latents, validation_energies)
