@@ -28,10 +28,10 @@ def get_mae_from_results():
     best_ind = np.argmin(data[' validation_loss'])
 
     mae_dict = {
-        'training_f_mae': data[' training_loss_f'][best_ind],
-        'training_e_mae': data[' training_e_mae'][best_ind],
-        'validation_f_mae': data[' validation_loss_f'][best_ind],
-        'validation_e_mae': data[' validation_e_mae'][best_ind],
+        'training_f_mae': float(data[' training_loss_f'][best_ind]),
+        'training_e_mae': float(data[' training_e_mae'][best_ind]),
+        'validation_f_mae': float(data[' validation_loss_f'][best_ind]),
+        'validation_e_mae': float(data[' validation_e_mae'][best_ind]),
     }
 
     return mae_dict
