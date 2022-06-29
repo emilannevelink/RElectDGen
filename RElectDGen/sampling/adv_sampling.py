@@ -184,7 +184,7 @@ def adv_sampling(config, traj_initial=[], loop_learning_count=1):
 
     adv_dict['number_adversarial_samples'] = len(traj_uncertain)
 
-    checks['adv_count'] = len(traj_uncertain)<config.get('max_samples')/2
+    checks['adv_count'] = len(traj_uncertain)<=config.get('number_of_samples_check_value',config.get('max_samples')/2)
     
 
     print('checks: ', checks)

@@ -197,7 +197,7 @@ def MD_sampling(config, loop_learning_count=1):
 
         MLP_dict['number_MD_samples'] = len(traj_uncertain)
 
-        checks['MD_count'] = len(traj_uncertain)<config.get('max_samples')/2
+        checks['MD_count'] = len(traj_uncertain)<=config.get('number_of_samples_check_value',config.get('max_samples')/2)
     
 
     print('checks: ', checks)
