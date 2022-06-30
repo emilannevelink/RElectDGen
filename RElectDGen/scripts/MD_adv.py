@@ -92,9 +92,9 @@ def main(args=None):
         print('No uncertain data points')
     
     checks = {
-        'sampling_count': len(traj_uncertain)<config.get('max_samples')/2
+        'sampling_count': len(traj_uncertain)<=config.get('number_of_samples_check_value',config.get('max_samples')/2)
     }
-
+    
     config = add_checks_to_config(config, checks)
 
     with open(filename_config,'w') as fl:
