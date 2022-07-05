@@ -80,22 +80,35 @@ def main(args = None):
         np.all(checks.get('adv_position_difference',[False]))):
         config['MLP_adv_temperature']*=2
         config['MLP_adv_dT']*=2
-    if np.all(checks.get('MD_count',[True])) and np.all(checks.get('adv_count',[True])) and np.all(checks.get('sampling_count',[True])):
-        config['UQ_min_uncertainty']/=2
 
     # Reset to limits
     
-    if config.get('MLP_MD_temperature', max_MLP_MD_temperature) > max_MLP_MD_temperature:
+    n_extrema = 0
+    if config.get('MLP_MD_temperature', max_MLP_MD_temperature) >= max_MLP_MD_temperature:
         config['MLP_MD_temperature'] = max_MLP_MD_temperature
-    if config.get('MLP_MD_dT', max_MLP_MD_dT) > max_MLP_MD_dT:
+        n_extrema+=1
+    if config.get('MLP_MD_dT', max_MLP_MD_dT) >= max_MLP_MD_dT:
         config['MLP_MD_dT'] = max_MLP_MD_dT
-    if config.get('MLP_MD_steps', max_MLP_MD_steps)>max_MLP_MD_steps:
+        n_extrema+=1
+    if config.get('MLP_MD_steps', max_MLP_MD_steps) >= max_MLP_MD_steps:
         config['MLP_MD_steps'] = max_MLP_MD_steps
-    if config.get('MLP_adv_temperature',max_adv_temperature)>max_adv_temperature:
+        n_extrema+=1
+    if config.get('MLP_adv_temperature',max_adv_temperature) >= max_adv_temperature:
         config['MLP_adv_temperature']=max_adv_temperature
-    if config.get('MLP_adv_dT', max_MLP_adv_dT)>max_MLP_adv_dT:
+        n_extrema+=1
+    if config.get('MLP_adv_dT', max_MLP_adv_dT) >= max_MLP_adv_dT:
         config['MLP_adv_dT']=max_MLP_adv_dT
-    if config.get('UQ_min_uncertainty', min_UQ_min_uncertainty)<min_UQ_min_uncertainty:
+        n_extrema+=1
+    
+    n_extrema_lower_uncertainty = config.get('n_extrema_lower_uncertainty', 0)
+    if (
+        n_extrema >= n_extrema_lower_uncertainty and 
+        np.all(checks.get('MD_count',[True])) and np.all(checks.get('adv_count',[True])) and np.all(checks.get('sampling_count',[True]))
+        ):
+        config['UQ_min_uncertainty']/=2
+
+    
+    if config.get('UQ_min_uncertainty', min_UQ_min_uncertainty) <= min_UQ_min_uncertainty:
         config['UQ_min_uncertainty'] = min_UQ_min_uncertainty
 
     checks_history = config.get('checks_history',[])
