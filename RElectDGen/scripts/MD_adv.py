@@ -79,8 +79,8 @@ def main(args=None):
 
     max_samples = int(config.get('max_samples'))
     min_uncertainty = config.get('UQ_min_uncertainty')
-    max_uncertainty = config.get('UQ_max_uncertainty')
-    traj_uncertain, traj_embedding = sort_by_uncertainty(uncertain, embeddings, UQ, max_samples, min_uncertainty, max_uncertainty*5) # to not remove the adversarial samples
+    max_uncertainty = config.get('UQ_max_uncertainty')*config.get('adversarial_max_UQ_factor', 1)  # to not remove the adversarial samples
+    traj_uncertain, traj_embedding = sort_by_uncertainty(uncertain, embeddings, UQ, max_samples, min_uncertainty, max_uncertainty)
 
     if len(traj_uncertain)>0:
         
