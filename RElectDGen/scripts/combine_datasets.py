@@ -55,7 +55,7 @@ def main(args=None):
 
     logging_dict = {
         'dataset_size': combined_size,
-        'combined_dataset_size': combined_size - pretraining_size,
+        'pretraining_dataset_size': pretraining_size,
         'reduced_dataset_size': reduced_size
     }
 

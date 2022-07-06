@@ -98,6 +98,8 @@ def main(args=None):
         if np.isclose(prev_mae_dict['best_validation_loss'],prev_mae_dict['best_training_loss'],rtol=10):
             train = True
             print('Previous train and validation losses are too far apart', flush=True) 
+        else:
+            print('Previous train and validation losses are close enough', flush=True) 
 
     uncertainty_dict = {}
     commands = ['nequip-train', MLP_config_filename]
