@@ -32,6 +32,8 @@ def get_mae_from_results():
         'training_e_mae': float(data[' training_e_mae'][best_ind]),
         'validation_f_mae': float(data[' validation_loss_f'][best_ind]),
         'validation_e_mae': float(data[' validation_e_mae'][best_ind]),
+        'best_training_loss': float(np.min(data[' training_loss'])),
+        'best_validation_loss': float(np.min(data[' validation_loss'])),
     }
 
     return mae_dict

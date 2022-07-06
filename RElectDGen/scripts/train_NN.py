@@ -92,6 +92,12 @@ def main(args=None):
     if config.get('force_retrain', False):
         train = True
 
+    if not train:
+        #Check to make sure the previously trained network had training and validation losses that were 'close' to each other
+        prev_mae_dict = get_mae_from_results()
+        if np.isclose(prev_mae_dict['best_validation_loss'],prev_mae_dict['best_training_loss'],rtol=10):
+            train = True
+            print('Previous train and validation losses are too far apart', flush=True) 
 
     uncertainty_dict = {}
     commands = ['nequip-train', MLP_config_filename]
