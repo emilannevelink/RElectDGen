@@ -95,6 +95,7 @@ def main(args=None):
     if not train:
         #Check to make sure the previously trained network had training and validation losses that were 'close' to each other
         prev_mae_dict = get_mae_from_results()
+        print(prev_mae_dict['best_validation_loss'],prev_mae_dict['best_training_loss'], flush=True)
         if np.isclose(prev_mae_dict['best_validation_loss'],prev_mae_dict['best_training_loss'],rtol=10):
             train = True
             print('Previous train and validation losses are too far apart', flush=True) 

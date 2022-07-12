@@ -14,15 +14,18 @@ def sort_by_uncertainty(traj, embeddings, UQ, max_samples, min_uncertainty=0.04,
         print('uncertainty downselect', flush = True)
         uncertainties, calc_inds = uncertainty_downselect(traj, embeddings, UQ, min_uncertainty=min_uncertainty, max_uncertainty=max_uncertainty)
 
+    calc_inds_sorted = []
     traj_sorted = []
     uncertainties_sorted = []
     embedding_sorted = []
     ind_sorted = np.argsort(uncertainties)[::-1][:max_samples]
     for ind in ind_sorted:
+        calc_inds_sorted.append(calc_inds[ind])
         traj_sorted.append(traj[calc_inds[ind]])
         uncertainties_sorted.append(uncertainties[ind])
         embedding_sorted.append(embeddings[calc_inds[ind]])
 
+    print(calc_inds_sorted)
     print(len(uncertainties_sorted),uncertainties_sorted)
     if len(uncertainties_sorted)>0:
         print(np.mean(uncertainties_sorted), np.std(uncertainties_sorted))
@@ -113,7 +116,6 @@ def embedding_downselect(traj, embeddings, UQ, min_uncertainty=0.04, max_uncerta
                 print(embedding_distances)
                 print(embed_distances_i, flush=True)
             
-    print(calc_inds, flush = True)
     return uncertainties, calc_inds
 
 def finetune_downselect(traj, embeddings, UQ, min_uncertainty=0.04, max_uncertainty=np.inf):
@@ -152,11 +154,10 @@ def finetune_downselect(traj, embeddings, UQ, min_uncertainty=0.04, max_uncertai
             UQ.fine_tune(keep_embeddings, keep_energies)
             active_uncertainty_after = UQ.predict_uncertainty(atoms, embedding_i, extra_embeddings=keep_embeddings, type='std').detach().cpu().numpy()
             active_uncertainty_after = active_uncertainty_after.sum(axis=-1)
-            print(active_uncertainty, active_uncertainty_after, flush=True)
-            print(active_uncertainty > active_uncertainty_after, flush=True)
+            ind_max = np.argmax(active_uncertainty)
+            print(active_uncertainty[ind_max], active_uncertainty_after[ind_max], flush=True)
+            print(active_uncertainty[ind_max] > active_uncertainty_after[ind_max], flush=True)
             
-            
-    print(calc_inds, flush = True)
     return uncertainties, calc_inds
 
 def sample_from_dataset(config):
