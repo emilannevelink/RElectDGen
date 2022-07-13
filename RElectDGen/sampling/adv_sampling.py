@@ -73,7 +73,7 @@ def min_func(positions, UQ, atoms, T, UQ_max_uncertainty):
     out = neg_loss.detach().cpu().numpy()
     max_uncertainty = UQ.uncertainties.detach().sum(axis=-1).max()
     if max_uncertainty > UQ_max_uncertainty:
-        out = np.ones_like(neg_loss)*np.nan
+        out = np.ones_like(out)*np.nan
 
     return out
 
