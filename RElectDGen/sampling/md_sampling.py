@@ -123,7 +123,10 @@ def MD_sampling(config, loop_learning_count=1):
 
     uncertainty, embeddings = UQ.predict_from_traj(traj,max=False)
 
-    print(uncertainty.sum(dim=-1).max(axis=1))
+    max_val_ind = uncertainty.sum(dim=-1).max(axis=1)
+    print(max_val_ind.values)
+    print(max_val_ind.indices)
+    print(np.array(traj[0].get_chemical_symbols())[max_val_ind.indices])
     MLP_dict['MLP_error'] = float(uncertainty.sum(dim=-1).mean())
     MLP_dict['MLP_error_std'] = float(uncertainty.sum(dim=-1).std())
     MLP_dict['MLP_error_base'] = float(uncertainty[:,:,0].mean())
