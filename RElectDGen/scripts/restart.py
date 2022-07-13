@@ -115,18 +115,21 @@ def main(args = None):
     checks_history.append(np.all(list(checks.values()),axis=1).tolist())
     config['checks_history'] = checks_history
     print('termination conditions', termination_conditions)
-    if not np.all(termination_conditions) or not np.all(checks):
-        config['i_temperature_sweep']+=1
-        with open(filename_config,'w') as fl:
-            yaml.dump(config, fl)
-        
-        commands = ['REDGEN-start', filename_config]
-        process = subprocess.run(commands,capture_output=True)
-        print('Job ids',process.stdout)
-        print('Error',process.stderr)
+    if config.get('restart',False):
+        if not np.all(termination_conditions) or not np.all(checks):
+            config['i_temperature_sweep']+=1
+            with open(filename_config,'w') as fl:
+                yaml.dump(config, fl)
+            
+            commands = ['REDGEN-start', filename_config]
+            process = subprocess.run(commands,capture_output=True)
+            print('Job ids',process.stdout)
+            print('Error',process.stderr)
 
+        else:
+            print(f'reached termination condition {termination_conditions}')
     else:
-        print(f'reached termination condition {termination_conditions}')
+        print('restart is False')
 
 if __name__ == "__main__":
     main()

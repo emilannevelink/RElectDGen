@@ -121,7 +121,7 @@ def main(args=None):
                     job_types.append(shell_file)
             
         
-    if config.get('restart',False) and 'restart.sh' in filenames and len(job_ids)>0:
+    if 'restart.sh' in filenames and len(job_ids)>0:
 
         shell_file = 'submits/restart.sh'
         commands = ['sbatch', f'--dependency=afterok:{job_ids[-1]}', shell_file, active_learning_config, MLP_config_filename]
