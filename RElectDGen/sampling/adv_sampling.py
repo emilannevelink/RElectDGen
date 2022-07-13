@@ -14,6 +14,7 @@ from ase import units
 from ase.md import MDLogger
 
 from scipy.optimize import minimize
+from sympy import Max
 
 import yaml
 import torch
@@ -44,7 +45,7 @@ def adv_loss(atoms, UQ, T):
     out = UQ.adversarial_loss(data, T)
     return out
 
-def d_min_func(positions, UQ, atoms, T):
+def d_min_func(positions, UQ, atoms, T, UQ_max_uncertainty):
             
         atoms.set_positions(
             positions.reshape(atoms.positions.shape)
@@ -55,17 +56,26 @@ def d_min_func(positions, UQ, atoms, T):
         loss = -UQ.adversarial_loss(data, T)
 
         grads = torch.autograd.grad(loss,data['pos'])
+        grads = grads[0].flatten().cpu().numpy()
+        
+        max_uncertainty = UQ.uncertainties.detach().sum(axis=-1).max()
+        if max_uncertainty > UQ_max_uncertainty:
+            grads = np.ones_like(grads)*np.nan
 
-        return grads[0].flatten().cpu().numpy()
+        return grads
 
-def min_func(positions, UQ, atoms, T):
+def min_func(positions, UQ, atoms, T, UQ_max_uncertainty):
     atoms.set_positions(
         positions.reshape(atoms.positions.shape)
     )
 
     neg_loss = -adv_loss(atoms, UQ, T)
+    out = neg_loss.detach().cpu().numpy()
+    max_uncertainty = UQ.uncertainties.detach().sum(axis=-1).max()
+    if max_uncertainty > UQ_max_uncertainty:
+        out = np.ones_like(neg_loss)*np.nan
 
-    return neg_loss.detach().cpu().numpy()
+    return out
 
 def adv_sampling(config, traj_initial=[], loop_learning_count=1):
 
@@ -121,7 +131,7 @@ def adv_sampling(config, traj_initial=[], loop_learning_count=1):
         positions += 0.01*(np.random.rand(*positions.shape)-0.5)
 
         try:
-            res = minimize(min_func,positions,args=(UQ, atoms, T), jac=d_min_func, method='CG')
+            res = minimize(min_func,positions,args=(UQ, atoms, T, config.get('UQ_max_uncertainty')), jac=d_min_func, method='CG')
 
             print(res, flush=True)
 
