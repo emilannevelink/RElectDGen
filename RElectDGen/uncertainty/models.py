@@ -937,9 +937,9 @@ class Nequip_ensemble_NN(uncertainty_base):
         # uncertainty_std = pred_atom_energies.sum(dim=1).std(axis=0)#.sum(axis=-1)
         # uncertainties_std = torch.ones(pred_atom_energies.shape[1]).to(self.device)*uncertainty_std
 
-        uncertainty = torch.vstack([uncertainties_mean,uncertainties_std]).T
+        uncertainty = torch.vstack([uncertainties_mean,uncertainties_std]).T/torch.max(torch.ones_like(out['atomic_energy']),out['atomic_energy'].abs())
 
-        uncertainty *= self.config.get('uncertainty_factor',10)
+        # uncertainty *= self.config.get('uncertainty_factor',10)
         return uncertainty
 
     def predict_from_traj(self, traj, max=True, batch_size=1):
