@@ -1,4 +1,3 @@
-from logging import raiseExceptions
 import sys
 import os
 import pickle
@@ -12,7 +11,6 @@ import matplotlib.pyplot as plt
 
 from nequip.data import AtomicData, dataset_from_config, DataLoader
 from nequip.data.transforms import TypeMapper
-from zmq import device
 
 from . import optimization_functions
 from .optimization_functions import uncertainty_NN, uncertaintydistance_NN, uncertainty_ensemble_NN
