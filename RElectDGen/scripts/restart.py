@@ -69,7 +69,7 @@ def main(args = None):
     if len(checks) == 0:
         raise RuntimeError('Sampling Error, checks is empty')
     
-    if np.all(checks.get('MD_mean_uncertainty',[False])+checks.get('MD_std_uncertainty',[False])):
+    if np.all(checks.get('MD_mean_uncertainty',[False])+checks.get('MD_std_uncertainty',[False])) and np.all(checks.get('MD_max_index',[False])):
         config['MLP_MD_temperature']*=2
         config['MLP_MD_dT']*=1.5
     if np.all(checks.get('MD_max_index',[False])):
