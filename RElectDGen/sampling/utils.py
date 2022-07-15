@@ -8,7 +8,7 @@ from nequip.data import AtomicData
 def sort_by_uncertainty(traj, embeddings, UQ, max_samples, min_uncertainty=0.04, max_uncertainty=np.inf):
 
     if UQ.__class__.__name__ in ['Nequip_ensemble_NN']:
-        print('embedding downselect', flush = True)
+        print('finetune downselect', flush = True)
         uncertainties, calc_inds = finetune_downselect(traj, embeddings, UQ, min_uncertainty=min_uncertainty, max_uncertainty=max_uncertainty)
     else:
         print('uncertainty downselect', flush = True)
@@ -150,7 +150,7 @@ def finetune_downselect(traj, embeddings, UQ, min_uncertainty=0.04, max_uncertai
                 keep_embeddings[key] = torch.cat([keep_embeddings[key],NN_inputs])
                 keep_energies[key] = torch.cat([keep_energies[key], out['atomic_energy'].detach()[mask]])
 
-            
+            print(i, flush=True)
             UQ.fine_tune(keep_embeddings, keep_energies)
             active_uncertainty_after = UQ.predict_uncertainty(atoms, embedding_i, extra_embeddings=keep_embeddings, type='std').detach().cpu().numpy()
             active_uncertainty_after = active_uncertainty_after.sum(axis=-1)

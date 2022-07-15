@@ -133,7 +133,9 @@ def adv_sampling(config, traj_initial=[], loop_learning_count=1):
         try:
             res = minimize(min_func,positions,args=(UQ, atoms, T, config.get('UQ_max_uncertainty')), jac=d_min_func, method='CG')
 
-            print(res, flush=True)
+            print(res.message, flush=True)
+            print(res.nfev, flush=True)
+            print(res.success, flush=True)
 
             atoms.set_positions(
                     res.x.reshape(atoms.positions.shape)
@@ -152,7 +154,9 @@ def adv_sampling(config, traj_initial=[], loop_learning_count=1):
         
             val_adv_loss = adv_loss(atoms_save, UQ, T)
             # uncertainties.append(torch.tensor(UQ.uncertainties).mean())
-            uncertainties.append(UQ.uncertainties.clone().detach().mean(dim=0))
+            unc = UQ.uncertainties.clone().detach()
+            ind = torch.argmax(unc.sum(axis=-1))
+            uncertainties.append(unc[ind])
             # embeddings.append(torch.tensor(UQ.atom_embedding))
             embeddings.append(UQ.atom_embedding.clone().detach())
             traj_adv.append(atoms_save)
