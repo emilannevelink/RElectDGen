@@ -407,7 +407,8 @@ class uncertainty_ensemble_NN():
     momentum=0.9,
     patience= None,
     early_stopping_patience = None,
-    min_lr = None) -> None:
+    min_lr = None,
+    fine_tune_train_dataset_percentage = 0.5) -> None:
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         self.nequip_model = nequip_model #.train()
         # self.nequip_model.train()
@@ -415,7 +416,7 @@ class uncertainty_ensemble_NN():
         self.input_dim = input_dim
         self.batch_size = batch_size
         self.initial_lr = lr
-        
+        self.fine_tune_train_dataset_percentage = fine_tune_train_dataset_percentage
         
         if patience is None:
             patience = epochs/10
@@ -685,7 +686,8 @@ class uncertainty_ensemble_NN():
         validation_energies,
         fine_tune_latents, 
         fine_tune_energies, 
-        fine_tune_epochs=None):
+        fine_tune_epochs=None,
+    ):
         
         if fine_tune_epochs is None:
             fine_tune_epochs = int(self.epochs/10)
@@ -697,6 +699,8 @@ class uncertainty_ensemble_NN():
         train_dataloader = self.make_dataloader(train_latents, train_energies)
         validation_dataloader = self.make_dataloader(validation_latents, validation_energies)
         fine_tune_dataloader = self.make_dataloader(fine_tune_latents, fine_tune_energies)
+
+        i_train_max = self.fine_tune_train_dataset_percentage*len(train_dataloader)
 
         self.best_model = copy.deepcopy(self.model)
         self.best_loss = torch.tensor(np.inf)
@@ -710,6 +714,8 @@ class uncertainty_ensemble_NN():
         for n in range(fine_tune_epochs):
             running_loss = 0
             for i, data in enumerate(fine_tune_dataloader):
+                if i > i_train_max:
+                    break
                 latents, energies = data
                 self.model.train()
                 self.model.zero_grad()
