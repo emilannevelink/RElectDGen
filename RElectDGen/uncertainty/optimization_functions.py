@@ -406,6 +406,7 @@ class uncertainty_ensemble_NN():
     lr = 0.001, 
     momentum=0.9,
     patience= None,
+    early_stopping_patience = None,
     min_lr = None) -> None:
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         self.nequip_model = nequip_model #.train()
@@ -418,10 +419,13 @@ class uncertainty_ensemble_NN():
         
         if patience is None:
             patience = epochs/10
+        if early_stopping_patience is None:
+            early_stopping_patience = int(patience * 2.5)
         if min_lr is None:
-            self.min_lr = lr/10000
+            self.min_lr = lr/1e3
 
         self.patience = patience
+        self.early_stopping_patience = early_stopping_patience
         
         layers = []
         if len(hidden_dimensions)==0:
@@ -641,6 +645,10 @@ class uncertainty_ensemble_NN():
                 self.best_epoch = n
                 self.best_loss = validation_loss
                 self.best_model = copy.deepcopy(self.model)
+            elif n - self.best_epoch > self.early_stopping_patience:
+                print(f'Validation loss hasnt improved in {self.early_stopping_patience} stopping optimization')
+                break
+            
             self.lr_scheduler(validation_loss)
             
             metrics['lr'].append(self.optim.param_groups[0]['lr'])
@@ -648,6 +656,7 @@ class uncertainty_ensemble_NN():
             metrics['validation_loss'].append(validation_loss)
 
             if self.optim.param_groups[0]['lr'] == self.min_lr:
+                print('Reached minimum learning rate')
                 break
         
         self.metrics = metrics
@@ -743,6 +752,9 @@ class uncertainty_ensemble_NN():
                 self.best_epoch = n
                 self.best_loss = validation_loss
                 self.best_model = copy.deepcopy(self.model)
+            elif n - self.best_epoch > self.early_stopping_patience:
+                print(f'Validation loss hasnt improved in {self.early_stopping_patience} stopping optimization')
+                break
             lr_scheduler(validation_loss)
             
             fine_tune_metrics['lr'].append(optim.param_groups[0]['lr'])

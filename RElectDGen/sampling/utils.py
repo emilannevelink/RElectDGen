@@ -25,6 +25,7 @@ def sort_by_uncertainty(traj, embeddings, UQ, max_samples, min_uncertainty=0.04,
         uncertainties_sorted.append(uncertainties[ind])
         embedding_sorted.append(embeddings[calc_inds[ind]])
 
+    print(calc_inds)
     print(calc_inds_sorted)
     print(len(uncertainties_sorted),uncertainties_sorted)
     if len(uncertainties_sorted)>0:
