@@ -5,7 +5,6 @@ import pandas as pd
 
 from ase.io.trajectory import Trajectory
 from ase.md.velocitydistribution import MaxwellBoltzmannDistribution, ZeroRotation, Stationary
-from ase.md.verlet import VelocityVerlet
 from ase import units
 from ase.md import MDLogger
 
@@ -71,7 +70,22 @@ def MD_sampling(config, loop_learning_count=1):
 
     print(MLP_dict['MLP_MD_temperature'],flush=True)
 
-    dyn = VelocityVerlet(supercell, timestep=config.get('MLP_MD_timestep') * units.fs)
+    md_kwargs = {
+        'timestep': config.get('MLP_MD_timestep') * units.fs
+    }
+    md_func_name = config.get('MD_sampling_func', 'nvt')
+    if md_func_name == 'nve':
+        from ase.md.verlet import VelocityVerlet as md_func
+    elif md_func_name == 'nvt':
+        from ase.md.nvtberendsen import NVTBerendsen as md_func
+        taut = config.get('NVT_taut')
+        if taut is None:
+            md_kwargs['taut'] = md_kwargs['timestep']*500
+        else:
+            md_kwargs['taut'] = taut*units.fs
+        md_kwargs['temperature'] = MLP_dict['MLP_MD_temperature']
+
+    dyn = md_func(supercell, **md_kwargs)
     MLP_MD_dump_file = os.path.join(config.get('data_directory'),config.get('MLP_MD_dump_file'))
     #MDLogger only has append, delete log file
     if os.path.isfile(MLP_MD_dump_file):
