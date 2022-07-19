@@ -647,7 +647,7 @@ class uncertainty_ensemble_NN():
                 self.best_loss = validation_loss
                 self.best_model = copy.deepcopy(self.model)
             elif n - self.best_epoch > self.early_stopping_patience:
-                print(f'Validation loss hasnt improved in {self.early_stopping_patience} stopping optimization')
+                print(f'Validation loss hasnt improved in {self.early_stopping_patience} epochs stopping optimization at epoch {n}')
                 break
             
             self.lr_scheduler(validation_loss)
@@ -691,6 +691,8 @@ class uncertainty_ensemble_NN():
         
         if fine_tune_epochs is None:
             fine_tune_epochs = int(self.epochs/10)
+
+        self.fine_tune_early_stopping_patience = self.early_stopping_patience*fine_tune_epochs/self.epochs
 
         initial_lr = max(self.initial_lr/10, self.min_lr*10)
         optim = torch.optim.Adam(self.model.parameters(), lr = initial_lr)
@@ -758,8 +760,8 @@ class uncertainty_ensemble_NN():
                 self.best_epoch = n
                 self.best_loss = validation_loss
                 self.best_model = copy.deepcopy(self.model)
-            elif n - self.best_epoch > self.early_stopping_patience:
-                print(f'Validation loss hasnt improved in {self.early_stopping_patience} stopping optimization')
+            elif n - self.best_epoch > self.fine_tune_early_stopping_patience:
+                print(f'Validation loss hasnt improved in {self.fine_tune_early_stopping_patience} epochs stopping optimization at epoch {n}')
                 break
             lr_scheduler(validation_loss)
             

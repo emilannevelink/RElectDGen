@@ -28,9 +28,10 @@ def main(args=None):
     
     traj = []
     for filename in config.get('pretraining_data',[]):
-        traj += read(os.path.join(config.get('data_directory'),filename), index=':')
+        add_traj = read(os.path.join(config.get('data_directory'),filename), index=':')
+        traj += add_traj
 
-        print(len(traj))
+        print(len(add_traj), len(traj))
 
     pretraining_size = len(traj)
     try:
