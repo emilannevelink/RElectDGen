@@ -35,7 +35,9 @@ def main(args=None):
 
     pretraining_size = len(traj)
     try:
-        traj += read(trajectory_file,index=':')
+        add_traj = read(trajectory_file,index=':')
+        traj += add_traj
+        print(len(add_traj), len(traj))
     except:
         print('Trajectory file couldnt be appended', flush=True)
         print(trajectory_file, flush=True)
