@@ -55,7 +55,7 @@ def d_min_func(positions, UQ, atoms, T, UQ_max_uncertainty):
         
         loss = -UQ.adversarial_loss(data, T)
 
-        grads = torch.autograd.grad(loss,data['pos'])
+        grads = torch.autograd.grad(loss,data['pos'], allow_unused=True)
         grads = grads[0].flatten().cpu().numpy()
         
         max_uncertainty = UQ.uncertainties.detach().sum(axis=-1).max()
