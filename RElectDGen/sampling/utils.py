@@ -31,7 +31,7 @@ def sort_by_uncertainty(traj, embeddings, UQ, max_samples, min_uncertainty=0.04,
     if len(uncertainties_sorted)>0:
         print(np.mean(uncertainties_sorted), np.std(uncertainties_sorted))
 
-    return traj_sorted, embedding_sorted
+    return traj_sorted, embedding_sorted, calc_inds_sorted
 
 def uncertainty_downselect(traj, embeddings, UQ, min_uncertainty=0.04, max_uncertainty=np.inf):
     calc_inds = []
@@ -172,8 +172,23 @@ def sample_from_dataset(config):
         n_adversarial_samples = int(config.get('n_adversarial_samples',2*max_samples))
         
         traj_indices = torch.randperm(len(traj))[:2*n_adversarial_samples].numpy()
+        traj_md = [traj[i] for i in traj_indices]
+    else:
+        traj_md = []
+
+    adversarial_trajectroy = os.path.join(
+        config.get('data_directory'),
+        config.get('adversarial_trajectroy','')
+    )
+    if os.path.isfile(adversarial_trajectroy):
+        traj = read(adversarial_trajectroy, index=':')
+        max_samples = int(min([0.1*len(traj), config.get('max_samples')]))
+        n_adversarial_samples = int(config.get('n_adversarial_samples',2*max_samples))
+        
+        traj_indices = torch.randperm(len(traj))[:2*n_adversarial_samples].numpy()
         traj_adv = [traj[i] for i in traj_indices]
     else:
         traj_adv = []
 
-    return traj_adv
+    traj = traj_md + traj_adv
+    return traj

@@ -23,6 +23,7 @@ def main(args=None):
 
     config, filename_MLP_config = parse_command_line(args)
     trajectory_file = os.path.join(config.get('data_directory'),config.get('trajectory_file'))
+    adversarial_trajectory = os.path.join(config.get('data_directory'),config.get('adversarial_trajectroy'))
     combined_trajectory = os.path.join(config.get('data_directory'),config.get('combined_trajectory'))
 
     
@@ -41,6 +42,14 @@ def main(args=None):
     except:
         print('Trajectory file couldnt be appended', flush=True)
         print(trajectory_file, flush=True)
+
+    try:
+        add_traj = read(adversarial_trajectory,index=':')
+        traj += add_traj
+        print(len(add_traj), len(traj))
+    except:
+        print('Adversarial trajectory file couldnt be appended', flush=True)
+        print(adversarial_trajectory, flush=True)
 
     combined_size = len(traj)
     traj_reduced = reduce_traj(traj)

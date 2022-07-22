@@ -194,7 +194,7 @@ def adv_sampling(config, traj_initial=[], loop_learning_count=1):
     min_uncertainty = config.get('UQ_min_uncertainty')
     max_uncertainty = config.get('UQ_max_uncertainty')*config.get('adversarial_max_UQ_factor', 1)
 
-    traj_uncertain, embeddings_uncertain = sort_by_uncertainty(traj_adv, embeddings, UQ, max_samples, min_uncertainty,max_uncertainty)
+    traj_uncertain, embeddings_uncertain, calc_inds_uncertain = sort_by_uncertainty(traj_adv, embeddings, UQ, max_samples, min_uncertainty,max_uncertainty)
 
     adv_dict['number_adversarial_samples'] = len(traj_uncertain)
 

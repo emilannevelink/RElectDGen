@@ -27,7 +27,7 @@ def MD_sampling(config, loop_learning_count=1):
     
     traj_initial = sample_from_dataset(config)
     if len(traj_initial)>0 and not config.get('cluster', False) and not config.get('MD_from_initial', False): 
-        supercell = traj_initial[0]
+        supercell = traj_initial[0] #ensure you only sample from md
     else:
         supercell = get_initial_structure(config)
     
@@ -210,7 +210,7 @@ def MD_sampling(config, loop_learning_count=1):
         # choose most uncertain
         min_uncertainty = config.get('UQ_min_uncertainty')
         max_uncertainty = config.get('UQ_max_uncertainty')
-        traj_uncertain, embeddings_uncertain = sort_by_uncertainty(traj, embeddings, UQ, max_samples, min_uncertainty, max_uncertainty)
+        traj_uncertain, embeddings_uncertain, calc_inds_uncertain = sort_by_uncertainty(traj, embeddings, UQ, max_samples, min_uncertainty, max_uncertainty)
 
         MLP_dict['number_MD_samples'] = len(traj_uncertain)
 

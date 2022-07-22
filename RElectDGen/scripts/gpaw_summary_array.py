@@ -31,21 +31,28 @@ def main(args=None):
     config = parse_command_line(args)
     # hdf5_file = os.path.join(config.get('data_directory'),config.get('hdf5_file'))
     trajectory_file = os.path.join(config.get('data_directory'),config.get('trajectory_file'))
+    adversarial_trajectory = os.path.join(config.get('data_directory'),config.get('adversarial_trajectroy'))
     active_learning_calc = os.path.join(config.get('data_directory'),config.get('active_learning_calc'))
     active_learning_configs = os.path.join(config.get('data_directory'),config.get('active_learning_configs'))
+
+    calc_inds_uncertain = config['calc_inds_uncertain']
+    n_MD_uncertain = config['n_MD_uncertain']
 
     if os.path.isfile(active_learning_configs):
         traj_calc = Trajectory(active_learning_configs)
 
         traj_active = []
+        calc_ind = []
         for i in range(len(traj_calc)):
             calc_file = active_learning_calc+f'.{i}'
             try:
                 traj_active += list(Trajectory(calc_file))
-                print(f'retrieved {len(traj_active)} calculations from array', flush=True)
+                calc_ind.append(i)
+                print(f'retrieved {i} from array', flush=True)
             except (InvalidULMFileError, FileNotFoundError):
-                print(f'failed to retrieve {i} calculations from array', flush=True)
+                print(f'failed to retrieve {i} from array', flush=True)
         
+        print(f'Retrived {len(traj_active)} calculations from array', flush=True)
         try:
             calculation_times = []
             for atoms in traj_active:
@@ -67,7 +74,10 @@ def main(args=None):
             print('error')
 
         traj_writer = Trajectory(trajectory_file,mode='a')
-        [traj_writer.write(atoms) for atoms in traj_active]
+        [traj_writer.write(atoms) for (ind, atoms) in zip(calc_ind,traj_active) if calc_inds_uncertain[ind]<n_MD_uncertain]
+
+        traj_writer = Trajectory(adversarial_trajectory,mode='a')
+        [traj_writer.write(atoms) for (ind, atoms) in zip(calc_ind,traj_active) if calc_inds_uncertain[ind]>=n_MD_uncertain]
 
         if world.rank == 0:
             os.remove(active_learning_configs)
