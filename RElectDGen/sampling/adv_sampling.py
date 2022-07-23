@@ -186,10 +186,10 @@ def adv_sampling(config, traj_initial=[], loop_learning_count=1):
             'adv_position_difference': False,
         }
 
-    traj_dump_file = os.path.join(config.get('data_directory'),config.get('adv_trajectory_file'))
-    writer = Trajectory(traj_dump_file, 'w')
-    for atoms in traj_adv:
-        writer.write(atoms)
+    # traj_dump_file = os.path.join(config.get('data_directory'),config.get('adv_trajectory_file'))
+    # writer = Trajectory(traj_dump_file, 'w')
+    # for atoms in traj_adv:
+    #     writer.write(atoms)
 
     min_uncertainty = config.get('UQ_min_uncertainty')
     max_uncertainty = config.get('UQ_max_uncertainty')*config.get('adversarial_max_UQ_factor', 1)

@@ -31,7 +31,7 @@ def main(args=None):
     config = parse_command_line(args)
     # hdf5_file = os.path.join(config.get('data_directory'),config.get('hdf5_file'))
     trajectory_file = os.path.join(config.get('data_directory'),config.get('trajectory_file'))
-    adversarial_trajectory = os.path.join(config.get('data_directory'),config.get('adversarial_trajectroy'))
+    adversarial_trajectory = os.path.join(config.get('data_directory'),config.get('adv_trajectory_file'))
     active_learning_calc = os.path.join(config.get('data_directory'),config.get('active_learning_calc'))
     active_learning_configs = os.path.join(config.get('data_directory'),config.get('active_learning_configs'))
 
