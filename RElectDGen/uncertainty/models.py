@@ -1035,7 +1035,7 @@ class Nequip_ensemble_NN(uncertainty_base):
             
             ax[1,1].scatter(val_real[key],val_pred[key])
             ax[1,1].errorbar(val_real[key].flatten(),val_pred[key].flatten(), yerr = val_unc_std[key].flatten(), fmt='o')
-            n_key = len(train_real[key].flatten())
+            n_key = len(val_real[key].flatten())
             ax[1,2].scatter(range(nval,nval+n_key),val_real[key]-val_pred[key])
             ax[1,2].errorbar(range(nval,nval+n_key),val_real[key].flatten()-val_pred[key].flatten(), yerr = val_unc_std[key].flatten(), fmt='o')
             nval += n_key
