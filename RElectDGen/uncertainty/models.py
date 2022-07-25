@@ -989,7 +989,7 @@ class Nequip_ensemble_NN(uncertainty_base):
 
             for key in self.chemical_symbol_to_type:
                 mask = (data['atom_types']==self.MLP_config.get('chemical_symbol_to_type')[key]).flatten()
-                train_pred[key] = torch.cat([train_pred[key],out['node_output'].detach()[mask]])
+                train_pred[key] = torch.cat([train_pred[key],out['atomic_energy'].detach()[mask]])
                 train_unc_err[key] = torch.cat([train_unc_err[key],unc[mask,0]])
                 train_unc_std[key] = torch.cat([train_unc_std[key],unc[mask,1]])
 
@@ -1006,31 +1006,39 @@ class Nequip_ensemble_NN(uncertainty_base):
 
             for key in self.chemical_symbol_to_type:
                 mask = (data['atom_types']==self.MLP_config.get('chemical_symbol_to_type')[key]).flatten()
-                val_pred[key] = torch.cat([val_pred[key],out['node_output'].detach()[mask]])
+                val_pred[key] = torch.cat([val_pred[key],out['atomic_energy'].detach()[mask]])
                 val_unc_err[key] = torch.cat([val_unc_err[key],unc[mask,0]])
                 val_unc_std[key] = torch.cat([val_unc_std[key],unc[mask,1]])
             
-        print(train_real.shape, train_pred.shape) 
-        print(val_real.shape, val_pred.shape) 
-        print(train_unc_err.shape, val_unc_err.shape) 
+        # print(train_real.shape, train_pred.shape) 
+        # print(val_real.shape, val_pred.shape) 
+        # print(train_unc_err.shape, val_unc_err.shape) 
 
-        fig, ax = plt.subplots(2,2, figsize=(10,10))
+        fig, ax = plt.subplots(2,3, figsize=(10,15))
         min_val = np.inf
         max_val = -np.inf
+        ntrain = nval = 0
         for key in self.chemical_symbol_to_type:
             min_val = min([min_val, train_real[key].min(), train_pred[key].min(), val_real[key].min(), val_pred[key].min()])
             max_val = max([max_val, train_real[key].max(), train_pred[key].max(), val_real[key].max(), val_pred[key].max()])
             ax[0,0].scatter(train_real[key],train_pred[key])
             ax[0,0].errorbar(train_real[key].flatten(),train_pred[key].flatten(), yerr = train_unc_err[key].flatten(), fmt='o')
-            ax[1,0].scatter(train_real[key],train_pred[key])
-            ax[1,0].errorbar(train_real[key].flatten(),train_pred[key].flatten(), yerr = train_unc_std[key].flatten(), fmt='o')
-            
-            ax[0,1].scatter(val_real[key],val_pred[key])
-            ax[0,1].errorbar(val_real[key].flatten(),val_pred[key].flatten(), yerr = val_unc_err[key].flatten(), fmt='o')
+            ax[0,1].scatter(train_real[key],train_pred[key])
+            ax[0,1].errorbar(train_real[key].flatten(),train_pred[key].flatten(), yerr = train_unc_std[key].flatten(), fmt='o')
+            n_key = len(train_real[key].flatten())
+            ax[0,2].scatter(range(ntrain,ntrain+n_key),train_real[key]-train_pred[key])
+            ax[0,2].errorbar(range(ntrain,ntrain+n_key),train_real[key].flatten()-train_pred[key].flatten(), yerr = train_unc_std[key].flatten(), fmt='o')
+            ntrain += n_key
+
+            ax[1,0].scatter(val_real[key],val_pred[key])
+            ax[1,0].errorbar(val_real[key].flatten(),val_pred[key].flatten(), yerr = val_unc_err[key].flatten(), fmt='o')
             
             ax[1,1].scatter(val_real[key],val_pred[key])
             ax[1,1].errorbar(val_real[key].flatten(),val_pred[key].flatten(), yerr = val_unc_std[key].flatten(), fmt='o')
-            
+            n_key = len(train_real[key].flatten())
+            ax[1,2].scatter(range(nval,nval+n_key),val_real[key]-val_pred[key])
+            ax[1,2].errorbar(range(nval,nval+n_key),val_real[key].flatten()-val_pred[key].flatten(), yerr = val_unc_std[key].flatten(), fmt='o')
+            nval += n_key
         
         ax[0,0].plot([min_val,max_val],[min_val,max_val],color='k',linestyle='--')
         ax[1,0].plot([min_val,max_val],[min_val,max_val],color='k',linestyle='--')
