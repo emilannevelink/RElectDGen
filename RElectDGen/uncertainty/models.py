@@ -971,36 +971,72 @@ class Nequip_ensemble_NN(uncertainty_base):
 
     def plot_fit(self, filename=None):
             
-        fig, ax = plt.subplots(1,3,figsize=(15,5))
+        if not hasattr(self, 'train_dataset'):
+            self.parse_data()
+            
+        train_real = self.train_energies
+        val_real = self.test_energies
+        train_pred = {}
+        train_unc_err = {}
+        train_unc_std = {}
+        for key in self.chemical_symbol_to_type:
+            train_pred[key] = torch.empty((0),device=self.device)
+            train_unc_err[key] = torch.empty((0),device=self.device)
+            train_unc_std[key] = torch.empty((0),device=self.device)
+        for data in self.train_dataset:
+            out = self.model(self.transform_data_input(data))
+            unc = self.predict_uncertainty(data).detach()
 
-        pred_errors = self.predict_uncertainty(0,self.train_embeddings,type='mean').detach()
-        min_err = min([self.train_errors.min()])#,pred_errors.min()])
-        max_err = max([self.train_errors.max()])#,pred_errors.max()])
-        ax[0].scatter(self.train_errors,pred_errors,alpha=0.5)
-        ax[0].plot([min_err,max_err], [min_err,max_err],'k',linestyle='--')
-        ax[0].set_xlabel('True Error')
-        ax[0].set_ylabel('Predicted Error')
-        ax[0].axis('square')
+            for key in self.chemical_symbol_to_type:
+                mask = (data['atom_types']==self.MLP_config.get('chemical_symbol_to_type')[key]).flatten()
+                train_pred[key] = torch.cat([train_pred[key],out['node_output'].detach()[mask]])
+                train_unc_err[key] = torch.cat([train_unc_err[key],unc[mask,0]])
+                train_unc_std[key] = torch.cat([train_unc_std[key],unc[mask,1]])
 
-        print((pred_errors-self.train_errors).mean())
-        print((pred_errors-self.train_errors).std())
+        val_pred = {}
+        val_unc_err = {}
+        val_unc_std = {}
+        for key in self.chemical_symbol_to_type:
+            val_pred[key] = torch.empty((0),device=self.device)
+            val_unc_err[key] = torch.empty((0),device=self.device)
+            val_unc_std[key] = torch.empty((0),device=self.device)
+        for data in self.validation_dataset:
+            out = self.model(self.transform_data_input(data))
+            unc = self.predict_uncertainty(data).detach()
 
-        pred_errors = self.predict_uncertainty(0,self.test_embeddings,type='mean').detach()
-        min_err = min([self.test_errors.min()])#,pred_errors.min()])
-        max_err = max([self.test_errors.max()])#,pred_errors.max()])
-        ax[1].scatter(self.test_errors,pred_errors,alpha=0.5)
-        ax[1].plot([min_err,max_err], [min_err,max_err],'k',linestyle='--')
-        ax[1].set_xlabel('True Error')
-        ax[1].set_ylabel('Predicted Error')
-        ax[1].axis('square')
+            for key in self.chemical_symbol_to_type:
+                mask = (data['atom_types']==self.MLP_config.get('chemical_symbol_to_type')[key]).flatten()
+                val_pred[key] = torch.cat([val_pred[key],out['node_output'].detach()[mask]])
+                val_unc_err[key] = torch.cat([val_unc_err[key],unc[mask,0]])
+                val_unc_std[key] = torch.cat([val_unc_std[key],unc[mask,1]])
+            
+        print(train_real.shape, train_pred.shape) 
+        print(val_real.shape, val_pred.shape) 
+        print(train_unc_err.shape, val_unc_err.shape) 
 
-        ax[2].axhline(0,color='k',linestyle='--')
-        ax[2].scatter(np.arange(len(self.test_errors)),pred_errors-self.test_errors,alpha=0.5)
-        ax[2].set_ylabel('Residual')
-
-        print((pred_errors-self.test_errors).mean())
-        print((pred_errors-self.test_errors).std())
-
+        fig, ax = plt.subplots(2,2, figsize=(10,10))
+        min_val = np.inf
+        max_val = -np.inf
+        for key in self.chemical_symbol_to_type:
+            min_val = min([min_val, train_real[key].min(), train_pred[key].min(), val_real[key].min(), val_pred[key].min()])
+            max_val = max([max_val, train_real[key].max(), train_pred[key].max(), val_real[key].max(), val_pred[key].max()])
+            ax[0,0].scatter(train_real[key],train_pred[key])
+            ax[0,0].errorbar(train_real[key].flatten(),train_pred[key].flatten(), yerr = train_unc_err[key].flatten(), fmt='o')
+            ax[1,0].scatter(train_real[key],train_pred[key])
+            ax[1,0].errorbar(train_real[key].flatten(),train_pred[key].flatten(), yerr = train_unc_std[key].flatten(), fmt='o')
+            
+            ax[0,1].scatter(val_real[key],val_pred[key])
+            ax[0,1].errorbar(val_real[key].flatten(),val_pred[key].flatten(), yerr = val_unc_err[key].flatten(), fmt='o')
+            
+            ax[1,1].scatter(val_real[key],val_pred[key])
+            ax[1,1].errorbar(val_real[key].flatten(),val_pred[key].flatten(), yerr = val_unc_std[key].flatten(), fmt='o')
+            
+        
+        ax[0,0].plot([min_val,max_val],[min_val,max_val],color='k',linestyle='--')
+        ax[1,0].plot([min_val,max_val],[min_val,max_val],color='k',linestyle='--')
+        ax[0,1].plot([min_val,max_val],[min_val,max_val],color='k',linestyle='--')
+        ax[1,1].plot([min_val,max_val],[min_val,max_val],color='k',linestyle='--')
         if filename is not None:
             plt.savefig(filename)
+            plt.close()
 
