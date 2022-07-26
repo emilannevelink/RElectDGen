@@ -1014,28 +1014,35 @@ class Nequip_ensemble_NN(uncertainty_base):
         # print(val_real.shape, val_pred.shape) 
         # print(train_unc_err.shape, val_unc_err.shape) 
 
-        fig, ax = plt.subplots(2,3, figsize=(10,15))
+        fig, ax = plt.subplots(2,3, figsize=(15,10))
         min_val = np.inf
         max_val = -np.inf
         ntrain = nval = 0
+
         for key in self.chemical_symbol_to_type:
+            train_error = train_real[key]-train_pred[key]
+            train_distribution_err = train_error/train_unc_err[key]
+            train_distribution_std = train_error/train_unc_std[key]
+            train_distribution = train_error/(train_unc_err[key]+train_unc_std[key])
+            np.histogram(train_distribution.flatten())
+
+
             min_val = min([min_val, train_real[key].min(), train_pred[key].min(), val_real[key].min(), val_pred[key].min()])
             max_val = max([max_val, train_real[key].max(), train_pred[key].max(), val_real[key].max(), val_pred[key].max()])
             ax[0,0].scatter(train_real[key],train_pred[key])
             ax[0,0].errorbar(train_real[key].flatten(),train_pred[key].flatten(), yerr = train_unc_err[key].flatten(), fmt='o')
-            ax[0,1].scatter(train_real[key],train_pred[key])
-            ax[0,1].errorbar(train_real[key].flatten(),train_pred[key].flatten(), yerr = train_unc_std[key].flatten(), fmt='o')
             n_key = len(train_real[key].flatten())
+            ax[0,1].scatter(range(ntrain,ntrain+n_key),train_real[key]-train_pred[key])
+            ax[0,1].errorbar(range(ntrain,ntrain+n_key),train_real[key].flatten()-train_pred[key].flatten(), yerr = train_unc_err[key].flatten(), fmt='o')
             ax[0,2].scatter(range(ntrain,ntrain+n_key),train_real[key]-train_pred[key])
             ax[0,2].errorbar(range(ntrain,ntrain+n_key),train_real[key].flatten()-train_pred[key].flatten(), yerr = train_unc_std[key].flatten(), fmt='o')
             ntrain += n_key
 
             ax[1,0].scatter(val_real[key],val_pred[key])
             ax[1,0].errorbar(val_real[key].flatten(),val_pred[key].flatten(), yerr = val_unc_err[key].flatten(), fmt='o')
-            
-            ax[1,1].scatter(val_real[key],val_pred[key])
-            ax[1,1].errorbar(val_real[key].flatten(),val_pred[key].flatten(), yerr = val_unc_std[key].flatten(), fmt='o')
             n_key = len(val_real[key].flatten())
+            ax[1,1].scatter(range(nval,nval+n_key),val_real[key]-val_pred[key])
+            ax[1,1].errorbar(range(nval,nval+n_key),val_real[key].flatten()-val_pred[key].flatten(), yerr = val_unc_err[key].flatten(), fmt='o')
             ax[1,2].scatter(range(nval,nval+n_key),val_real[key]-val_pred[key])
             ax[1,2].errorbar(range(nval,nval+n_key),val_real[key].flatten()-val_pred[key].flatten(), yerr = val_unc_std[key].flatten(), fmt='o')
             nval += n_key
