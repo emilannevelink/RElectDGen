@@ -876,8 +876,8 @@ class Nequip_ensemble_NN(uncertainty_base):
                     train_embeddings[key] = torch.cat([train_embeddings[key],NN_inputs])
                     train_energies[key] = torch.cat([train_energies[key], out['atomic_energy'][mask].detach()])
 
-                    npoints = torch.tensor([train_indices[key][-1]+sum(mask) if i>0 else sum(mask)]).to(self.device)
-                    train_indices[key] = torch.cat([train_indices[key],npoints]).to(self.device)
+                    # npoints = torch.tensor([train_indices[key][-1]+sum(mask) if i>0 else sum(mask)]).to(self.device)
+                    # train_indices[key] = torch.cat([train_indices[key],npoints]).to(self.device)
             else:
                 self.UQ_test_indices = torch.cat([self.UQ_test_indices, self.ML_train_indices[i].unsqueeze(dim=0)])
                 for key in self.MLP_config.get('chemical_symbol_to_type'):
@@ -889,8 +889,8 @@ class Nequip_ensemble_NN(uncertainty_base):
                     test_embeddings[key] = torch.cat([test_embeddings[key],NN_inputs])
                     test_energies[key] = torch.cat([test_energies[key], out['atomic_energy'][mask].detach()])
 
-                    npoints = torch.tensor([test_indices[key][-1]+sum(mask) if i>0 else sum(mask)]).to(self.device)
-                    test_indices[key] = torch.cat([test_indices[key],npoints]).to(self.device)
+                    # npoints = torch.tensor([test_indices[key][-1]+sum(mask) if i>0 else sum(mask)]).to(self.device)
+                    # test_indices[key] = torch.cat([test_indices[key],npoints]).to(self.device)
 
         self.train_embeddings = train_embeddings
         self.train_energies = train_energies
@@ -914,8 +914,8 @@ class Nequip_ensemble_NN(uncertainty_base):
                     validation_embeddings[key] = torch.cat([validation_embeddings[key],NN_inputs])
                     validation_energies[key] = torch.cat([validation_energies[key], out['atomic_energy'][mask].detach()])
                     
-                    npoints = torch.tensor([validation_indices[key][-1]+sum(mask) if i>0 else sum(mask)]).to(self.device)
-                    validation_indices[key] = torch.cat([validation_indices[key],npoints]).to(self.device)
+                    # npoints = torch.tensor([validation_indices[key][-1]+sum(mask) if i>0 else sum(mask)]).to(self.device)
+                    # validation_indices[key] = torch.cat([validation_indices[key],npoints]).to(self.device)
             else:
                 self.UQ_test_indices = torch.cat([self.UQ_test_indices, self.ML_validation_indices[i].unsqueeze(dim=0)])
                 for key in self.MLP_config.get('chemical_symbol_to_type'):
@@ -927,8 +927,8 @@ class Nequip_ensemble_NN(uncertainty_base):
                     test_embeddings[key] = torch.cat([test_embeddings[key],NN_inputs])
                     test_energies[key] = torch.cat([test_energies[key], out['atomic_energy'][mask].detach()])
                     
-                    npoints = torch.tensor([test_indices[key][-1]+sum(mask) if i>0 else sum(mask)]).to(self.device)
-                    test_indices[key] = torch.cat([test_indices[key],npoints]).to(self.device)
+                    # npoints = torch.tensor([test_indices[key][-1]+sum(mask) if i>0 else sum(mask)]).to(self.device)
+                    # test_indices[key] = torch.cat([test_indices[key],npoints]).to(self.device)
         
         self.validation_embeddings = validation_embeddings
         self.validation_energies = validation_energies
