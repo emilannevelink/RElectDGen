@@ -7,6 +7,7 @@ from ase import units
 from ase.md import MDLogger
 
 
+from RElectDGen.utils.md_utils import md_func_from_config
 from ..calculate.calculator import nn_from_results
 from ..structure.build import get_initial_structure
 import time
@@ -57,7 +58,9 @@ def main(args=None):
     ZeroRotation(supercell)
     Stationary(supercell)
 
-    dyn = VelocityVerlet(supercell, timestep=config.get('MLP_MD_timestep') * units.fs)
+    md_func, md_kwargs = md_func_from_config(config)
+
+    dyn = md_func(supercell, **md_kwargs)
     MLP_MD_dump_file = os.path.join(config.get('data_directory'),config.get('MLP_MD_dump_file'))
     
     #MDLogger only has append, delete log file
