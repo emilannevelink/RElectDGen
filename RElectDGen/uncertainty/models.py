@@ -1000,12 +1000,18 @@ class Nequip_ensemble_NN(uncertainty_base):
         data = self.transform_data_input(data)
         out = self.model(data)
         self.atom_embedding = out['node_features']
+
+        uncertainty_training = self.config.get('uncertainty_training','energy')
+        if uncertainty_training=='energy':
+            key = 'atomic_energy'
+        elif uncertainty_training=='forces':
+            key = 'forces'
         
-        pred_atom_energies = torch.zeros((self.n_ensemble,out['atomic_energy'].shape[0])).to(self.device)
+        pred_atom_energies = torch.zeros((self.n_ensemble,out[key].shape[0])).to(self.device)
         for i, NN in enumerate(self.NNs):
             pred_atom_energies[i] = NN.predict(out).squeeze()
         
-        uncertainties_mean = (pred_atom_energies.mean(dim=0)-out['atomic_energy'].squeeze()).abs()
+        uncertainties_mean = (pred_atom_energies.mean(dim=0)-out[key].squeeze()).abs()
         # uncertainties_mean = (pred_atom_energies-out['atomic_energy'].squeeze().unsqueeze(0)).abs().max(dim=0).values
         # uncertainty_mean = (pred_atom_energies.sum(dim=1)-out['total_energy'].squeeze()).abs().max(dim=0).values
         # uncertainties_mean = torch.ones(pred_atom_energies.shape[1]).to(self.device)*uncertainty_mean
