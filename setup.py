@@ -31,6 +31,7 @@ setup(
             "REDGEN-gpaw-summary = RElectDGen.scripts.gpaw_summary_array:main",
             "REDGEN-log = RElectDGen.scripts.write_to_log:main",
             "REDGEN-restart = RElectDGen.scripts.restart:main",
+            "REDGEN-plot-UQ = RElectDGen.scripts.plot_UQ:main",
         ]
     },
     install_requires=[
