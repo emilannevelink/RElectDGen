@@ -812,16 +812,29 @@ class Nequip_ensemble_NN(uncertainty_base):
                 #train NN to fit energies
                 NN = uncertainty_ensemble_NN(self.model, self.latent_size, self.natoms, self.hidden_dimensions, epochs=self.unc_epochs)
                 # NN = uncertainty_ensemble_NN(self.model, self.latent_size, self.hidden_dimensions)
-                NN.train(self.train_embeddings, self.train_energies, self.validation_embeddings, self.validation_energies)
+                uncertainty_training = self.config.get('uncertainty_training','energy')
+                if uncertainty_training=='energy':
+                    NN.train(self.train_embeddings, self.train_energies, self.validation_embeddings, self.validation_energies)
+                elif uncertainty_training=='forces':
+                    NN.train(self.train_embeddings, self.train_forces, self.validation_embeddings, self.validation_forces)
+                else:
+                    raise RuntimeError
+                    
                 print('Best loss ', NN.best_loss, flush=True)
                 self.NNs.append(NN)
                 torch.save(NN.get_state_dict(), self.state_dict_func(n))
                 pd.DataFrame(NN.metrics).to_csv( self.metrics_func(n))
 
-    def fine_tune(self, embeddings, energies):
+    def fine_tune(self, embeddings, energies_or_forces):
         print('Fine Tuning Ensemble', flush=True)
         for NN in self.NNs:
-            NN.fine_tune(self.train_embeddings,self.train_energies,self.validation_embeddings,self.validation_energies,embeddings, energies)
+            uncertainty_training = self.config.get('uncertainty_training','energy')
+            if uncertainty_training=='energy':
+                NN.fine_tune(self.train_embeddings,self.train_energies,self.validation_embeddings,self.validation_energies,embeddings, energies_or_forces)
+            elif uncertainty_training=='forces':
+                NN.fine_tune(self.train_embeddings,self.train_forces,self.validation_embeddings,self.validation_forces,embeddings, energies_or_forces)
+            else:
+                raise RuntimeError
         
     def parse_data(self):
         dataset = dataset_from_config(self.MLP_config)
@@ -837,25 +850,31 @@ class Nequip_ensemble_NN(uncertainty_base):
 
         train_embeddings = {}
         train_energies = {}
+        train_forces = {}
         train_indices = {}
         validation_embeddings = {}
         validation_energies = {}
+        validation_forces = {}
         validation_indices = {}
         test_embeddings = {}
         test_energies = {}
+        test_forces = {}
         test_indices = {}
 
         for key in self.chemical_symbol_to_type:
             train_embeddings[key] = torch.empty((0,self.latent_size+self.natoms),device=self.device)
             train_energies[key] = torch.empty((0),device=self.device)
+            train_forces[key] = torch.empty((0),device=self.device)
             train_indices[key] = torch.empty(0,dtype=int).to(self.device)
 
             validation_embeddings[key] = torch.empty((0,self.latent_size+self.natoms),device=self.device)
             validation_energies[key] = torch.empty((0),device=self.device)
+            validation_forces[key] = torch.empty((0),device=self.device)
             validation_indices[key] = torch.empty(0,dtype=int).to(self.device)
 
             test_embeddings[key] = torch.empty((0,self.latent_size+self.natoms),device=self.device)
             test_energies[key] = torch.empty((0),device=self.device)
+            test_forces[key] = torch.empty((0),device=self.device)
             test_indices[key] = torch.empty(0,dtype=int).to(self.device)
         
         for i, data in enumerate(self.train_dataset):
@@ -875,6 +894,7 @@ class Nequip_ensemble_NN(uncertainty_base):
                     
                     train_embeddings[key] = torch.cat([train_embeddings[key],NN_inputs])
                     train_energies[key] = torch.cat([train_energies[key], out['atomic_energy'][mask].detach()])
+                    train_forces[key] = torch.cat([train_forces[key], out['forces'][mask].detach().norm(dim=1)])
 
                     # npoints = torch.tensor([train_indices[key][-1]+sum(mask) if i>0 else sum(mask)]).to(self.device)
                     # train_indices[key] = torch.cat([train_indices[key],npoints]).to(self.device)
@@ -888,12 +908,14 @@ class Nequip_ensemble_NN(uncertainty_base):
                     
                     test_embeddings[key] = torch.cat([test_embeddings[key],NN_inputs])
                     test_energies[key] = torch.cat([test_energies[key], out['atomic_energy'][mask].detach()])
+                    test_forces[key] = torch.cat([test_forces[key], out['forces'][mask].detach().norm(dim=1)])
 
                     # npoints = torch.tensor([test_indices[key][-1]+sum(mask) if i>0 else sum(mask)]).to(self.device)
                     # test_indices[key] = torch.cat([test_indices[key],npoints]).to(self.device)
 
         self.train_embeddings = train_embeddings
         self.train_energies = train_energies
+        self.train_forces = train_forces
         self.train_indices = train_indices
 
         for i, data in enumerate(self.validation_dataset):
@@ -913,6 +935,7 @@ class Nequip_ensemble_NN(uncertainty_base):
 
                     validation_embeddings[key] = torch.cat([validation_embeddings[key],NN_inputs])
                     validation_energies[key] = torch.cat([validation_energies[key], out['atomic_energy'][mask].detach()])
+                    validation_forces[key] = torch.cat([validation_forces[key], out['forces'][mask].detach().norm(dim=1)])
                     
                     # npoints = torch.tensor([validation_indices[key][-1]+sum(mask) if i>0 else sum(mask)]).to(self.device)
                     # validation_indices[key] = torch.cat([validation_indices[key],npoints]).to(self.device)
@@ -926,16 +949,19 @@ class Nequip_ensemble_NN(uncertainty_base):
 
                     test_embeddings[key] = torch.cat([test_embeddings[key],NN_inputs])
                     test_energies[key] = torch.cat([test_energies[key], out['atomic_energy'][mask].detach()])
+                    test_forces[key] = torch.cat([test_forces[key], out['forces'][mask].detach().norm(dim=1)])
                     
                     # npoints = torch.tensor([test_indices[key][-1]+sum(mask) if i>0 else sum(mask)]).to(self.device)
                     # test_indices[key] = torch.cat([test_indices[key],npoints]).to(self.device)
         
         self.validation_embeddings = validation_embeddings
         self.validation_energies = validation_energies
+        self.validation_forces = validation_forces
         self.validation_indices = validation_indices
 
         self.test_embeddings = test_embeddings
         self.test_energies = test_energies
+        self.test_forces = test_forces
         self.test_indices = test_indices
 
     def adversarial_loss(self, data, T, distances='train_val'):
@@ -1232,6 +1258,47 @@ class Nequip_ensemble_NN(uncertainty_base):
         ax[0,4].plot([min_force,max_force],[min_force,max_force],color='k',linestyle='--')
         ax[2,4].plot([min_force,max_force],[min_force,max_force],color='k',linestyle='--')
         
+        # ax[0,0].set_xscale('log')
+        # ax[0,0].set_yscale('log')
+        # ax[0,1].set_xscale('log')
+        # ax[0,1].set_yscale('log')
+        ax[0,2].set_xscale('log')
+        ax[0,2].set_yscale('log')
+        ax[0,3].set_xscale('log')
+        ax[0,3].set_yscale('log')
+        ax[0,4].set_xscale('log')
+        ax[0,4].set_yscale('log')
+        # ax[1,0].set_xscale('log')
+        ax[1,0].set_yscale('log')
+        # ax[1,1].set_xscale('log')
+        ax[1,1].set_yscale('log')
+        # ax[1,2].set_xscale('log')
+        ax[1,2].set_yscale('log')
+        # ax[1,3].set_xscale('log')
+        ax[1,3].set_yscale('log')
+        # ax[1,4].set_xscale('log')
+        # ax[1,4].set_yscale('log')
+        # ax[2,0].set_xscale('log')
+        # ax[2,0].set_yscale('log')
+        # ax[2,1].set_xscale('log')
+        # ax[2,1].set_yscale('log')
+        ax[2,2].set_xscale('log')
+        ax[2,2].set_yscale('log')
+        ax[2,3].set_xscale('log')
+        ax[2,3].set_yscale('log')
+        ax[2,4].set_xscale('log')
+        ax[2,4].set_yscale('log')
+        # ax[3,0].set_xscale('log')
+        ax[3,0].set_yscale('log')
+        # ax[3,1].set_xscale('log')
+        ax[3,1].set_yscale('log')
+        # ax[3,2].set_xscale('log')
+        # ax[3,2].set_yscale('log')
+        # ax[3,3].set_xscale('log')
+        ax[3,3].set_yscale('log')
+        ax[3,4].set_xscale('log')
+        ax[3,4].set_yscale('log')
+
         if filename is not None:
             os.makedirs(os.path.dirname(filename), exist_ok=True)
             plt.savefig(filename)
