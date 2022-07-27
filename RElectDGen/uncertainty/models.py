@@ -1129,7 +1129,7 @@ class Nequip_ensemble_NN(uncertainty_base):
         # print(val_real.shape, val_pred.shape) 
         # print(train_unc_err.shape, val_unc_err.shape) 
 
-        fig, ax = plt.subplots(5,4, figsize=(25,20))
+        fig, ax = plt.subplots(4,5, figsize=(25,20))
         min_energy = np.inf
         max_energy = -np.inf
 
@@ -1169,17 +1169,17 @@ class Nequip_ensemble_NN(uncertainty_base):
         ax[0,1].plot([min_energy,max_energy],[min_energy,max_energy],color='k',linestyle='--')
         ax[2,1].plot([min_energy,max_energy],[min_energy,max_energy],color='k',linestyle='--')
 
-        ax[4,0].scatter(train_max_force_real.norm(dim=1),train_max_force_pred.norm(dim=1))
-        ax[4,0].errorbar(train_max_force_real.norm(dim=1),train_max_force_pred.norm(dim=1), yerr=train_max_force_err+train_max_force_std, xerr=train_max_force_max_err+train_max_force_max_std, fmt='o')
+        ax[0,4].scatter(train_max_force_real.norm(dim=1),train_max_force_pred.norm(dim=1))
+        ax[0,4].errorbar(train_max_force_real.norm(dim=1),train_max_force_pred.norm(dim=1), yerr=train_max_force_err+train_max_force_std, xerr=train_max_force_max_err+train_max_force_max_std, fmt='o')
 
-        ax[4,1].scatter((train_max_force_real-train_max_force_pred).norm(dim=1),train_max_force_err)
-        ax[4,1].errorbar((train_max_force_real-train_max_force_pred).norm(dim=1), train_max_force_err, yerr=train_max_force_std, xerr=train_max_force_max_err+train_max_force_max_std, fmt='o')
+        ax[1,4].scatter((train_max_force_real-train_max_force_pred).norm(dim=1),train_max_force_err)
+        ax[1,4].errorbar((train_max_force_real-train_max_force_pred).norm(dim=1), train_max_force_err, yerr=train_max_force_std, xerr=train_max_force_max_err+train_max_force_max_std, fmt='o')
 
-        ax[4,2].scatter(val_max_force_real.norm(dim=1),val_max_force_pred.norm(dim=1))
-        ax[4,2].errorbar(val_max_force_real.norm(dim=1),val_max_force_pred.norm(dim=1), yerr=val_max_force_err+val_max_force_std, xerr=val_max_force_max_err+val_max_force_max_std, fmt='o')
+        ax[2,4].scatter(val_max_force_real.norm(dim=1),val_max_force_pred.norm(dim=1))
+        ax[2,4].errorbar(val_max_force_real.norm(dim=1),val_max_force_pred.norm(dim=1), yerr=val_max_force_err+val_max_force_std, xerr=val_max_force_max_err+val_max_force_max_std, fmt='o')
 
-        ax[4,3].scatter((val_max_force_real-val_max_force_pred).norm(dim=1),val_max_force_err)
-        ax[4,3].errorbar((val_max_force_real-val_max_force_pred).norm(dim=1), val_max_force_err, yerr=val_max_force_std, xerr=val_max_force_max_err+val_max_force_max_std, fmt='o')
+        ax[3,4].scatter((val_max_force_real-val_max_force_pred).norm(dim=1),val_max_force_err)
+        ax[3,4].errorbar((val_max_force_real-val_max_force_pred).norm(dim=1), val_max_force_err, yerr=val_max_force_std, xerr=val_max_force_max_err+val_max_force_max_std, fmt='o')
 
         min_force = np.inf
         max_force = -np.inf
@@ -1229,8 +1229,8 @@ class Nequip_ensemble_NN(uncertainty_base):
         ax[0,3].plot([min_force,max_force],[min_force,max_force],color='k',linestyle='--')
         ax[2,3].plot([min_force,max_force],[min_force,max_force],color='k',linestyle='--')
         
-        ax[4,0].plot([min_force,max_force],[min_force,max_force],color='k',linestyle='--')
-        ax[4,2].plot([min_force,max_force],[min_force,max_force],color='k',linestyle='--')
+        ax[0,4].plot([min_force,max_force],[min_force,max_force],color='k',linestyle='--')
+        ax[2,4].plot([min_force,max_force],[min_force,max_force],color='k',linestyle='--')
         
         if filename is not None:
             os.makedirs(os.path.dirname(filename), exist_ok=True)
