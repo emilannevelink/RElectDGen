@@ -812,7 +812,7 @@ class Nequip_ensemble_NN(uncertainty_base):
                 #train NN to fit energies
                 NN = uncertainty_ensemble_NN(self.model, self.latent_size, self.natoms, self.hidden_dimensions, epochs=self.unc_epochs)
                 # NN = uncertainty_ensemble_NN(self.model, self.latent_size, self.hidden_dimensions)
-                NN.train(self.train_embeddings, self.train_indices, self.train_energies, self.test_embeddings, self.test_indices, self.test_energies)
+                NN.train(self.train_embeddings, self.train_energies, self.validation_embeddings, self.validation_energies)
                 print('Best loss ', NN.best_loss, flush=True)
                 self.NNs.append(NN)
                 torch.save(NN.get_state_dict(), self.state_dict_func(n))
@@ -821,10 +821,16 @@ class Nequip_ensemble_NN(uncertainty_base):
     def fine_tune(self, embeddings, energies):
         print('Fine Tuning Ensemble', flush=True)
         for NN in self.NNs:
-            NN.fine_tune(self.train_embeddings,self.train_energies,self.test_embeddings,self.test_energies,embeddings, energies)
+            NN.fine_tune(self.train_embeddings,self.train_energies,self.validation_embeddings,self.validation_energies,embeddings, energies)
         
     def parse_data(self):
         dataset = dataset_from_config(self.MLP_config)
+
+        self.ML_train_indices = self.MLP_config.train_idcs
+        self.UQ_train_indices = torch.empty((0), dtype= self.ML_train_indices.dtype,device=self.device)
+        self.ML_validation_indices = self.MLP_config.val_idcs
+        self.UQ_validation_indices = torch.empty((0),dtype= self.ML_validation_indices.dtype,device=self.device)
+        self.UQ_test_indices = torch.empty((0),dtype= self.ML_validation_indices.dtype,device=self.device)
 
         self.train_dataset = dataset[self.MLP_config.train_idcs]
         self.validation_dataset = dataset[self.MLP_config.val_idcs]
@@ -832,8 +838,10 @@ class Nequip_ensemble_NN(uncertainty_base):
         train_embeddings = {}
         train_energies = {}
         train_indices = {}
+        validation_embeddings = {}
+        validation_energies = {}
+        validation_indices = {}
         test_embeddings = {}
-        test_errors = {}
         test_energies = {}
         test_indices = {}
 
@@ -842,25 +850,47 @@ class Nequip_ensemble_NN(uncertainty_base):
             train_energies[key] = torch.empty((0),device=self.device)
             train_indices[key] = torch.empty(0,dtype=int).to(self.device)
 
+            validation_embeddings[key] = torch.empty((0,self.latent_size+self.natoms),device=self.device)
+            validation_energies[key] = torch.empty((0),device=self.device)
+            validation_indices[key] = torch.empty(0,dtype=int).to(self.device)
+
             test_embeddings[key] = torch.empty((0,self.latent_size+self.natoms),device=self.device)
-            test_errors[key] = torch.empty((0),device=self.device)
             test_energies[key] = torch.empty((0),device=self.device)
             test_indices[key] = torch.empty(0,dtype=int).to(self.device)
-    
+        
         for i, data in enumerate(self.train_dataset):
             out = self.model(self.transform_data_input(data))
 
-            for key in self.MLP_config.get('chemical_symbol_to_type'):
-                mask = (data['atom_types']==self.MLP_config.get('chemical_symbol_to_type')[key]).flatten()
-                
-                atom_one_hot = torch.nn.functional.one_hot(data['atom_types'].squeeze()[mask],num_classes=self.natoms).to(self.device)
-                NN_inputs = torch.hstack([out['node_features'][mask].detach(), atom_one_hot])
-                
-                train_embeddings[key] = torch.cat([train_embeddings[key],NN_inputs])
-                train_energies[key] = torch.cat([train_energies[key], out['atomic_energy'][mask].detach()])
+            force_norm = data['forces'].norm(dim=1).unsqueeze(dim=1)
+            force_lim = torch.max(force_norm,torch.ones_like(force_norm))
+            perc_err = ((out['forces'].detach()-data['forces'])).abs()/force_lim
+            
+            if perc_err.max() < self.config.get('UQ_dataset_error', .5):
+                self.UQ_validation_indices = torch.cat([self.UQ_validation_indices, self.ML_train_indices[i].unsqueeze(dim=0)])
+                for key in self.MLP_config.get('chemical_symbol_to_type'):
+                    mask = (data['atom_types']==self.MLP_config.get('chemical_symbol_to_type')[key]).flatten()
+                    
+                    atom_one_hot = torch.nn.functional.one_hot(data['atom_types'].squeeze()[mask],num_classes=self.natoms).to(self.device)
+                    NN_inputs = torch.hstack([out['node_features'][mask].detach(), atom_one_hot])
+                    
+                    train_embeddings[key] = torch.cat([train_embeddings[key],NN_inputs])
+                    train_energies[key] = torch.cat([train_energies[key], out['atomic_energy'][mask].detach()])
 
-                npoints = torch.tensor([train_indices[key][-1]+sum(mask) if i>0 else sum(mask)]).to(self.device)
-                train_indices[key] = torch.cat([train_indices[key],npoints]).to(self.device)
+                    npoints = torch.tensor([train_indices[key][-1]+sum(mask) if i>0 else sum(mask)]).to(self.device)
+                    train_indices[key] = torch.cat([train_indices[key],npoints]).to(self.device)
+            else:
+                self.UQ_test_indices = torch.cat([self.UQ_test_indices, self.ML_train_indices[i].unsqueeze(dim=0)])
+                for key in self.MLP_config.get('chemical_symbol_to_type'):
+                    mask = (data['atom_types']==self.MLP_config.get('chemical_symbol_to_type')[key]).flatten()
+                    
+                    atom_one_hot = torch.nn.functional.one_hot(data['atom_types'].squeeze()[mask],num_classes=self.natoms).to(self.device)
+                    NN_inputs = torch.hstack([out['node_features'][mask].detach(), atom_one_hot])
+                    
+                    test_embeddings[key] = torch.cat([test_embeddings[key],NN_inputs])
+                    test_energies[key] = torch.cat([test_energies[key], out['atomic_energy'][mask].detach()])
+
+                    npoints = torch.tensor([test_indices[key][-1]+sum(mask) if i>0 else sum(mask)]).to(self.device)
+                    test_indices[key] = torch.cat([test_indices[key],npoints]).to(self.device)
 
         self.train_embeddings = train_embeddings
         self.train_energies = train_energies
@@ -868,19 +898,42 @@ class Nequip_ensemble_NN(uncertainty_base):
 
         for i, data in enumerate(self.validation_dataset):
             out = self.model(self.transform_data_input(data))
+
+            force_norm = data['forces'].norm(dim=1).unsqueeze(dim=1)
+            force_lim = torch.max(force_norm,torch.ones_like(force_norm))
+            perc_err = ((out['forces'].detach()-data['forces'])).abs()/force_lim
             
-            for key in self.MLP_config.get('chemical_symbol_to_type'):
-                mask = (data['atom_types']==self.MLP_config.get('chemical_symbol_to_type')[key]).flatten()
+            if perc_err.max() < self.config.get('UQ_dataset_error', .5):
+                self.UQ_validation_indices = torch.cat([self.UQ_validation_indices, self.ML_validation_indices[i].unsqueeze(dim=0)])
+                for key in self.MLP_config.get('chemical_symbol_to_type'):
+                    mask = (data['atom_types']==self.MLP_config.get('chemical_symbol_to_type')[key]).flatten()
 
-                atom_one_hot = torch.nn.functional.one_hot(data['atom_types'].squeeze()[mask],num_classes=self.natoms).to(self.device)
-                NN_inputs = torch.hstack([out['node_features'][mask].detach(), atom_one_hot])
+                    atom_one_hot = torch.nn.functional.one_hot(data['atom_types'].squeeze()[mask],num_classes=self.natoms).to(self.device)
+                    NN_inputs = torch.hstack([out['node_features'][mask].detach(), atom_one_hot])
 
-                test_embeddings[key] = torch.cat([test_embeddings[key],NN_inputs])
-                test_energies[key] = torch.cat([test_energies[key], out['atomic_energy'][mask].detach()])
-                
-                npoints = torch.tensor([test_indices[key][-1]+sum(mask) if i>0 else sum(mask)]).to(self.device)
-                test_indices[key] = torch.cat([test_indices[key],npoints]).to(self.device)
+                    validation_embeddings[key] = torch.cat([validation_embeddings[key],NN_inputs])
+                    validation_energies[key] = torch.cat([validation_energies[key], out['atomic_energy'][mask].detach()])
+                    
+                    npoints = torch.tensor([validation_indices[key][-1]+sum(mask) if i>0 else sum(mask)]).to(self.device)
+                    validation_indices[key] = torch.cat([validation_indices[key],npoints]).to(self.device)
+            else:
+                self.UQ_test_indices = torch.cat([self.UQ_test_indices, self.ML_validation_indices[i].unsqueeze(dim=0)])
+                for key in self.MLP_config.get('chemical_symbol_to_type'):
+                    mask = (data['atom_types']==self.MLP_config.get('chemical_symbol_to_type')[key]).flatten()
+
+                    atom_one_hot = torch.nn.functional.one_hot(data['atom_types'].squeeze()[mask],num_classes=self.natoms).to(self.device)
+                    NN_inputs = torch.hstack([out['node_features'][mask].detach(), atom_one_hot])
+
+                    test_embeddings[key] = torch.cat([test_embeddings[key],NN_inputs])
+                    test_energies[key] = torch.cat([test_energies[key], out['atomic_energy'][mask].detach()])
+                    
+                    npoints = torch.tensor([test_indices[key][-1]+sum(mask) if i>0 else sum(mask)]).to(self.device)
+                    test_indices[key] = torch.cat([test_indices[key],npoints]).to(self.device)
         
+        self.validation_embeddings = validation_embeddings
+        self.validation_energies = validation_energies
+        self.validation_indices = validation_indices
+
         self.test_embeddings = test_embeddings
         self.test_energies = test_energies
         self.test_indices = test_indices
@@ -996,10 +1049,11 @@ class Nequip_ensemble_NN(uncertainty_base):
             train_energy_real = torch.cat([train_energy_real,data['total_energy']/natoms])
             out = self.model(self.transform_data_input(data))
             unc = self.predict_uncertainty(data).detach()
-            train_energy_pred = torch.cat([train_energy_pred,out['atomic_energy'].detach().mean()])
+            train_energy_pred = torch.cat([train_energy_pred,out['atomic_energy'].detach().mean().unsqueeze(dim=0)])
 
-            train_energy_err = torch.cat([train_energy_err,unc[:,0].max()])
-            train_energy_std = torch.cat([train_energy_std,unc[:,1].max()])
+
+            train_energy_err = torch.cat([train_energy_err,unc[:,0].max().unsqueeze(dim=0)])
+            train_energy_std = torch.cat([train_energy_std,unc[:,1].max().unsqueeze(dim=0)])
 
             for key in self.chemical_symbol_to_type:
                 mask = (data['atom_types']==self.MLP_config.get('chemical_symbol_to_type')[key]).flatten()
@@ -1022,10 +1076,10 @@ class Nequip_ensemble_NN(uncertainty_base):
             val_energy_real = torch.cat([val_energy_real,data['total_energy']/natoms])
             out = self.model(self.transform_data_input(data))
             unc = self.predict_uncertainty(data).detach()
-            val_energy_pred = torch.cat([val_energy_pred,out['atomic_energy'].detach().mean()])
+            val_energy_pred = torch.cat([val_energy_pred,out['atomic_energy'].detach().mean().unsqueeze(dim=0)])
 
-            val_energy_err = torch.cat([val_energy_err,unc[:,0].max()])
-            val_energy_std = torch.cat([val_energy_std,unc[:,1].max()])
+            val_energy_err = torch.cat([val_energy_err,unc[:,0].max().unsqueeze(dim=0)])
+            val_energy_std = torch.cat([val_energy_std,unc[:,1].max().unsqueeze(dim=0)])
 
             for key in self.chemical_symbol_to_type:
                 mask = (data['atom_types']==self.MLP_config.get('chemical_symbol_to_type')[key]).flatten()
@@ -1038,10 +1092,9 @@ class Nequip_ensemble_NN(uncertainty_base):
         # print(val_real.shape, val_pred.shape) 
         # print(train_unc_err.shape, val_unc_err.shape) 
 
-        fig, ax = plt.subplots(2,4, figsize=(20,10))
+        fig, ax = plt.subplots(4,4, figsize=(20,20))
         min_energy = np.inf
         max_energy = -np.inf
-        ntrain = nval = 0
 
         min_energy = min([min_energy, train_energy_real.min(), train_energy_pred.min(), val_energy_real.min(), val_energy_pred.min()])
         max_energy = max([max_energy, train_energy_real.max(), train_energy_pred.max(), val_energy_real.max(),val_energy_pred.max()])
@@ -1051,20 +1104,37 @@ class Nequip_ensemble_NN(uncertainty_base):
         
         ax[0,1].scatter(train_energy_real,train_energy_pred)
         ax[0,1].errorbar(train_energy_real,train_energy_pred, yerr = train_energy_std, fmt='o')
+
+        ax[1,0].scatter(list(range(len(train_energy_real))),train_energy_real-train_energy_pred)
+        ax[1,0].errorbar(list(range(len(train_energy_real))),train_energy_real-train_energy_pred, yerr = train_energy_err, fmt='o')
         
-        ax[1,0].scatter(val_energy_real,val_energy_pred)
-        ax[1,0].errorbar(val_energy_real,val_energy_pred, yerr = val_energy_err, fmt='o')
+        # ax[1,1].scatter(list(range(len(train_energy_real))),train_energy_err)
+        # ax[1,1].errorbar(list(range(len(train_energy_real))),train_energy_err, yerr = train_energy_std, fmt='o')
+        ax[1,1].scatter(train_energy_real-train_energy_pred,train_energy_err)
+        ax[1,1].errorbar(train_energy_real-train_energy_pred,train_energy_err, yerr = train_energy_std, fmt='o')
         
-        ax[1,1].scatter(val_energy_real,val_energy_pred)
-        ax[1,1].errorbar(val_energy_real,val_energy_pred, yerr = val_energy_std, fmt='o')
+        ax[2,0].scatter(val_energy_real,val_energy_pred)
+        ax[2,0].errorbar(val_energy_real,val_energy_pred, yerr = val_energy_err, fmt='o')
+        
+        ax[2,1].scatter(val_energy_real,val_energy_pred)
+        ax[2,1].errorbar(val_energy_real,val_energy_pred, yerr = val_energy_std, fmt='o')
+
+        ax[3,0].scatter(list(range(len(val_energy_real))),val_energy_real-val_energy_pred)
+        ax[3,0].errorbar(list(range(len(val_energy_real))),val_energy_real-val_energy_pred, yerr = val_energy_err, fmt='o')
+        
+        # ax[3,1].scatter(list(range(len(val_energy_real))),val_energy_err)
+        # ax[3,1].errorbar(list(range(len(val_energy_real))),val_energy_err, yerr = val_energy_std, fmt='o')
+        ax[3,1].scatter(val_energy_real-val_energy_pred,val_energy_err)
+        ax[3,1].errorbar(val_energy_real-val_energy_pred,val_energy_err, yerr = val_energy_std, fmt='o')
         
         ax[0,0].plot([min_energy,max_energy],[min_energy,max_energy],color='k',linestyle='--')
-        ax[1,0].plot([min_energy,max_energy],[min_energy,max_energy],color='k',linestyle='--')
+        ax[2,0].plot([min_energy,max_energy],[min_energy,max_energy],color='k',linestyle='--')
         ax[0,1].plot([min_energy,max_energy],[min_energy,max_energy],color='k',linestyle='--')
-        ax[1,1].plot([min_energy,max_energy],[min_energy,max_energy],color='k',linestyle='--')
+        ax[2,1].plot([min_energy,max_energy],[min_energy,max_energy],color='k',linestyle='--')
 
         min_force = np.inf
         max_force = -np.inf
+        ntrain = nval = 0
         for key in self.chemical_symbol_to_type:
             # train_error = train_real[key]-train_pred[key]
             # train_distribution_err = train_error/train_unc_err[key]
@@ -1072,25 +1142,43 @@ class Nequip_ensemble_NN(uncertainty_base):
             # train_distribution = train_error/(train_unc_err[key]+train_unc_std[key])
             # np.histogram(train_distribution.flatten())
 
-            min_force = min([min_force, train_force_real[key].min(), train_force_pred[key].min(), val_force_real[key].min(), val_force_pred[key].min()])
-            max_force = max([max_force, train_force_real[key].max(), train_force_pred[key].max(), val_force_real[key].max(), val_force_pred[key].max()])
-            ax[0,2].scatter(train_force_real[key],train_force_pred[key])
-            ax[0,2].errorbar(train_force_real[key].flatten(),train_force_pred[key].flatten(), yerr = train_force_unc_err[key].flatten(), fmt='o')
-            
-            ax[0,3].scatter(train_force_real[key],train_force_pred[key])
-            ax[0,3].errorbar(train_force_real[key].flatten(),train_force_pred[key].flatten(), yerr = train_force_unc_std[key].flatten(), fmt='o')
-            
+            min_force = min([min_force, train_force_real[key].norm(dim=-1).min(), train_force_pred[key].norm(dim=-1).min(), val_force_real[key].norm(dim=-1).min(), val_force_pred[key].norm(dim=-1).min()])
+            max_force = max([max_force, train_force_real[key].norm(dim=-1).max(), train_force_pred[key].norm(dim=-1).max(), val_force_real[key].norm(dim=-1).max(), val_force_pred[key].norm(dim=-1).max()])
 
-            ax[1,2].scatter(val_force_real[key],val_force_pred[key])
-            ax[1,2].errorbar(val_force_real[key].flatten(),val_force_pred[key].flatten(), yerr = val_force_unc_err[key].flatten(), fmt='o')
+            ax[0,2].scatter(train_force_real[key].norm(dim=-1),train_force_pred[key].norm(dim=-1))
+            ax[0,2].errorbar(train_force_real[key].norm(dim=-1),train_force_pred[key].norm(dim=-1), yerr = train_force_unc_err[key], fmt='o')
             
-            ax[1,3].scatter(val_force_real[key],val_force_pred[key])
-            ax[1,3].errorbar(val_force_real[key].flatten(),val_force_pred[key].flatten(), yerr = val_force_unc_std[key].flatten(), fmt='o')
+            ax[0,3].scatter(train_force_real[key].norm(dim=-1),train_force_pred[key].norm(dim=-1))
+            ax[0,3].errorbar(train_force_real[key].norm(dim=-1),train_force_pred[key].norm(dim=-1), yerr = train_force_unc_std[key], fmt='o')
+
+            ax[1,2].scatter(range(ntrain,ntrain+len(train_force_real[key])),train_force_real[key].norm(dim=-1)-train_force_pred[key].norm(dim=-1))
+            ax[1,2].errorbar(range(ntrain,ntrain+len(train_force_real[key])),train_force_real[key].norm(dim=-1)-train_force_pred[key].norm(dim=-1), yerr = train_force_unc_err[key], fmt='o')
+            
+            # ax[1,3].scatter(range(ntrain,ntrain+len(train_force_real[key])),train_force_unc_err[key])
+            # ax[1,3].errorbar(range(ntrain,ntrain+len(train_force_real[key])),train_force_unc_err[key], yerr = train_force_unc_std[key], fmt='o')
+            ax[1,3].scatter(train_force_real[key].norm(dim=-1)-train_force_pred[key].norm(dim=-1),train_force_unc_err[key])
+            ax[1,3].errorbar(train_force_real[key].norm(dim=-1)-train_force_pred[key].norm(dim=-1),train_force_unc_err[key], yerr = train_force_unc_std[key], fmt='o')
+            ntrain+=len(train_force_real[key])
+
+            ax[2,2].scatter(val_force_real[key].norm(dim=-1),val_force_pred[key].norm(dim=-1))
+            ax[2,2].errorbar(val_force_real[key].norm(dim=-1),val_force_pred[key].norm(dim=-1), yerr = val_force_unc_err[key], fmt='o')
+            
+            ax[2,3].scatter(val_force_real[key].norm(dim=-1),val_force_pred[key].norm(dim=-1))
+            ax[2,3].errorbar(val_force_real[key].norm(dim=-1),val_force_pred[key].norm(dim=-1), yerr = val_force_unc_std[key], fmt='o')
+            
+            ax[3,2].scatter(range(nval,nval+len(val_force_real[key])),val_force_real[key].norm(dim=-1)-val_force_pred[key].norm(dim=-1))
+            ax[3,2].errorbar(range(nval,nval+len(val_force_real[key])),val_force_real[key].norm(dim=-1)-val_force_pred[key].norm(dim=-1), yerr = val_force_unc_err[key], fmt='o')
+            
+            # ax[3,3].scatter(range(nval,nval+len(val_force_real[key])),val_force_unc_err[key])
+            # ax[3,3].errorbar(range(nval,nval+len(val_force_real[key])),val_force_unc_err[key], yerr = val_force_unc_std[key], fmt='o')
+            ax[3,3].scatter(val_force_real[key].norm(dim=-1)-val_force_pred[key].norm(dim=-1),val_force_unc_err[key])
+            ax[3,3].errorbar(val_force_real[key].norm(dim=-1)-val_force_pred[key].norm(dim=-1),val_force_unc_err[key], yerr = val_force_unc_std[key], fmt='o')
+            nval+=len(val_force_real[key])
         
         ax[0,2].plot([min_force,max_force],[min_force,max_force],color='k',linestyle='--')
-        ax[1,2].plot([min_force,max_force],[min_force,max_force],color='k',linestyle='--')
+        ax[2,2].plot([min_force,max_force],[min_force,max_force],color='k',linestyle='--')
         ax[0,3].plot([min_force,max_force],[min_force,max_force],color='k',linestyle='--')
-        ax[1,3].plot([min_force,max_force],[min_force,max_force],color='k',linestyle='--')
+        ax[2,3].plot([min_force,max_force],[min_force,max_force],color='k',linestyle='--')
         if filename is not None:
             plt.savefig(filename)
             plt.close()

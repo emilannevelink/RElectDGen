@@ -464,16 +464,11 @@ class uncertainty_ensemble_NN():
 
     def train(self,
         train_latents,
-        train_indices,
         train_energies,
         validation_latents,
-        validation_indices,
-        validation_energies,
-        energy_factor=1,
-        force_factor=0):
+        validation_energies
+    ):
 
-        self.energy_factor = energy_factor
-        self.force_factor = force_factor
 
         train_dataloader = self.make_dataloader(train_latents, train_energies)
         validation_dataloader = self.make_dataloader(validation_latents, validation_energies)
