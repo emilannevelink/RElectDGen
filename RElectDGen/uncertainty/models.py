@@ -1169,17 +1169,17 @@ class Nequip_ensemble_NN(uncertainty_base):
         ax[0,1].plot([min_energy,max_energy],[min_energy,max_energy],color='k',linestyle='--')
         ax[2,1].plot([min_energy,max_energy],[min_energy,max_energy],color='k',linestyle='--')
 
-        ax[4,0].scatter(train_max_force_real,train_max_force_pred)
-        ax[4,0].errorbar(train_max_force_real,train_max_force_pred, yerr=train_max_force_err+train_max_force_std, xerr=train_max_force_max_err+train_max_force_max_std, fmt='o')
+        ax[4,0].scatter(train_max_force_real.norm(dim=1),train_max_force_pred.norm(dim=1))
+        ax[4,0].errorbar(train_max_force_real.norm(dim=1),train_max_force_pred.norm(dim=1), yerr=train_max_force_err+train_max_force_std, xerr=train_max_force_max_err+train_max_force_max_std, fmt='o')
 
-        ax[4,1].scatter(train_max_force_real-train_max_force_pred,train_max_force_err)
-        ax[4,1].errorbar(train_max_force_real-train_max_force_pred, train_max_force_err, yerr=train_max_force_std, xerr=train_max_force_max_err+train_max_force_max_std, fmt='o')
+        ax[4,1].scatter((train_max_force_real-train_max_force_pred).norm(dim=1),train_max_force_err)
+        ax[4,1].errorbar((train_max_force_real-train_max_force_pred).norm(dim=1), train_max_force_err, yerr=train_max_force_std, xerr=train_max_force_max_err+train_max_force_max_std, fmt='o')
 
-        ax[4,2].scatter(val_max_force_real,val_max_force_pred)
-        ax[4,2].errorbar(val_max_force_real,val_max_force_pred, yerr=val_max_force_err+val_max_force_std, xerr=val_max_force_max_err+val_max_force_max_std, fmt='o')
+        ax[4,2].scatter(val_max_force_real.norm(dim=1),val_max_force_pred.norm(dim=1))
+        ax[4,2].errorbar(val_max_force_real.norm(dim=1),val_max_force_pred.norm(dim=1), yerr=val_max_force_err+val_max_force_std, xerr=val_max_force_max_err+val_max_force_max_std, fmt='o')
 
-        ax[4,3].scatter(val_max_force_real-val_max_force_pred,val_max_force_err)
-        ax[4,3].errorbar(val_max_force_real-val_max_force_pred, val_max_force_err, yerr=val_max_force_std, xerr=val_max_force_max_err+val_max_force_max_std, fmt='o')
+        ax[4,3].scatter((val_max_force_real-val_max_force_pred).norm(dim=1),val_max_force_err)
+        ax[4,3].errorbar((val_max_force_real-val_max_force_pred).norm(dim=1), val_max_force_err, yerr=val_max_force_std, xerr=val_max_force_max_err+val_max_force_max_std, fmt='o')
 
         min_force = np.inf
         max_force = -np.inf
