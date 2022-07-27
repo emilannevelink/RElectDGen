@@ -1179,7 +1179,9 @@ class Nequip_ensemble_NN(uncertainty_base):
         ax[2,2].plot([min_force,max_force],[min_force,max_force],color='k',linestyle='--')
         ax[0,3].plot([min_force,max_force],[min_force,max_force],color='k',linestyle='--')
         ax[2,3].plot([min_force,max_force],[min_force,max_force],color='k',linestyle='--')
+        
         if filename is not None:
+            os.makedirs(os.path.dirname(filename), exist_ok=True)
             plt.savefig(filename)
             plt.close()
 
