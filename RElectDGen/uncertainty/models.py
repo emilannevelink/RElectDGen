@@ -1175,50 +1175,50 @@ class Nequip_ensemble_NN(uncertainty_base):
         min_energy = min([min_energy, train_energy_real.min(), train_energy_pred.min(), val_energy_real.min(), val_energy_pred.min()])
         max_energy = max([max_energy, train_energy_real.max(), train_energy_pred.max(), val_energy_real.max(),val_energy_pred.max()])
 
-        ax[0,0].scatter(train_energy_real,train_energy_pred, alpha=alpha)
-        ax[0,0].errorbar(train_energy_real,train_energy_pred, yerr = train_energy_err, fmt='o')
+        # ax[0,0].scatter(train_energy_real,train_energy_pred, alpha=alpha)
+        ax[0,0].errorbar(train_energy_real,train_energy_pred, alpha=alpha, yerr = train_energy_err, fmt='o')
         
-        ax[0,1].scatter(train_energy_real,train_energy_pred, alpha=alpha)
-        ax[0,1].errorbar(train_energy_real,train_energy_pred, yerr = train_energy_std, fmt='o')
+        # ax[0,1].scatter(train_energy_real,train_energy_pred, alpha=alpha)
+        ax[0,1].errorbar(train_energy_real,train_energy_pred, alpha=alpha, yerr = train_energy_std, fmt='o')
 
-        ax[1,0].scatter(list(range(len(train_energy_real))),train_energy_real-train_energy_pred, alpha=alpha)
-        ax[1,0].errorbar(list(range(len(train_energy_real))),train_energy_real-train_energy_pred, yerr = train_energy_err, fmt='o')
+        # ax[1,0].scatter(list(range(len(train_energy_real))),train_energy_real-train_energy_pred, alpha=alpha)
+        ax[1,0].errorbar(list(range(len(train_energy_real))),train_energy_real-train_energy_pred, alpha=alpha, yerr = train_energy_err, fmt='o')
         
         # ax[1,1].scatter(list(range(len(train_energy_real))),train_energy_err)
         # ax[1,1].errorbar(list(range(len(train_energy_real))),train_energy_err, yerr = train_energy_std, fmt='o')
-        ax[1,1].scatter(train_energy_real-train_energy_pred,train_energy_err, alpha=alpha)
-        ax[1,1].errorbar(train_energy_real-train_energy_pred,train_energy_err, yerr = train_energy_std, fmt='o')
+        # ax[1,1].scatter(train_energy_real-train_energy_pred,train_energy_err, alpha=alpha)
+        ax[1,1].errorbar(train_energy_real-train_energy_pred,train_energy_err, alpha=alpha, yerr = train_energy_std, fmt='o')
         
-        ax[2,0].scatter(val_energy_real,val_energy_pred, alpha=alpha)
-        ax[2,0].errorbar(val_energy_real,val_energy_pred, yerr = val_energy_err, fmt='o')
+        # ax[2,0].scatter(val_energy_real,val_energy_pred, alpha=alpha)
+        ax[2,0].errorbar(val_energy_real,val_energy_pred, alpha=alpha, yerr = val_energy_err, fmt='o')
         
-        ax[2,1].scatter(val_energy_real,val_energy_pred, alpha=alpha)
-        ax[2,1].errorbar(val_energy_real,val_energy_pred, yerr = val_energy_std, fmt='o')
+        # ax[2,1].scatter(val_energy_real,val_energy_pred, alpha=alpha)
+        ax[2,1].errorbar(val_energy_real,val_energy_pred, alpha=alpha, yerr = val_energy_std, fmt='o')
 
-        ax[3,0].scatter(list(range(len(val_energy_real))),val_energy_real-val_energy_pred, alpha=alpha)
-        ax[3,0].errorbar(list(range(len(val_energy_real))),val_energy_real-val_energy_pred, yerr = val_energy_err, fmt='o')
+        # ax[3,0].scatter(list(range(len(val_energy_real))),val_energy_real-val_energy_pred, alpha=alpha)
+        ax[3,0].errorbar(list(range(len(val_energy_real))),val_energy_real-val_energy_pred, alpha=alpha, yerr = val_energy_err, fmt='o')
         
         # ax[3,1].scatter(list(range(len(val_energy_real))),val_energy_err)
         # ax[3,1].errorbar(list(range(len(val_energy_real))),val_energy_err, yerr = val_energy_std, fmt='o')
-        ax[3,1].scatter(val_energy_real-val_energy_pred,val_energy_err, alpha=alpha)
-        ax[3,1].errorbar(val_energy_real-val_energy_pred,val_energy_err, yerr = val_energy_std, fmt='o')
+        # ax[3,1].scatter(val_energy_real-val_energy_pred,val_energy_err, alpha=alpha)
+        ax[3,1].errorbar(val_energy_real-val_energy_pred,val_energy_err, alpha=alpha, yerr = val_energy_std, fmt='o')
         
         ax[0,0].plot([min_energy,max_energy],[min_energy,max_energy],color='k',linestyle='--')
         ax[2,0].plot([min_energy,max_energy],[min_energy,max_energy],color='k',linestyle='--')
         ax[0,1].plot([min_energy,max_energy],[min_energy,max_energy],color='k',linestyle='--')
         ax[2,1].plot([min_energy,max_energy],[min_energy,max_energy],color='k',linestyle='--')
 
-        ax[0,4].scatter(train_max_force_real.norm(dim=1),train_max_force_pred.norm(dim=1), alpha=alpha)
-        ax[0,4].errorbar(train_max_force_real.norm(dim=1),train_max_force_pred.norm(dim=1), yerr=train_max_force_err+train_max_force_std, xerr=train_max_force_max_err+train_max_force_max_std, fmt='o')
+        # ax[0,4].scatter(train_max_force_real.norm(dim=1),train_max_force_pred.norm(dim=1), alpha=alpha)
+        ax[0,4].errorbar(train_max_force_real.norm(dim=1),train_max_force_pred.norm(dim=1), alpha=alpha, yerr=train_max_force_err+train_max_force_std, xerr=train_max_force_max_err+train_max_force_max_std, fmt='o')
 
-        ax[1,4].scatter((train_max_force_real-train_max_force_pred).norm(dim=1),train_max_force_err, alpha=alpha)
-        ax[1,4].errorbar((train_max_force_real-train_max_force_pred).norm(dim=1), train_max_force_err, yerr=train_max_force_std, xerr=train_max_force_max_err+train_max_force_max_std, fmt='o')
+        # ax[1,4].scatter((train_max_force_real-train_max_force_pred).norm(dim=1),train_max_force_err, alpha=alpha)
+        ax[1,4].errorbar((train_max_force_real-train_max_force_pred).norm(dim=1), train_max_force_err, alpha=alpha, yerr=train_max_force_std, xerr=train_max_force_max_err+train_max_force_max_std, fmt='o')
 
-        ax[2,4].scatter(val_max_force_real.norm(dim=1),val_max_force_pred.norm(dim=1), alpha=alpha)
-        ax[2,4].errorbar(val_max_force_real.norm(dim=1),val_max_force_pred.norm(dim=1), yerr=val_max_force_err+val_max_force_std, xerr=val_max_force_max_err+val_max_force_max_std, fmt='o')
+        # ax[2,4].scatter(val_max_force_real.norm(dim=1),val_max_force_pred.norm(dim=1), alpha=alpha)
+        ax[2,4].errorbar(val_max_force_real.norm(dim=1),val_max_force_pred.norm(dim=1), alpha=alpha, yerr=val_max_force_err+val_max_force_std, xerr=val_max_force_max_err+val_max_force_max_std, fmt='o')
 
-        ax[3,4].scatter((val_max_force_real-val_max_force_pred).norm(dim=1),val_max_force_err, alpha=alpha)
-        ax[3,4].errorbar((val_max_force_real-val_max_force_pred).norm(dim=1), val_max_force_err, yerr=val_max_force_std, xerr=val_max_force_max_err+val_max_force_max_std, fmt='o')
+        # ax[3,4].scatter((val_max_force_real-val_max_force_pred).norm(dim=1),val_max_force_err, alpha=alpha)
+        ax[3,4].errorbar((val_max_force_real-val_max_force_pred).norm(dim=1), val_max_force_err, alpha=alpha, yerr=val_max_force_std, xerr=val_max_force_max_err+val_max_force_max_std, fmt='o')
 
         min_force = np.inf
         max_force = -np.inf
@@ -1233,34 +1233,34 @@ class Nequip_ensemble_NN(uncertainty_base):
             min_force = min([min_force, train_force_real[key].norm(dim=-1).min(), train_force_pred[key].norm(dim=-1).min(), val_force_real[key].norm(dim=-1).min(), val_force_pred[key].norm(dim=-1).min()])
             max_force = max([max_force, train_force_real[key].norm(dim=-1).max(), train_force_pred[key].norm(dim=-1).max(), val_force_real[key].norm(dim=-1).max(), val_force_pred[key].norm(dim=-1).max()])
 
-            ax[0,2].scatter(train_force_pred[key].norm(dim=-1),train_force_unc_pred[key], alpha=alpha)
-            ax[0,2].errorbar(train_force_pred[key].norm(dim=-1),train_force_unc_pred[key], yerr = train_force_unc_err[key], fmt='o')
+            # ax[0,2].scatter(train_force_pred[key].norm(dim=-1),train_force_unc_pred[key], alpha=alpha)
+            ax[0,2].errorbar(train_force_pred[key].norm(dim=-1),train_force_unc_pred[key], alpha=alpha, yerr = train_force_unc_err[key], fmt='o')
             
-            ax[0,3].scatter(train_force_real[key].norm(dim=-1),train_force_unc_pred[key], alpha=alpha)
-            ax[0,3].errorbar(train_force_real[key].norm(dim=-1),train_force_unc_pred[key], yerr = train_force_unc_std[key], fmt='o')
+            # ax[0,3].scatter(train_force_real[key].norm(dim=-1),train_force_unc_pred[key], alpha=alpha)
+            ax[0,3].errorbar(train_force_real[key].norm(dim=-1),train_force_unc_pred[key], alpha=alpha, yerr = train_force_unc_std[key], fmt='o')
 
-            ax[1,2].scatter(range(ntrain,ntrain+len(train_force_real[key])),train_force_real[key].norm(dim=-1)-train_force_pred[key].norm(dim=-1), alpha=alpha)
-            ax[1,2].errorbar(range(ntrain,ntrain+len(train_force_real[key])),train_force_real[key].norm(dim=-1)-train_force_pred[key].norm(dim=-1), yerr = train_force_unc_err[key], fmt='o')
+            # ax[1,2].scatter(range(ntrain,ntrain+len(train_force_real[key])),train_force_real[key].norm(dim=-1)-train_force_pred[key].norm(dim=-1), alpha=alpha)
+            ax[1,2].errorbar(range(ntrain,ntrain+len(train_force_real[key])),train_force_real[key].norm(dim=-1)-train_force_pred[key].norm(dim=-1), alpha=alpha, yerr = train_force_unc_err[key], fmt='o')
             
             # ax[1,3].scatter(range(ntrain,ntrain+len(train_force_real[key])),train_force_unc_err[key])
             # ax[1,3].errorbar(range(ntrain,ntrain+len(train_force_real[key])),train_force_unc_err[key], yerr = train_force_unc_std[key], fmt='o')
-            ax[1,3].scatter(train_force_real[key].norm(dim=-1)-train_force_pred[key].norm(dim=-1),train_force_unc_err[key], alpha=alpha)
-            ax[1,3].errorbar(train_force_real[key].norm(dim=-1)-train_force_pred[key].norm(dim=-1),train_force_unc_err[key], yerr = train_force_unc_std[key], fmt='o')
+            # ax[1,3].scatter(train_force_real[key].norm(dim=-1)-train_force_pred[key].norm(dim=-1),train_force_unc_err[key], alpha=alpha)
+            ax[1,3].errorbar(train_force_real[key].norm(dim=-1)-train_force_pred[key].norm(dim=-1),train_force_unc_err[key], alpha=alpha, yerr = train_force_unc_std[key], fmt='o')
             ntrain+=len(train_force_real[key])
 
-            ax[2,2].scatter(val_force_pred[key].norm(dim=-1),val_force_unc_pred[key], alpha=alpha)
-            ax[2,2].errorbar(val_force_pred[key].norm(dim=-1),val_force_unc_pred[key], yerr = val_force_unc_err[key], fmt='o')
+            # ax[2,2].scatter(val_force_pred[key].norm(dim=-1),val_force_unc_pred[key], alpha=alpha)
+            ax[2,2].errorbar(val_force_pred[key].norm(dim=-1),val_force_unc_pred[key], alpha=alpha, yerr = val_force_unc_err[key], fmt='o')
             
-            ax[2,3].scatter(val_force_real[key].norm(dim=-1),val_force_unc_pred[key], alpha=alpha)
-            ax[2,3].errorbar(val_force_real[key].norm(dim=-1),val_force_unc_pred[key], yerr = val_force_unc_std[key], fmt='o')
+            # ax[2,3].scatter(val_force_real[key].norm(dim=-1),val_force_unc_pred[key], alpha=alpha)
+            ax[2,3].errorbar(val_force_real[key].norm(dim=-1),val_force_unc_pred[key], alpha=alpha, yerr = val_force_unc_std[key], fmt='o')
             
-            ax[3,2].scatter(range(nval,nval+len(val_force_real[key])),val_force_real[key].norm(dim=-1)-val_force_pred[key].norm(dim=-1), alpha=alpha)
-            ax[3,2].errorbar(range(nval,nval+len(val_force_real[key])),val_force_real[key].norm(dim=-1)-val_force_pred[key].norm(dim=-1), yerr = val_force_unc_err[key], fmt='o')
+            # ax[3,2].scatter(range(nval,nval+len(val_force_real[key])),val_force_real[key].norm(dim=-1)-val_force_pred[key].norm(dim=-1), alpha=alpha)
+            ax[3,2].errorbar(range(nval,nval+len(val_force_real[key])),val_force_real[key].norm(dim=-1)-val_force_pred[key].norm(dim=-1), alpha=alpha, yerr = val_force_unc_err[key], fmt='o')
             
             # ax[3,3].scatter(range(nval,nval+len(val_force_real[key])),val_force_unc_err[key])
             # ax[3,3].errorbar(range(nval,nval+len(val_force_real[key])),val_force_unc_err[key], yerr = val_force_unc_std[key], fmt='o')
-            ax[3,3].scatter(val_force_real[key].norm(dim=-1)-val_force_pred[key].norm(dim=-1),val_force_unc_err[key], alpha=alpha)
-            ax[3,3].errorbar(val_force_real[key].norm(dim=-1)-val_force_pred[key].norm(dim=-1),val_force_unc_err[key], yerr = val_force_unc_std[key], fmt='o')
+            # ax[3,3].scatter(val_force_real[key].norm(dim=-1)-val_force_pred[key].norm(dim=-1),val_force_unc_err[key], alpha=alpha)
+            ax[3,3].errorbar(val_force_real[key].norm(dim=-1)-val_force_pred[key].norm(dim=-1),val_force_unc_err[key], alpha=alpha, yerr = val_force_unc_std[key], fmt='o')
             nval+=len(val_force_real[key])
         
         ax[0,2].plot([min_force,max_force],[min_force,max_force],color='k',linestyle='--')
