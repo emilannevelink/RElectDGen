@@ -895,7 +895,7 @@ class Nequip_ensemble_NN(uncertainty_base):
                     
                     train_embeddings[key] = torch.cat([train_embeddings[key],NN_inputs])
                     train_energies[key] = torch.cat([train_energies[key], out['atomic_energy'][mask].detach()])
-                    train_forces[key] = torch.cat([train_forces[key], data['forces'][mask].detach().norm(dim=1)])
+                    train_forces[key] = torch.cat([train_forces[key], data['forces'][mask].detach().norm(dim=1).unsqueeze(1)])
 
                     # npoints = torch.tensor([train_indices[key][-1]+sum(mask) if i>0 else sum(mask)]).to(self.device)
                     # train_indices[key] = torch.cat([train_indices[key],npoints]).to(self.device)
@@ -909,7 +909,7 @@ class Nequip_ensemble_NN(uncertainty_base):
                     
                     test_embeddings[key] = torch.cat([test_embeddings[key],NN_inputs])
                     test_energies[key] = torch.cat([test_energies[key], out['atomic_energy'][mask].detach()])
-                    test_forces[key] = torch.cat([test_forces[key], data['forces'][mask].detach().norm(dim=1)])
+                    test_forces[key] = torch.cat([test_forces[key], data['forces'][mask].detach().norm(dim=1).unsqueeze(1)])
 
                     # npoints = torch.tensor([test_indices[key][-1]+sum(mask) if i>0 else sum(mask)]).to(self.device)
                     # test_indices[key] = torch.cat([test_indices[key],npoints]).to(self.device)
@@ -936,7 +936,7 @@ class Nequip_ensemble_NN(uncertainty_base):
 
                     validation_embeddings[key] = torch.cat([validation_embeddings[key],NN_inputs])
                     validation_energies[key] = torch.cat([validation_energies[key], out['atomic_energy'][mask].detach()])
-                    validation_forces[key] = torch.cat([validation_forces[key], data['forces'][mask].detach().norm(dim=1)])
+                    validation_forces[key] = torch.cat([validation_forces[key], data['forces'][mask].detach().norm(dim=1).unsqueeze(1)])
                     
                     # npoints = torch.tensor([validation_indices[key][-1]+sum(mask) if i>0 else sum(mask)]).to(self.device)
                     # validation_indices[key] = torch.cat([validation_indices[key],npoints]).to(self.device)
@@ -950,7 +950,7 @@ class Nequip_ensemble_NN(uncertainty_base):
 
                     test_embeddings[key] = torch.cat([test_embeddings[key],NN_inputs])
                     test_energies[key] = torch.cat([test_energies[key], out['atomic_energy'][mask].detach()])
-                    test_forces[key] = torch.cat([test_forces[key], data['forces'][mask].detach().norm(dim=1)])
+                    test_forces[key] = torch.cat([test_forces[key], data['forces'][mask].detach().norm(dim=1).unsqueeze(1)])
                     
                     # npoints = torch.tensor([test_indices[key][-1]+sum(mask) if i>0 else sum(mask)]).to(self.device)
                     # test_indices[key] = torch.cat([test_indices[key],npoints]).to(self.device)
@@ -1255,8 +1255,8 @@ class Nequip_ensemble_NN(uncertainty_base):
                 # ax[0,3].scatter(train_force_real[key].norm(dim=-1),train_force_unc_pred[key], alpha=alpha)
                 ax[0,3].errorbar(train_force_real[key].norm(dim=-1),train_force_unc_pred[key], alpha=alpha, yerr = train_force_unc_std[key], fmt='o')
             else:
-                ax[0,2].errorbar(train_force_real[key].norm(dim=-1),train_force_pred[key], alpha=alpha, yerr = train_force_unc_err[key], fmt='o')
-                ax[0,3].errorbar(train_force_real[key].norm(dim=-1),train_force_pred[key], alpha=alpha, yerr = train_force_unc_std[key], fmt='o')
+                ax[0,2].errorbar(train_force_real[key].norm(dim=-1),train_force_pred[key].norm(dim=-1), alpha=alpha, yerr = train_force_unc_err[key], fmt='o')
+                ax[0,3].errorbar(train_force_real[key].norm(dim=-1),train_force_pred[key].norm(dim=-1), alpha=alpha, yerr = train_force_unc_std[key], fmt='o')
 
             # ax[1,2].scatter(range(ntrain,ntrain+len(train_force_real[key])),train_force_real[key].norm(dim=-1)-train_force_pred[key].norm(dim=-1), alpha=alpha)
             ax[1,2].errorbar(range(ntrain,ntrain+len(train_force_real[key])),train_force_real[key].norm(dim=-1)-train_force_pred[key].norm(dim=-1), alpha=alpha, yerr = train_force_unc_err[key], fmt='o')
