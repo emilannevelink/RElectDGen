@@ -1011,8 +1011,10 @@ class Nequip_ensemble_NN(uncertainty_base):
         uncertainty_training = self.config.get('uncertainty_training','energy')
         if uncertainty_training=='energy':
             uncertainties_mean = (self.pred_atom_energies.mean(dim=0)-out['atomic_energy'].squeeze()).abs()
+            norm = torch.max(torch.ones_like(out['atomic_energy']),out['atomic_energy'].abs())
         elif uncertainty_training=='forces':
             uncertainties_mean = (self.pred_atom_energies.mean(dim=0)-out['forces'].norm(dim=1)).abs()
+            norm = torch.max(torch.ones_like(out['atomic_energy']),out['forces'].norm(dim=1).unsqueeze(1))
         
         # uncertainties_mean = (pred_atom_energies-out['atomic_energy'].squeeze().unsqueeze(0)).abs().max(dim=0).values
         # uncertainty_mean = (pred_atom_energies.sum(dim=1)-out['total_energy'].squeeze()).abs().max(dim=0).values
@@ -1022,7 +1024,7 @@ class Nequip_ensemble_NN(uncertainty_base):
         # uncertainty_std = pred_atom_energies.sum(dim=1).std(axis=0)#.sum(axis=-1)
         # uncertainties_std = torch.ones(pred_atom_energies.shape[1]).to(self.device)*uncertainty_std
 
-        uncertainty = torch.vstack([uncertainties_mean,uncertainties_std]).T/torch.max(torch.ones_like(out['atomic_energy']),out['atomic_energy'].abs())
+        uncertainty = torch.vstack([uncertainties_mean,uncertainties_std]).T/norm
 
         # uncertainty *= self.config.get('uncertainty_factor',10)
         return uncertainty
