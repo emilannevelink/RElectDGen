@@ -774,6 +774,7 @@ class Nequip_ensemble_NN(uncertainty_base):
         # self.nequip_model = model
         self.hidden_dimensions = self.config.get('uncertainty_hidden_dimensions', [])
         self.unc_epochs = self.config.get('uncertainty_epochs', 2000)
+        self.unc_batch_size = self.config.get('uncertainty_batch_size', 100)
 
         self.natoms = len(MLP_config['type_names'])
         uncertainty_dir = os.path.join(self.MLP_config['workdir'],self.config.get('uncertainty_dir', 'uncertainty'))
@@ -810,7 +811,7 @@ class Nequip_ensemble_NN(uncertainty_base):
             for n in train_indices:
                 print('training ensemble network ', n, flush=True)    
                 #train NN to fit energies
-                NN = uncertainty_ensemble_NN(self.model, self.latent_size, self.natoms, self.hidden_dimensions, epochs=self.unc_epochs)
+                NN = uncertainty_ensemble_NN(self.model, self.latent_size, self.natoms, self.hidden_dimensions, epochs=self.unc_epochs,batch_size=self.unc_batch_size)
                 # NN = uncertainty_ensemble_NN(self.model, self.latent_size, self.hidden_dimensions)
                 uncertainty_training = self.config.get('uncertainty_training','energy')
                 if uncertainty_training=='energy':
