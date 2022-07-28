@@ -1062,11 +1062,13 @@ class Nequip_ensemble_NN(uncertainty_base):
             
         train_energy_real = torch.empty((0),device=self.device)
         train_energy_pred = torch.empty((0),device=self.device)
+        train_energy_unc_pred = torch.empty((0),device=self.device)
         train_max_force_real = torch.empty((0),device=self.device)
         train_max_force_pred = torch.empty((0),device=self.device)
 
         val_energy_real = torch.empty((0),device=self.device)
         val_energy_pred = torch.empty((0),device=self.device)
+        val_energy_unc_pred = torch.empty((0),device=self.device)
         val_max_force_real = torch.empty((0),device=self.device)
         val_max_force_pred = torch.empty((0),device=self.device)
 
@@ -1104,7 +1106,7 @@ class Nequip_ensemble_NN(uncertainty_base):
             out = self.model(self.transform_data_input(data))
             unc = self.predict_uncertainty(data).detach()
             train_energy_pred = torch.cat([train_energy_pred,out['atomic_energy'].detach().mean().unsqueeze(dim=0)])
-
+            train_energy_unc_pred = torch.cat([train_energy_unc_pred,self.pred_atom_energies.mean(dim=0).detach().mean().unsqueeze(dim=0)])
 
             train_energy_err = torch.cat([train_energy_err,unc[:,0].max().unsqueeze(dim=0)])
             train_energy_std = torch.cat([train_energy_std,unc[:,1].max().unsqueeze(dim=0)])
@@ -1143,6 +1145,7 @@ class Nequip_ensemble_NN(uncertainty_base):
             out = self.model(self.transform_data_input(data))
             unc = self.predict_uncertainty(data).detach()
             val_energy_pred = torch.cat([val_energy_pred,out['atomic_energy'].detach().mean().unsqueeze(dim=0)])
+            val_energy_unc_pred = torch.cat([val_energy_unc_pred,self.pred_atom_energies.mean(dim=0).detach().mean().unsqueeze(dim=0)])
 
             val_energy_err = torch.cat([val_energy_err,unc[:,0].max().unsqueeze(dim=0)])
             val_energy_std = torch.cat([val_energy_std,unc[:,1].max().unsqueeze(dim=0)])
@@ -1168,6 +1171,7 @@ class Nequip_ensemble_NN(uncertainty_base):
         # print(val_real.shape, val_pred.shape) 
         # print(train_unc_err.shape, val_unc_err.shape) 
 
+        uncertainty_training = self.config.get('uncertainty_training','energy')
         fig, ax = plt.subplots(4,5, figsize=(25,20))
         min_energy = np.inf
         max_energy = -np.inf
@@ -1175,11 +1179,15 @@ class Nequip_ensemble_NN(uncertainty_base):
         min_energy = min([min_energy, train_energy_real.min(), train_energy_pred.min(), val_energy_real.min(), val_energy_pred.min()])
         max_energy = max([max_energy, train_energy_real.max(), train_energy_pred.max(), val_energy_real.max(),val_energy_pred.max()])
 
-        # ax[0,0].scatter(train_energy_real,train_energy_pred, alpha=alpha)
-        ax[0,0].errorbar(train_energy_real,train_energy_pred, alpha=alpha, yerr = train_energy_err, fmt='o')
-        
-        # ax[0,1].scatter(train_energy_real,train_energy_pred, alpha=alpha)
-        ax[0,1].errorbar(train_energy_real,train_energy_pred, alpha=alpha, yerr = train_energy_std, fmt='o')
+        if uncertainty_training == 'forces':
+            # ax[0,0].scatter(train_energy_real,train_energy_pred, alpha=alpha)
+            ax[0,0].errorbar(train_energy_real,train_energy_pred, alpha=alpha, yerr = train_energy_err, fmt='o')
+            
+            # ax[0,1].scatter(train_energy_real,train_energy_pred, alpha=alpha)
+            ax[0,1].errorbar(train_energy_real,train_energy_pred, alpha=alpha, yerr = train_energy_std, fmt='o')
+        else:
+            ax[0,0].errorbar(train_energy_real,train_energy_pred, alpha=alpha, yerr = train_energy_err, fmt='o')
+            ax[0,1].errorbar(train_energy_real,train_energy_unc_pred, alpha=alpha, yerr = train_energy_std, fmt='o')
 
         # ax[1,0].scatter(list(range(len(train_energy_real))),train_energy_real-train_energy_pred, alpha=alpha)
         ax[1,0].errorbar(list(range(len(train_energy_real))),train_energy_real-train_energy_pred, alpha=alpha, yerr = train_energy_err, fmt='o')
@@ -1189,11 +1197,15 @@ class Nequip_ensemble_NN(uncertainty_base):
         # ax[1,1].scatter(train_energy_real-train_energy_pred,train_energy_err, alpha=alpha)
         ax[1,1].errorbar(train_energy_real-train_energy_pred,train_energy_err, alpha=alpha, yerr = train_energy_std, fmt='o')
         
-        # ax[2,0].scatter(val_energy_real,val_energy_pred, alpha=alpha)
-        ax[2,0].errorbar(val_energy_real,val_energy_pred, alpha=alpha, yerr = val_energy_err, fmt='o')
-        
-        # ax[2,1].scatter(val_energy_real,val_energy_pred, alpha=alpha)
-        ax[2,1].errorbar(val_energy_real,val_energy_pred, alpha=alpha, yerr = val_energy_std, fmt='o')
+        if uncertainty_training == 'forces':
+            # ax[2,0].scatter(val_energy_real,val_energy_pred, alpha=alpha)
+            ax[2,0].errorbar(val_energy_real,val_energy_pred, alpha=alpha, yerr = val_energy_err, fmt='o')
+            
+            # ax[2,1].scatter(val_energy_real,val_energy_pred, alpha=alpha)
+            ax[2,1].errorbar(val_energy_real,val_energy_pred, alpha=alpha, yerr = val_energy_std, fmt='o')
+        else:
+            ax[2,0].errorbar(val_energy_real,val_energy_pred, alpha=alpha, yerr = val_energy_err, fmt='o')
+            ax[2,1].errorbar(val_energy_real,val_energy_unc_pred, alpha=alpha, yerr = val_energy_std, fmt='o')
 
         # ax[3,0].scatter(list(range(len(val_energy_real))),val_energy_real-val_energy_pred, alpha=alpha)
         ax[3,0].errorbar(list(range(len(val_energy_real))),val_energy_real-val_energy_pred, alpha=alpha, yerr = val_energy_err, fmt='o')
@@ -1233,11 +1245,15 @@ class Nequip_ensemble_NN(uncertainty_base):
             min_force = min([min_force, train_force_real[key].norm(dim=-1).min(), train_force_pred[key].norm(dim=-1).min(), val_force_real[key].norm(dim=-1).min(), val_force_pred[key].norm(dim=-1).min()])
             max_force = max([max_force, train_force_real[key].norm(dim=-1).max(), train_force_pred[key].norm(dim=-1).max(), val_force_real[key].norm(dim=-1).max(), val_force_pred[key].norm(dim=-1).max()])
 
-            # ax[0,2].scatter(train_force_pred[key].norm(dim=-1),train_force_unc_pred[key], alpha=alpha)
-            ax[0,2].errorbar(train_force_pred[key].norm(dim=-1),train_force_unc_pred[key], alpha=alpha, yerr = train_force_unc_err[key], fmt='o')
-            
-            # ax[0,3].scatter(train_force_real[key].norm(dim=-1),train_force_unc_pred[key], alpha=alpha)
-            ax[0,3].errorbar(train_force_real[key].norm(dim=-1),train_force_unc_pred[key], alpha=alpha, yerr = train_force_unc_std[key], fmt='o')
+            if uncertainty_training == 'forces':
+                # ax[0,2].scatter(train_force_pred[key].norm(dim=-1),train_force_unc_pred[key], alpha=alpha)
+                ax[0,2].errorbar(train_force_pred[key].norm(dim=-1),train_force_unc_pred[key], alpha=alpha, yerr = train_force_unc_err[key], fmt='o')
+                
+                # ax[0,3].scatter(train_force_real[key].norm(dim=-1),train_force_unc_pred[key], alpha=alpha)
+                ax[0,3].errorbar(train_force_real[key].norm(dim=-1),train_force_unc_pred[key], alpha=alpha, yerr = train_force_unc_std[key], fmt='o')
+            else:
+                ax[0,2].errorbar(train_force_real[key].norm(dim=-1),train_force_pred[key], alpha=alpha, yerr = train_force_unc_err[key], fmt='o')
+                ax[0,3].errorbar(train_force_real[key].norm(dim=-1),train_force_pred[key], alpha=alpha, yerr = train_force_unc_std[key], fmt='o')
 
             # ax[1,2].scatter(range(ntrain,ntrain+len(train_force_real[key])),train_force_real[key].norm(dim=-1)-train_force_pred[key].norm(dim=-1), alpha=alpha)
             ax[1,2].errorbar(range(ntrain,ntrain+len(train_force_real[key])),train_force_real[key].norm(dim=-1)-train_force_pred[key].norm(dim=-1), alpha=alpha, yerr = train_force_unc_err[key], fmt='o')
@@ -1248,11 +1264,15 @@ class Nequip_ensemble_NN(uncertainty_base):
             ax[1,3].errorbar(train_force_real[key].norm(dim=-1)-train_force_pred[key].norm(dim=-1),train_force_unc_err[key], alpha=alpha, yerr = train_force_unc_std[key], fmt='o')
             ntrain+=len(train_force_real[key])
 
-            # ax[2,2].scatter(val_force_pred[key].norm(dim=-1),val_force_unc_pred[key], alpha=alpha)
-            ax[2,2].errorbar(val_force_pred[key].norm(dim=-1),val_force_unc_pred[key], alpha=alpha, yerr = val_force_unc_err[key], fmt='o')
-            
-            # ax[2,3].scatter(val_force_real[key].norm(dim=-1),val_force_unc_pred[key], alpha=alpha)
-            ax[2,3].errorbar(val_force_real[key].norm(dim=-1),val_force_unc_pred[key], alpha=alpha, yerr = val_force_unc_std[key], fmt='o')
+            if uncertainty_training == 'forces':
+                # ax[2,2].scatter(val_force_pred[key].norm(dim=-1),val_force_unc_pred[key], alpha=alpha)
+                ax[2,2].errorbar(val_force_real[key].norm(dim=-1),val_force_pred[key].norm(dim=-1), alpha=alpha, yerr = val_force_unc_err[key], fmt='o')
+                
+                # ax[2,3].scatter(val_force_real[key].norm(dim=-1),val_force_unc_pred[key], alpha=alpha)
+                ax[2,3].errorbar(val_force_real[key].norm(dim=-1),val_force_unc_pred[key], alpha=alpha, yerr = val_force_unc_std[key], fmt='o')
+            else:
+                ax[2,2].errorbar(val_force_real[key].norm(dim=-1),val_force_pred[key].norm(dim=-1), alpha=alpha, yerr = val_force_unc_err[key], fmt='o')
+                ax[2,3].errorbar(val_force_real[key].norm(dim=-1),val_force_pred[key].norm(dim=-1), alpha=alpha, yerr = val_force_unc_std[key], fmt='o')
             
             # ax[3,2].scatter(range(nval,nval+len(val_force_real[key])),val_force_real[key].norm(dim=-1)-val_force_pred[key].norm(dim=-1), alpha=alpha)
             ax[3,2].errorbar(range(nval,nval+len(val_force_real[key])),val_force_real[key].norm(dim=-1)-val_force_pred[key].norm(dim=-1), alpha=alpha, yerr = val_force_unc_err[key], fmt='o')
