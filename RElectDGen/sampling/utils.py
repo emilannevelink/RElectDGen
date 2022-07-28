@@ -176,23 +176,23 @@ def sample_from_dataset(config):
     else:
         traj_md = []
 
-    adversarial_trajectroy = os.path.join(
-        config.get('data_directory'),
-        config.get('adversarial_trajectroy','')
-    )
-    if os.path.isfile(adversarial_trajectroy):
-        try:
-            traj = read(adversarial_trajectroy, index=':')
-            max_samples = int(min([0.1*len(traj), config.get('max_samples')]))
-            n_adversarial_samples = int(config.get('n_adversarial_samples',2*max_samples))
+    # adversarial_trajectroy = os.path.join(
+    #     config.get('data_directory'),
+    #     config.get('adversarial_trajectroy','')
+    # )
+    # if os.path.isfile(adversarial_trajectroy):
+    #     try:
+    #         traj = read(adversarial_trajectroy, index=':')
+    #         max_samples = int(min([0.1*len(traj), config.get('max_samples')]))
+    #         n_adversarial_samples = int(config.get('n_adversarial_samples',2*max_samples))
             
-            traj_indices = torch.randperm(len(traj))[:2*n_adversarial_samples].numpy()
-            traj_adv = [traj[i] for i in traj_indices]
-        except Exception as e:
-            print(e)
-            traj_adv = []
-    else:
-        traj_adv = []
+    #         traj_indices = torch.randperm(len(traj))[:2*n_adversarial_samples].numpy()
+    #         traj_adv = [traj[i] for i in traj_indices]
+    #     except Exception as e:
+    #         print(e)
+    #         traj_adv = []
+    # else:
+    #     traj_adv = []
 
-    traj = traj_md + traj_adv
+    traj = traj_md
     return traj
