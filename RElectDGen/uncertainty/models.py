@@ -1238,7 +1238,8 @@ class Nequip_ensemble_NN(uncertainty_base):
         min_force = np.inf
         max_force = -np.inf
         ntrain = nval = 0
-        for key in self.chemical_symbol_to_type:
+        colors = ['b', 'g', 'r', 'c', 'm', 'k']
+        for i, key in enumerate(self.chemical_symbol_to_type):
             # train_error = train_real[key]-train_pred[key]
             # train_distribution_err = train_error/train_unc_err[key]
             # train_distribution_std = train_error/train_unc_std[key]
@@ -1250,7 +1251,7 @@ class Nequip_ensemble_NN(uncertainty_base):
 
             if uncertainty_training == 'forces':
                 # ax[0,2].scatter(train_force_pred[key].norm(dim=-1),train_force_unc_pred[key], alpha=alpha)
-                ax[0,2].errorbar(train_force_pred[key].norm(dim=-1),train_force_unc_pred[key], alpha=alpha, yerr = train_force_unc_err[key], fmt='o')
+                ax[0,2].errorbar(train_force_real[key].norm(dim=-1),train_force_pred[key].norm(dim=-1), alpha=alpha, yerr = train_force_unc_err[key]+train_force_unc_std[key], fmt='o')
                 
                 # ax[0,3].scatter(train_force_real[key].norm(dim=-1),train_force_unc_pred[key], alpha=alpha)
                 ax[0,3].errorbar(train_force_real[key].norm(dim=-1),train_force_unc_pred[key], alpha=alpha, yerr = train_force_unc_std[key], fmt='o')
@@ -1259,17 +1260,21 @@ class Nequip_ensemble_NN(uncertainty_base):
                 ax[0,3].errorbar(train_force_real[key].norm(dim=-1),train_force_pred[key].norm(dim=-1), alpha=alpha, yerr = train_force_unc_std[key], fmt='o')
 
             # ax[1,2].scatter(range(ntrain,ntrain+len(train_force_real[key])),train_force_real[key].norm(dim=-1)-train_force_pred[key].norm(dim=-1), alpha=alpha)
-            ax[1,2].errorbar(range(ntrain,ntrain+len(train_force_real[key])),train_force_real[key].norm(dim=-1)-train_force_pred[key].norm(dim=-1), alpha=alpha, yerr = train_force_unc_err[key], fmt='o')
+            # ax[1,2].errorbar(range(ntrain,ntrain+len(train_force_real[key])),train_force_real[key].norm(dim=-1)-train_force_pred[key].norm(dim=-1), alpha=alpha, yerr = train_force_unc_err[key], fmt='o')
+            ax[1,2].hist(((train_force_real[key].norm(dim=-1)-train_force_pred[key].norm(dim=-1)).abs()).unsqueeze(0), alpha=alpha, label=key, color=colors[i])
+            ax[1,2].axvline(((train_force_real[key].norm(dim=-1)-train_force_pred[key].norm(dim=-1)).abs()).mean(), color=colors[i])
+            ax[1,3].hist((train_force_unc_err[key]+train_force_unc_std[key]).unsqueeze(0), alpha=alpha, label=key,stacked=True, color=colors[i])
+            ax[1,3].axvline((train_force_unc_err[key]+train_force_unc_std[key]).mean(), color=colors[i])
             
             # ax[1,3].scatter(range(ntrain,ntrain+len(train_force_real[key])),train_force_unc_err[key])
             # ax[1,3].errorbar(range(ntrain,ntrain+len(train_force_real[key])),train_force_unc_err[key], yerr = train_force_unc_std[key], fmt='o')
             # ax[1,3].scatter(train_force_real[key].norm(dim=-1)-train_force_pred[key].norm(dim=-1),train_force_unc_err[key], alpha=alpha)
-            ax[1,3].errorbar(train_force_real[key].norm(dim=-1)-train_force_pred[key].norm(dim=-1),train_force_unc_err[key], alpha=alpha, yerr = train_force_unc_std[key], fmt='o')
+            # ax[1,3].errorbar(train_force_real[key].norm(dim=-1)-train_force_pred[key].norm(dim=-1),train_force_unc_err[key], alpha=alpha, yerr = train_force_unc_std[key], fmt='o')
             ntrain+=len(train_force_real[key])
 
             if uncertainty_training == 'forces':
                 # ax[2,2].scatter(val_force_pred[key].norm(dim=-1),val_force_unc_pred[key], alpha=alpha)
-                ax[2,2].errorbar(val_force_real[key].norm(dim=-1),val_force_pred[key].norm(dim=-1), alpha=alpha, yerr = val_force_unc_err[key], fmt='o')
+                ax[2,2].errorbar(val_force_real[key].norm(dim=-1),val_force_pred[key].norm(dim=-1), alpha=alpha, yerr = val_force_unc_err[key]+val_force_unc_std[key], fmt='o')
                 
                 # ax[2,3].scatter(val_force_real[key].norm(dim=-1),val_force_unc_pred[key], alpha=alpha)
                 ax[2,3].errorbar(val_force_real[key].norm(dim=-1),val_force_unc_pred[key], alpha=alpha, yerr = val_force_unc_std[key], fmt='o')
@@ -1278,12 +1283,16 @@ class Nequip_ensemble_NN(uncertainty_base):
                 ax[2,3].errorbar(val_force_real[key].norm(dim=-1),val_force_pred[key].norm(dim=-1), alpha=alpha, yerr = val_force_unc_std[key], fmt='o')
             
             # ax[3,2].scatter(range(nval,nval+len(val_force_real[key])),val_force_real[key].norm(dim=-1)-val_force_pred[key].norm(dim=-1), alpha=alpha)
-            ax[3,2].errorbar(range(nval,nval+len(val_force_real[key])),val_force_real[key].norm(dim=-1)-val_force_pred[key].norm(dim=-1), alpha=alpha, yerr = val_force_unc_err[key], fmt='o')
+            # ax[3,2].errorbar(range(nval,nval+len(val_force_real[key])),val_force_real[key].norm(dim=-1)-val_force_pred[key].norm(dim=-1), alpha=alpha, yerr = val_force_unc_err[key], fmt='o')
             
             # ax[3,3].scatter(range(nval,nval+len(val_force_real[key])),val_force_unc_err[key])
             # ax[3,3].errorbar(range(nval,nval+len(val_force_real[key])),val_force_unc_err[key], yerr = val_force_unc_std[key], fmt='o')
             # ax[3,3].scatter(val_force_real[key].norm(dim=-1)-val_force_pred[key].norm(dim=-1),val_force_unc_err[key], alpha=alpha)
-            ax[3,3].errorbar(val_force_real[key].norm(dim=-1)-val_force_pred[key].norm(dim=-1),val_force_unc_err[key], alpha=alpha, yerr = val_force_unc_std[key], fmt='o')
+            # ax[3,3].errorbar(val_force_real[key].norm(dim=-1)-val_force_pred[key].norm(dim=-1),val_force_unc_err[key], alpha=alpha, yerr = val_force_unc_std[key], fmt='o')
+            ax[3,2].hist(((val_force_real[key].norm(dim=-1)-val_force_pred[key].norm(dim=-1)).abs()).unsqueeze(0), alpha=alpha, label=key, color=colors[i])
+            ax[3,2].axvline(((val_force_real[key].norm(dim=-1)-val_force_pred[key].norm(dim=-1)).abs()).mean(), color=colors[i])
+            ax[3,3].hist((val_force_unc_err[key]+val_force_unc_std[key]).unsqueeze(0), alpha=alpha, label=key,stacked=True, color=colors[i])
+            ax[3,3].axvline((val_force_unc_err[key]+val_force_unc_std[key]).mean(), color=colors[i])
             nval+=len(val_force_real[key])
         
         ax[0,2].plot([min_force,max_force],[min_force,max_force],color='k',linestyle='--')
@@ -1294,6 +1303,10 @@ class Nequip_ensemble_NN(uncertainty_base):
         ax[0,4].plot([min_force,max_force],[min_force,max_force],color='k',linestyle='--')
         ax[2,4].plot([min_force,max_force],[min_force,max_force],color='k',linestyle='--')
         
+        ax[1,2].legend()
+        ax[1,3].legend()
+        ax[3,2].legend()
+        ax[3,3].legend()
         # # ax[0,0].set_xscale('log')
         # # ax[0,0].set_yscale('log')
         # # ax[0,1].set_xscale('log')

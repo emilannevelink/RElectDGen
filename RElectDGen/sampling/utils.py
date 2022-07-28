@@ -153,7 +153,7 @@ def finetune_downselect(traj, embeddings, UQ, min_uncertainty=0.04, max_uncertai
                 if uncertainty_training=='energy':
                     keep_energies[key] = torch.cat([keep_energies[key], out['atomic_energy'].detach()[mask]])
                 elif uncertainty_training=='forces':
-                    keep_energies[key] = torch.cat([keep_energies[key], out['forces'].detach()[mask].norm(dim=1)])
+                    keep_energies[key] = torch.cat([keep_energies[key], out['forces'].detach()[mask].norm(dim=1).unsqueeze(1)])
 
             print(i, flush=True)
             UQ.fine_tune(keep_embeddings, keep_energies)

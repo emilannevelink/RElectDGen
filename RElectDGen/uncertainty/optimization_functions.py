@@ -444,7 +444,7 @@ class uncertainty_ensemble_NN():
         
         self.model = torch.nn.Sequential(*layers).to(self.device)
         # self.model = Network(input_dim, hidden_dimensions, act)
-        print('Trainable parameters:', sum(p.numel() for p in self.model.parameters() if p.requires_grad))
+        print('Trainable parameters:', sum(p.numel() for p in self.model.parameters() if p.requires_grad),flush=True)
         self.epochs = epochs
         self.loss = torch.nn.MSELoss()
         self.optim = torch.optim.Adam(self.model.parameters(), lr = lr)
