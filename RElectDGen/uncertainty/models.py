@@ -1251,13 +1251,13 @@ class Nequip_ensemble_NN(uncertainty_base):
 
             if uncertainty_training == 'forces':
                 # ax[0,2].scatter(train_force_pred[key].norm(dim=-1),train_force_unc_pred[key], alpha=alpha)
-                ax[0,2].errorbar(train_force_real[key].norm(dim=-1),train_force_pred[key].norm(dim=-1), alpha=alpha, yerr = train_force_unc_err[key]+train_force_unc_std[key], fmt='o')
+                ax[0,2].errorbar(train_force_real[key].norm(dim=-1),train_force_pred[key].norm(dim=-1), alpha=alpha, yerr = train_force_unc_err[key]+train_force_unc_std[key], fmt='o', color=colors[i])
                 
                 # ax[0,3].scatter(train_force_real[key].norm(dim=-1),train_force_unc_pred[key], alpha=alpha)
-                ax[0,3].errorbar(train_force_real[key].norm(dim=-1),train_force_unc_pred[key], alpha=alpha, yerr = train_force_unc_std[key], fmt='o')
+                ax[0,3].errorbar(train_force_real[key].norm(dim=-1),train_force_unc_pred[key], alpha=alpha, yerr = train_force_unc_std[key], fmt='o', color=colors[i])
             else:
-                ax[0,2].errorbar(train_force_real[key].norm(dim=-1),train_force_pred[key].norm(dim=-1), alpha=alpha, yerr = train_force_unc_err[key], fmt='o')
-                ax[0,3].errorbar(train_force_real[key].norm(dim=-1),train_force_pred[key].norm(dim=-1), alpha=alpha, yerr = train_force_unc_std[key], fmt='o')
+                ax[0,2].errorbar(train_force_real[key].norm(dim=-1),train_force_pred[key].norm(dim=-1), alpha=alpha, yerr = train_force_unc_err[key], fmt='o', color=colors[i])
+                ax[0,3].errorbar(train_force_real[key].norm(dim=-1),train_force_pred[key].norm(dim=-1), alpha=alpha, yerr = train_force_unc_std[key], fmt='o', color=colors[i])
 
             # ax[1,2].scatter(range(ntrain,ntrain+len(train_force_real[key])),train_force_real[key].norm(dim=-1)-train_force_pred[key].norm(dim=-1), alpha=alpha)
             # ax[1,2].errorbar(range(ntrain,ntrain+len(train_force_real[key])),train_force_real[key].norm(dim=-1)-train_force_pred[key].norm(dim=-1), alpha=alpha, yerr = train_force_unc_err[key], fmt='o')
@@ -1274,13 +1274,13 @@ class Nequip_ensemble_NN(uncertainty_base):
 
             if uncertainty_training == 'forces':
                 # ax[2,2].scatter(val_force_pred[key].norm(dim=-1),val_force_unc_pred[key], alpha=alpha)
-                ax[2,2].errorbar(val_force_real[key].norm(dim=-1),val_force_pred[key].norm(dim=-1), alpha=alpha, yerr = val_force_unc_err[key]+val_force_unc_std[key], fmt='o')
+                ax[2,2].errorbar(val_force_real[key].norm(dim=-1),val_force_pred[key].norm(dim=-1), alpha=alpha, yerr = val_force_unc_err[key]+val_force_unc_std[key], fmt='o', color=colors[i])
                 
                 # ax[2,3].scatter(val_force_real[key].norm(dim=-1),val_force_unc_pred[key], alpha=alpha)
-                ax[2,3].errorbar(val_force_real[key].norm(dim=-1),val_force_unc_pred[key], alpha=alpha, yerr = val_force_unc_std[key], fmt='o')
+                ax[2,3].errorbar(val_force_real[key].norm(dim=-1),val_force_unc_pred[key], alpha=alpha, yerr = val_force_unc_std[key], fmt='o', color=colors[i])
             else:
-                ax[2,2].errorbar(val_force_real[key].norm(dim=-1),val_force_pred[key].norm(dim=-1), alpha=alpha, yerr = val_force_unc_err[key], fmt='o')
-                ax[2,3].errorbar(val_force_real[key].norm(dim=-1),val_force_pred[key].norm(dim=-1), alpha=alpha, yerr = val_force_unc_std[key], fmt='o')
+                ax[2,2].errorbar(val_force_real[key].norm(dim=-1),val_force_pred[key].norm(dim=-1), alpha=alpha, yerr = val_force_unc_err[key], fmt='o', color=colors[i])
+                ax[2,3].errorbar(val_force_real[key].norm(dim=-1),val_force_pred[key].norm(dim=-1), alpha=alpha, yerr = val_force_unc_std[key], fmt='o', color=colors[i])
             
             # ax[3,2].scatter(range(nval,nval+len(val_force_real[key])),val_force_real[key].norm(dim=-1)-val_force_pred[key].norm(dim=-1), alpha=alpha)
             # ax[3,2].errorbar(range(nval,nval+len(val_force_real[key])),val_force_real[key].norm(dim=-1)-val_force_pred[key].norm(dim=-1), alpha=alpha, yerr = val_force_unc_err[key], fmt='o')
