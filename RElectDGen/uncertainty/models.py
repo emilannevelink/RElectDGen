@@ -1175,6 +1175,7 @@ class Nequip_ensemble_NN(uncertainty_base):
         # print(train_unc_err.shape, val_unc_err.shape) 
 
         uncertainty_training = self.config.get('uncertainty_training','energy')
+        nbins = self.config.get('plot_bins',25)
         fig, ax = plt.subplots(4,5, figsize=(25,20))
         min_energy = np.inf
         max_energy = -np.inf
@@ -1193,12 +1194,16 @@ class Nequip_ensemble_NN(uncertainty_base):
             ax[0,1].errorbar(train_energy_real,train_energy_unc_pred, alpha=alpha, yerr = train_energy_std, fmt='o')
 
         # ax[1,0].scatter(list(range(len(train_energy_real))),train_energy_real-train_energy_pred, alpha=alpha)
-        ax[1,0].errorbar(list(range(len(train_energy_real))),train_energy_real-train_energy_pred, alpha=alpha, yerr = train_energy_err, fmt='o')
+        # ax[1,0].errorbar(list(range(len(train_energy_real))),train_energy_real-train_energy_pred, alpha=alpha, yerr = train_energy_err, fmt='o')
         
         # ax[1,1].scatter(list(range(len(train_energy_real))),train_energy_err)
         # ax[1,1].errorbar(list(range(len(train_energy_real))),train_energy_err, yerr = train_energy_std, fmt='o')
         # ax[1,1].scatter(train_energy_real-train_energy_pred,train_energy_err, alpha=alpha)
-        ax[1,1].errorbar(train_energy_real-train_energy_pred,train_energy_err, alpha=alpha, yerr = train_energy_std, fmt='o')
+        # ax[1,1].errorbar(train_energy_real-train_energy_pred,train_energy_err, alpha=alpha, yerr = train_energy_std, fmt='o')
+        ax[1,0].hist(((train_energy_real-train_energy_pred).abs()).unsqueeze(0),nbins, alpha=alpha)
+        ax[1,0].axvline(((train_energy_real-train_energy_pred).abs()).mean())
+        ax[1,1].hist((train_energy_err+train_energy_std).unsqueeze(0),nbins, alpha=alpha)
+        ax[1,1].axvline((train_energy_err+train_energy_std).mean())
         
         if uncertainty_training == 'forces':
             # ax[2,0].scatter(val_energy_real,val_energy_pred, alpha=alpha)
@@ -1211,12 +1216,16 @@ class Nequip_ensemble_NN(uncertainty_base):
             ax[2,1].errorbar(val_energy_real,val_energy_unc_pred, alpha=alpha, yerr = val_energy_std, fmt='o')
 
         # ax[3,0].scatter(list(range(len(val_energy_real))),val_energy_real-val_energy_pred, alpha=alpha)
-        ax[3,0].errorbar(list(range(len(val_energy_real))),val_energy_real-val_energy_pred, alpha=alpha, yerr = val_energy_err, fmt='o')
+        # ax[3,0].errorbar(list(range(len(val_energy_real))),val_energy_real-val_energy_pred, alpha=alpha, yerr = val_energy_err, fmt='o')
         
         # ax[3,1].scatter(list(range(len(val_energy_real))),val_energy_err)
         # ax[3,1].errorbar(list(range(len(val_energy_real))),val_energy_err, yerr = val_energy_std, fmt='o')
         # ax[3,1].scatter(val_energy_real-val_energy_pred,val_energy_err, alpha=alpha)
-        ax[3,1].errorbar(val_energy_real-val_energy_pred,val_energy_err, alpha=alpha, yerr = val_energy_std, fmt='o')
+        # ax[3,1].errorbar(val_energy_real-val_energy_pred,val_energy_err, alpha=alpha, yerr = val_energy_std, fmt='o')
+        ax[3,0].hist(((val_energy_real-val_energy_pred).abs()).unsqueeze(0),nbins, alpha=alpha)
+        ax[3,0].axvline(((val_energy_real-val_energy_pred).abs()).mean())
+        ax[3,1].hist((val_energy_err+val_energy_std).unsqueeze(0),nbins, alpha=alpha)
+        ax[3,1].axvline((val_energy_err+val_energy_std).mean())
         
         ax[0,0].plot([min_energy,max_energy],[min_energy,max_energy],color='k',linestyle='--')
         ax[2,0].plot([min_energy,max_energy],[min_energy,max_energy],color='k',linestyle='--')
@@ -1227,17 +1236,18 @@ class Nequip_ensemble_NN(uncertainty_base):
         ax[0,4].errorbar(train_max_force_real.norm(dim=1),train_max_force_pred.norm(dim=1), alpha=alpha, yerr=train_max_force_err+train_max_force_std, xerr=train_max_force_max_err+train_max_force_max_std, fmt='o')
 
         # ax[1,4].scatter((train_max_force_real-train_max_force_pred).norm(dim=1),train_max_force_err, alpha=alpha)
-        ax[1,4].errorbar((train_max_force_real-train_max_force_pred).norm(dim=1), train_max_force_err, alpha=alpha, yerr=train_max_force_std, xerr=train_max_force_max_err+train_max_force_max_std, fmt='o')
+        ax[1,4].scatter((train_max_force_real-train_max_force_pred).norm(dim=1), train_max_force_err+train_max_force_std, alpha=alpha)
 
         # ax[2,4].scatter(val_max_force_real.norm(dim=1),val_max_force_pred.norm(dim=1), alpha=alpha)
         ax[2,4].errorbar(val_max_force_real.norm(dim=1),val_max_force_pred.norm(dim=1), alpha=alpha, yerr=val_max_force_err+val_max_force_std, xerr=val_max_force_max_err+val_max_force_max_std, fmt='o')
 
         # ax[3,4].scatter((val_max_force_real-val_max_force_pred).norm(dim=1),val_max_force_err, alpha=alpha)
-        ax[3,4].errorbar((val_max_force_real-val_max_force_pred).norm(dim=1), val_max_force_err, alpha=alpha, yerr=val_max_force_std, xerr=val_max_force_max_err+val_max_force_max_std, fmt='o')
+        ax[3,4].scatter((val_max_force_real-val_max_force_pred).norm(dim=1), val_max_force_err+val_max_force_std, alpha=alpha)
 
         min_force = np.inf
         max_force = -np.inf
         ntrain = nval = 0
+        
         colors = ['b', 'g', 'r', 'c', 'm', 'k']
         for i, key in enumerate(self.chemical_symbol_to_type):
             # train_error = train_real[key]-train_pred[key]
@@ -1261,9 +1271,9 @@ class Nequip_ensemble_NN(uncertainty_base):
 
             # ax[1,2].scatter(range(ntrain,ntrain+len(train_force_real[key])),train_force_real[key].norm(dim=-1)-train_force_pred[key].norm(dim=-1), alpha=alpha)
             # ax[1,2].errorbar(range(ntrain,ntrain+len(train_force_real[key])),train_force_real[key].norm(dim=-1)-train_force_pred[key].norm(dim=-1), alpha=alpha, yerr = train_force_unc_err[key], fmt='o')
-            ax[1,2].hist(((train_force_real[key].norm(dim=-1)-train_force_pred[key].norm(dim=-1)).abs()).unsqueeze(0), alpha=alpha, label=key, color=colors[i])
+            ax[1,2].hist(((train_force_real[key].norm(dim=-1)-train_force_pred[key].norm(dim=-1)).abs()).unsqueeze(0),nbins, alpha=alpha, label=key, color=colors[i])
             ax[1,2].axvline(((train_force_real[key].norm(dim=-1)-train_force_pred[key].norm(dim=-1)).abs()).mean(), color=colors[i])
-            ax[1,3].hist((train_force_unc_err[key]+train_force_unc_std[key]).unsqueeze(0), alpha=alpha, label=key,stacked=True, color=colors[i])
+            ax[1,3].hist((train_force_unc_err[key]+train_force_unc_std[key]).unsqueeze(0),nbins, alpha=alpha, label=key,stacked=True, color=colors[i])
             ax[1,3].axvline((train_force_unc_err[key]+train_force_unc_std[key]).mean(), color=colors[i])
             
             # ax[1,3].scatter(range(ntrain,ntrain+len(train_force_real[key])),train_force_unc_err[key])
@@ -1289,9 +1299,9 @@ class Nequip_ensemble_NN(uncertainty_base):
             # ax[3,3].errorbar(range(nval,nval+len(val_force_real[key])),val_force_unc_err[key], yerr = val_force_unc_std[key], fmt='o')
             # ax[3,3].scatter(val_force_real[key].norm(dim=-1)-val_force_pred[key].norm(dim=-1),val_force_unc_err[key], alpha=alpha)
             # ax[3,3].errorbar(val_force_real[key].norm(dim=-1)-val_force_pred[key].norm(dim=-1),val_force_unc_err[key], alpha=alpha, yerr = val_force_unc_std[key], fmt='o')
-            ax[3,2].hist(((val_force_real[key].norm(dim=-1)-val_force_pred[key].norm(dim=-1)).abs()).unsqueeze(0), alpha=alpha, label=key, color=colors[i])
+            ax[3,2].hist(((val_force_real[key].norm(dim=-1)-val_force_pred[key].norm(dim=-1)).abs()).unsqueeze(0),nbins, alpha=alpha, label=key, color=colors[i])
             ax[3,2].axvline(((val_force_real[key].norm(dim=-1)-val_force_pred[key].norm(dim=-1)).abs()).mean(), color=colors[i])
-            ax[3,3].hist((val_force_unc_err[key]+val_force_unc_std[key]).unsqueeze(0), alpha=alpha, label=key,stacked=True, color=colors[i])
+            ax[3,3].hist((val_force_unc_err[key]+val_force_unc_std[key]).unsqueeze(0),nbins, alpha=alpha, label=key,stacked=True, color=colors[i])
             ax[3,3].axvline((val_force_unc_err[key]+val_force_unc_std[key]).mean(), color=colors[i])
             nval+=len(val_force_real[key])
         
