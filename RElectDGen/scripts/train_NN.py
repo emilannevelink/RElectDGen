@@ -16,7 +16,7 @@ from ..uncertainty import models as uncertainty_models
 
 from RElectDGen.calculate.calculator import nn_from_results
 from RElectDGen.utils.save import check_NN_parameters
-from RElectDGen.utils.logging import get_mae_from_results, write_to_tmp_dict
+from RElectDGen.utils.logging import get_mae_from_results, write_to_tmp_dict, get_dataset_sizes
 
 from memory_profiler import profile
 
@@ -83,10 +83,11 @@ def use_previous_model(MLP_config_new):
 
 @profile
 def main(args=None):
+    
     start_time = time.time()
     config, MLP_config_new, MLP_config_filename = parse_command_line(args)
     torch._C._jit_set_bailout_depth(MLP_config_new.get("_jit_bailout_depth",2))
-
+    tmp_filename = os.path.join(config.get('directory'),config.get('run_dir'),config.get('tmp_file','tmp.json'))
     train, model, MLP_config = use_previous_model(MLP_config_new)
 
     if config.get('force_retrain', False):
@@ -107,8 +108,12 @@ def main(args=None):
     if not train:
         
         traj = Trajectory(MLP_config['dataset_file_name'])
+        last_dataset_size, current_dataset_size = get_dataset_sizes(config, tmp_filename)
         if max(max(MLP_config.get('train_idcs')),max(MLP_config.get('val_idcs'))) > len(traj):
             train = True     
+        elif last_dataset_size == current_dataset_size:
+            print('Dataset size hasnt changed', flush=True)
+            train = False
         else:
             gc.collect()
             ### Calibrate Uncertainty Quantification
@@ -165,7 +170,6 @@ def main(args=None):
         'train_time': time.time()-start_time
     }
 
-    tmp_filename = os.path.join(config.get('directory'),config.get('run_dir'),config.get('tmp_file','tmp.json'))
     write_to_tmp_dict(tmp_filename,logging_dict)
 
 if __name__ == '__main__':

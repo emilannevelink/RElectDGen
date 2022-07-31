@@ -66,3 +66,18 @@ def add_checks_to_config(config, checks):
 
     config['checks'] = config_checks
     return config
+
+def get_dataset_sizes(config, tmp_filename):
+    with open(tmp_filename,'r') as fl:
+        tmp_dict = json.load(fl)
+
+    current_dataset_size = tmp_dict['dataset_size']
+
+    log_filename = os.path.join(config.get('data_directory'),config.get('log_filename'))
+    if os.path.isfile(log_filename):
+        logcsv = pd.read_csv(log_filename)
+        last_dataset_size = logcsv['dataset_size'].values[-1]
+    else:
+        last_dataset_size = current_dataset_size-1
+
+    return last_dataset_size, current_dataset_size
