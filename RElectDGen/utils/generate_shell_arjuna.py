@@ -24,7 +24,7 @@ def shell_from_config(config):
     python_nodes = config.get('nodes',1)
 
     conda_environment = config.get('conda_env', 'nequip')
-    spack_environment = config.get('spack_env', 'py-gpaw')
+    spack_environment = config.get('spack_env', '/home/eannevel/spack/environments/nequip_dev')
 
     for file in filenames:
         fname = os.path.join(location,file)
@@ -96,7 +96,9 @@ def shell_from_config(config):
                 ]
 
         else:
-            commands = [f'spack load {spack_environment}']
+            # commands = [f'spack load {spack_environment}']
+            commands = [f'spack env activate {spack_environment}']
+            
 
             if 'MD' in file:
                 file = os.path.join(config.get('scripts_path'),'gpaw_MD.py')
