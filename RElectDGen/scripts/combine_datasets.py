@@ -29,10 +29,14 @@ def main(args=None):
     
     traj = []
     for filename in config.get('pretraining_data',[]):
-        add_traj = read(os.path.join(config.get('data_directory'),filename), index=':')
-        traj += add_traj
+        try:
+            add_traj = read(os.path.join(config.get('data_directory'),filename), index=':')
+            traj += add_traj
 
-        print(len(add_traj), len(traj))
+            print(len(add_traj), len(traj), filename)
+        except:
+            print('Trajectory file couldnt be appended', flush=True)
+            print(filename, flush=True)
 
     pretraining_size = len(traj)
     try:

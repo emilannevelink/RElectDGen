@@ -11,6 +11,8 @@ from ase.md import MDLogger
 import yaml
 import torch
 
+from RElectDGen.utils.md_utils import md_func_from_config
+
 from ..uncertainty import models as uncertainty_models
 
 from ..calculate.calculator import nn_from_results
@@ -70,20 +72,7 @@ def MD_sampling(config, loop_learning_count=1):
 
     print(MLP_dict['MLP_MD_temperature'],flush=True)
 
-    md_kwargs = {
-        'timestep': config.get('MLP_MD_timestep') * units.fs
-    }
-    md_func_name = config.get('MD_sampling_func', 'nvt')
-    if md_func_name == 'nve':
-        from ase.md.verlet import VelocityVerlet as md_func
-    elif md_func_name == 'nvt':
-        from ase.md.nvtberendsen import NVTBerendsen as md_func
-        taut = config.get('NVT_taut')
-        if taut is None:
-            md_kwargs['taut'] = md_kwargs['timestep']*500
-        else:
-            md_kwargs['taut'] = taut*units.fs
-        md_kwargs['temperature'] = MLP_dict['MLP_MD_temperature']
+    md_func, md_kwargs = md_func_from_config(config, MLP_dict['MLP_MD_temperature'])
 
     dyn = md_func(supercell, **md_kwargs)
     MLP_MD_dump_file = os.path.join(config.get('data_directory'),config.get('MLP_MD_dump_file'))
