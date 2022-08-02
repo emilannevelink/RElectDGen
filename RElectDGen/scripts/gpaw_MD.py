@@ -85,10 +85,11 @@ def main(args=None):
         ZeroRotation(supercell)
         Stationary(supercell)
         md_func, md_kwargs = md_func_from_config(config, prefix='GPAW')
+        GPAW_MD_dump_file = os.path.join(config.get('data_directory'),config.get('GPAW_MD_dump_file'))
         md_kwargs['logfile'] = GPAW_MD_dump_file
         
         dyn = md_func(supercell, **md_kwargs)
-        GPAW_MD_dump_file = os.path.join(config.get('data_directory'),config.get('GPAW_MD_dump_file'))
+        
         # if os.path.isfile(GPAW_MD_dump_file):
         #     os.remove(GPAW_MD_dump_file)
         # dyn.attach(MDLogger(dyn,supercell,GPAW_MD_dump_file,mode='w'),interval=1)
