@@ -4,7 +4,8 @@ from ase.io import trajectory
 from ase.io.trajectory import Trajectory
 from ase.io import read, write
 from ase.md.velocitydistribution import MaxwellBoltzmannDistribution, ZeroRotation, Stationary
-from ase.md.verlet import VelocityVerlet
+from RElectDGen.utils.md_utils import md_func_from_config
+from ase.md import MDLogger
 from ase import units
 
 
@@ -83,8 +84,13 @@ def main(args=None):
         MaxwellBoltzmannDistribution(supercell, temperature_K=config.get('GPAW_MD_temperature'))
         ZeroRotation(supercell)
         Stationary(supercell)
+        md_func, md_kwargs = md_func_from_config(config, prefix='GPAW')
+
+        dyn = md_func(supercell, **md_kwargs)
         GPAW_MD_dump_file = os.path.join(config.get('data_directory'),config.get('GPAW_MD_dump_file'))
-        dyn = VelocityVerlet(supercell, timestep=config.get('GPAW_MD_timestep') * units.fs, logfile=GPAW_MD_dump_file)
+        if os.path.isfile(GPAW_MD_dump_file):
+            os.remove(GPAW_MD_dump_file)
+        dyn.attach(MDLogger(dyn,supercell,GPAW_MD_dump_file,mode='w'),interval=1)
         traj = Trajectory(trajectory_file, 'a', supercell)
         dyn.attach(traj.write, interval=1)
         dyn.run(initial_MD_steps)

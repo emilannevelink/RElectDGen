@@ -395,8 +395,7 @@ class uncertaintydistance_NN():
         self.model.load_state_dict(state_dict)
 
 class uncertainty_ensemble_NN():
-    def __init__(self, 
-    nequip_model,
+    def __init__(self,
     input_dim,
     natoms,
     hidden_dimensions=[], 
@@ -410,7 +409,7 @@ class uncertainty_ensemble_NN():
     min_lr = None,
     fine_tune_train_dataset_percentage = 0.5) -> None:
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        self.nequip_model = nequip_model #.train()
+        # self.nequip_model = nequip_model #.train()
         # self.nequip_model.train()
         self.natoms = natoms
         self.input_dim = input_dim
@@ -660,13 +659,15 @@ class uncertainty_ensemble_NN():
         self.validation_loss = validation_loss
         self.model = self.best_model
 
-    def predict(self,data):
+    def predict(self, data, nequip_model=None):
         if 'node_features' in data:
             out = data
-        else:
+        elif nequip_model is not None:
             if not data['pos'].requires_grad:
                 data['pos'].requires_grad = True
-            out = self.nequip_model(self.transform_data_input(data))
+            out = nequip_model(self.transform_data_input(data))
+        else:
+            ValueError
         atom_one_hot = torch.nn.functional.one_hot(data['atom_types'].squeeze(),num_classes=self.natoms)
 
         NN_inputs = torch.hstack([out['node_features'], atom_one_hot])
@@ -783,3 +784,12 @@ class uncertainty_ensemble_NN():
 
     def load_state_dict(self, state_dict):
         self.model.load_state_dict(state_dict)
+
+def train_NN(NN,uncertainty_training,train_embeddings,train_energy_forces,validation_embeddings,validation_energy_forces,other_embeddings,other_energy_forces):
+        if uncertainty_training=='energy':
+            NN.train(train_embeddings, train_energy_forces, validation_embeddings, validation_energy_forces)
+        elif uncertainty_training=='forces':
+            NN.train(train_embeddings, train_energy_forces, validation_embeddings, validation_energy_forces)
+        else:
+            raise RuntimeError
+        return NN

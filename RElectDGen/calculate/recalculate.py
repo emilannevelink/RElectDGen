@@ -20,6 +20,7 @@ def recalculate_traj_energies(traj,calc=None,config=None,writer=None,rewrite_pbc
 		atoms.calc = calci
 		try:
 			atoms.get_forces()
+			atoms.get_stresses()
 			atoms.info['calculation_time'] = time.time()-start_time
 			if writer is not None:
 				writer.write(atoms)

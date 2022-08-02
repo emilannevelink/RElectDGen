@@ -8,12 +8,13 @@ import pandas as pd
 from scipy.optimize import minimize
 import scipy.stats as stats
 import matplotlib.pyplot as plt
+import multiprocessing as mp
 
 from nequip.data import AtomicData, dataset_from_config, DataLoader
 from nequip.data.transforms import TypeMapper
 
 from . import optimization_functions
-from .optimization_functions import uncertainty_NN, uncertaintydistance_NN, uncertainty_ensemble_NN
+from .optimization_functions import uncertainty_NN, uncertaintydistance_NN, uncertainty_ensemble_NN, train_NN
 
 class uncertainty_base():
     def __init__(self, model, config, MLP_config):
@@ -788,7 +789,7 @@ class Nequip_ensemble_NN(uncertainty_base):
         for n in range(self.n_ensemble):
             state_dict_name = self.state_dict_func(n)
             if os.path.isfile(state_dict_name):
-                NN = uncertainty_ensemble_NN(self.model, self.latent_size, self.natoms, self.hidden_dimensions)
+                NN = uncertainty_ensemble_NN(self.latent_size, self.natoms, self.hidden_dimensions)
                 try:
                     NN.load_state_dict(torch.load(state_dict_name, map_location=self.device))
                     self.NNs.append(NN)
@@ -807,22 +808,45 @@ class Nequip_ensemble_NN(uncertainty_base):
         self.parse_data()
 
         if len(train_indices)>0:
-            
-            for n in train_indices:
-                print('training ensemble network ', n, flush=True)    
-                #train NN to fit energies
-                NN = uncertainty_ensemble_NN(self.model, self.latent_size, self.natoms, self.hidden_dimensions, epochs=self.unc_epochs,batch_size=self.unc_batch_size)
-                # NN = uncertainty_ensemble_NN(self.model, self.latent_size, self.hidden_dimensions)
-                uncertainty_training = self.config.get('uncertainty_training','energy')
-                if uncertainty_training=='energy':
-                    NN.train(self.train_embeddings, self.train_energies, self.validation_embeddings, self.validation_energies)
-                elif uncertainty_training=='forces':
-                    NN.train(self.train_embeddings, self.train_forces, self.validation_embeddings, self.validation_forces)
-                else:
-                    raise RuntimeError
-                    
-                print('Best loss ', NN.best_loss, flush=True)
+            NNs = []
+            ncores = self.config.get('train_NN_instances',1)
+            uncertainty_training = self.config.get('uncertainty_training','energy')
+            if uncertainty_training=='energy':
+                train_energy_forces = self.train_energies
+                validation_energy_forces = self.validation_energies
+            elif uncertainty_training=='forces':
+                train_energy_forces = self.train_forces
+                validation_energy_forces = self.validation_forces
+            if ncores == 1:
+                for n in train_indices:
+                    print('training ensemble network ', n, flush=True)    
+                    NN = uncertainty_ensemble_NN(self.latent_size, self.natoms, self.hidden_dimensions, epochs=self.unc_epochs,batch_size=self.unc_batch_size)
+                    NN = train_NN(NN, uncertainty_training,self.train_embeddings,train_energy_forces,self.validation_embeddings,validation_energy_forces,None,None)
+                    NNs.append(NN)
+            elif ncores >1:
+                ncores = min(ncores,len(train_indices))
+                def produce(semaphore, generator):
+                    for gen in generator:
+                        semaphore.acquire()
+                        yield gen
+
+                def consume(semaphore):#, result, results):
+                    semaphore.release()
+
+                pool = mp.Pool(ncores)
+                semaphore_1 = mp.Semaphore(ncores)
+                NNs = [uncertainty_ensemble_NN(self.latent_size, self.natoms, self.hidden_dimensions, epochs=self.unc_epochs,batch_size=self.unc_batch_size) for n in train_indices]
+                gen = ((NN,uncertainty_training,self.train_embeddings,train_energy_forces,self.validation_embeddings,validation_energy_forces,None,None) for NN in NNs)
+                for NN in pool.imap_unordered(train_NN, produce(semaphore_1,gen)):
+                    NNs.append(NN)
+                    semaphore_1.release()
+                pool.close()
+                pool.join()
+            print('done training')
+            print('Save NNs')
+            for n, NN in zip(train_indices,NNs):
                 self.NNs.append(NN)
+                print('Best loss ', NN.best_loss, flush=True)
                 torch.save(NN.get_state_dict(), self.state_dict_func(n))
                 pd.DataFrame(NN.metrics).to_csv( self.metrics_func(n))
 
@@ -885,7 +909,7 @@ class Nequip_ensemble_NN(uncertainty_base):
             force_lim = torch.max(force_norm,torch.ones_like(force_norm))
             perc_err = ((out['forces'].detach()-data['forces'])).abs()/force_lim
             
-            if perc_err.max() < self.config.get('UQ_dataset_error', .5):
+            if perc_err.max() < self.config.get('UQ_dataset_error', np.inf):
                 self.UQ_validation_indices = torch.cat([self.UQ_validation_indices, self.ML_train_indices[i].unsqueeze(dim=0)])
                 for key in self.MLP_config.get('chemical_symbol_to_type'):
                     mask = (data['atom_types']==self.MLP_config.get('chemical_symbol_to_type')[key]).flatten()
@@ -1014,7 +1038,7 @@ class Nequip_ensemble_NN(uncertainty_base):
             norm = torch.max(torch.ones_like(out['atomic_energy']),out['atomic_energy'].abs())
         elif uncertainty_training=='forces':
             uncertainties_mean = (self.pred_atom_energies.mean(dim=0)-out['forces'].norm(dim=1)).abs()
-            norm = torch.max(torch.ones_like(out['atomic_energy']),out['forces'].norm(dim=1).unsqueeze(1))
+            norm = torch.ones_like(out['atomic_energy']) #torch.max(torch.ones_like(out['atomic_energy']),out['forces'].norm(dim=1).unsqueeze(1))
         
         # uncertainties_mean = (pred_atom_energies-out['atomic_energy'].squeeze().unsqueeze(0)).abs().max(dim=0).values
         # uncertainty_mean = (pred_atom_energies.sum(dim=1)-out['total_energy'].squeeze()).abs().max(dim=0).values

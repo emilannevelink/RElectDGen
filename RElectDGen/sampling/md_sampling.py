@@ -8,9 +8,6 @@ from ase.md.velocitydistribution import MaxwellBoltzmannDistribution, ZeroRotati
 from ase import units
 from ase.md import MDLogger
 
-import yaml
-import torch
-
 from RElectDGen.utils.md_utils import md_func_from_config
 
 from ..uncertainty import models as uncertainty_models
@@ -30,8 +27,10 @@ def MD_sampling(config, loop_learning_count=1):
     traj_initial = sample_from_dataset(config)
     if len(traj_initial)>0 and not config.get('cluster', False) and not config.get('MD_from_initial', False): 
         supercell = traj_initial[0] #ensure you only sample from md
+        initialize_velocity=False #velocity already in traj
     else:
         supercell = get_initial_structure(config)
+        initialize_velocity=True
     
     
     #Delete Bondlength constraints
@@ -66,9 +65,10 @@ def MD_sampling(config, loop_learning_count=1):
 
     ### Run MLP MD
     MLP_dict['MLP_MD_temperature'] = config.get('MLP_MD_temperature') + (loop_learning_count-1)*config.get('MLP_MD_dT')
-    MaxwellBoltzmannDistribution(supercell, temperature_K=MLP_dict['MLP_MD_temperature'])
-    ZeroRotation(supercell)
-    Stationary(supercell)
+    if initialize_velocity:
+        MaxwellBoltzmannDistribution(supercell, temperature_K=MLP_dict['MLP_MD_temperature'])
+        ZeroRotation(supercell)
+        Stationary(supercell)
 
     print(MLP_dict['MLP_MD_temperature'],flush=True)
 
