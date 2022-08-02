@@ -25,15 +25,15 @@ def get_mae_from_results():
     results_metrics = os.path.join(results_dir,'metrics_epoch.csv')
     data = pd.read_csv(results_metrics)
 
-    best_ind = np.argmin(data[' validation_loss'])
+    best_ind = np.argmin(data['validation_loss'])
 
     mae_dict = {
-        'training_f_mae': float(data[' training_loss_f'][best_ind]),
-        'training_e_mae': float(data[' training_e_mae'][best_ind]),
-        'validation_f_mae': float(data[' validation_loss_f'][best_ind]),
-        'validation_e_mae': float(data[' validation_e_mae'][best_ind]),
-        'best_training_loss': float(np.min(data[' training_loss'])),
-        'best_validation_loss': float(np.min(data[' validation_loss'])),
+        'training_f_mae': float(data['training_loss_f'][best_ind]),
+        'training_e_mae': float(data['training_e_mae'][best_ind]),
+        'validation_f_mae': float(data['validation_loss_f'][best_ind]),
+        'validation_e_mae': float(data['validation_e_mae'][best_ind]),
+        'best_training_loss': float(np.min(data['training_loss'])),
+        'best_validation_loss': float(np.min(data['validation_loss'])),
     }
 
     return mae_dict
@@ -68,12 +68,18 @@ def add_checks_to_config(config, checks):
     return config
 
 def get_dataset_sizes(config, tmp_filename):
+    if not os.path.isfile(tmp_filename):
+        return 1, 0 #just return two numbers that aren't the same
+    
     with open(tmp_filename,'r') as fl:
         tmp_dict = json.load(fl)
 
-    current_dataset_size = tmp_dict['dataset_size']
+    current_dataset_size = tmp_dict.get('dataset_size',0)
 
-    log_filename = os.path.join(config.get('data_directory'),config.get('log_filename'))
+    try:
+        log_filename = os.path.join(config.get('data_directory'),config.get('log_filename'))
+    except:
+        return 1,0
     if os.path.isfile(log_filename):
         logcsv = pd.read_csv(log_filename)
         last_dataset_size = logcsv['dataset_size'].values[-1]

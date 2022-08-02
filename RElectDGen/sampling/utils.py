@@ -168,7 +168,7 @@ def sample_from_dataset(config):
     )
     if os.path.isfile(trajectory_file_name):
         traj = read(trajectory_file_name, index=':')
-        max_samples = int(min([0.1*len(traj), config.get('max_samples')]))
+        max_samples = int(min([max([1,0.1*len(traj)]), config.get('max_samples')]))
         n_adversarial_samples = int(config.get('n_adversarial_samples',2*max_samples))
         
         traj_indices = torch.randperm(len(traj))[:2*n_adversarial_samples].numpy()
