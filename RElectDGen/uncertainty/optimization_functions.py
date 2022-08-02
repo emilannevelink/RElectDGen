@@ -785,11 +785,23 @@ class uncertainty_ensemble_NN():
     def load_state_dict(self, state_dict):
         self.model.load_state_dict(state_dict)
 
-def train_NN(NN,uncertainty_training,train_embeddings,train_energy_forces,validation_embeddings,validation_energy_forces,other_embeddings,other_energy_forces):
-        if uncertainty_training=='energy':
-            NN.train(train_embeddings, train_energy_forces, validation_embeddings, validation_energy_forces)
-        elif uncertainty_training=='forces':
+def train_NN(args):
+    NN,uncertainty_training,train_embeddings,train_energy_forces,validation_embeddings,validation_energy_forces,other_embeddings,other_energy_forces = args
+    print(uncertainty_training)
+    if uncertainty_training=='energy':
+        if other_embeddings is None:
             NN.train(train_embeddings, train_energy_forces, validation_embeddings, validation_energy_forces)
         else:
-            raise RuntimeError
-        return NN
+            NN.fine_tune(train_embeddings, train_energy_forces, validation_embeddings, validation_energy_forces,other_embeddings,other_energy_forces)
+    elif uncertainty_training=='forces':
+        if other_embeddings is None:
+            NN.train(train_embeddings, train_energy_forces, validation_embeddings, validation_energy_forces)
+        else:
+            NN.fine_tune(train_embeddings, train_energy_forces, validation_embeddings, validation_energy_forces,other_embeddings,other_energy_forces)
+    else:
+        raise RuntimeError
+    return NN
+
+# def train_NN(args):
+#     NN,uncertainty_training,train_embeddings,train_energy_forces,validation_embeddings,validation_energy_forces,other_embeddings,other_energy_forces = args
+#     print(NN)

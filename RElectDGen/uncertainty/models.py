@@ -808,7 +808,7 @@ class Nequip_ensemble_NN(uncertainty_base):
         self.parse_data()
 
         if len(train_indices)>0:
-            NNs = []
+            NNs_trained = []
             ncores = self.config.get('train_NN_instances',1)
             uncertainty_training = self.config.get('uncertainty_training','energy')
             if uncertainty_training=='energy':
@@ -821,30 +821,21 @@ class Nequip_ensemble_NN(uncertainty_base):
                 for n in train_indices:
                     print('training ensemble network ', n, flush=True)    
                     NN = uncertainty_ensemble_NN(self.latent_size, self.natoms, self.hidden_dimensions, epochs=self.unc_epochs,batch_size=self.unc_batch_size)
-                    NN = train_NN(NN, uncertainty_training,self.train_embeddings,train_energy_forces,self.validation_embeddings,validation_energy_forces,None,None)
-                    NNs.append(NN)
+                    NN = train_NN((NN, uncertainty_training,self.train_embeddings,train_energy_forces,self.validation_embeddings,validation_energy_forces,None,None))
+                    NNs_trained.append(NN)
             elif ncores >1:
                 ncores = min(ncores,len(train_indices))
-                def produce(semaphore, generator):
-                    for gen in generator:
-                        semaphore.acquire()
-                        yield gen
 
-                def consume(semaphore):#, result, results):
-                    semaphore.release()
+                NNs_init = [uncertainty_ensemble_NN(self.latent_size, self.natoms, self.hidden_dimensions, epochs=self.unc_epochs,batch_size=self.unc_batch_size) for n in train_indices]
+                gen = ((NN,uncertainty_training,self.train_embeddings,train_energy_forces,self.validation_embeddings,validation_energy_forces,None,None) for NN in NNs_init)
+                
+                with mp.Pool(ncores) as pool:
+                    for NN in pool.map(train_NN,gen):
+                        NNs_trained.append(NN)
 
-                pool = mp.Pool(ncores)
-                semaphore_1 = mp.Semaphore(ncores)
-                NNs = [uncertainty_ensemble_NN(self.latent_size, self.natoms, self.hidden_dimensions, epochs=self.unc_epochs,batch_size=self.unc_batch_size) for n in train_indices]
-                gen = ((NN,uncertainty_training,self.train_embeddings,train_energy_forces,self.validation_embeddings,validation_energy_forces,None,None) for NN in NNs)
-                for NN in pool.imap_unordered(train_NN, produce(semaphore_1,gen)):
-                    NNs.append(NN)
-                    semaphore_1.release()
-                pool.close()
-                pool.join()
             print('done training')
             print('Save NNs')
-            for n, NN in zip(train_indices,NNs):
+            for n, NN in zip(train_indices,NNs_trained):
                 self.NNs.append(NN)
                 print('Best loss ', NN.best_loss, flush=True)
                 torch.save(NN.get_state_dict(), self.state_dict_func(n))
@@ -852,14 +843,27 @@ class Nequip_ensemble_NN(uncertainty_base):
 
     def fine_tune(self, embeddings, energies_or_forces):
         print('Fine Tuning Ensemble', flush=True)
-        for NN in self.NNs:
-            uncertainty_training = self.config.get('uncertainty_training','energy')
-            if uncertainty_training=='energy':
-                NN.fine_tune(self.train_embeddings,self.train_energies,self.validation_embeddings,self.validation_energies,embeddings, energies_or_forces)
-            elif uncertainty_training=='forces':
-                NN.fine_tune(self.train_embeddings,self.train_forces,self.validation_embeddings,self.validation_forces,embeddings, energies_or_forces)
-            else:
-                raise RuntimeError
+        uncertainty_training = self.config.get('uncertainty_training','energy')
+        if uncertainty_training=='energy':
+            train_energy_forces = self.train_energies
+            validation_energy_forces = self.validation_energies
+        elif uncertainty_training=='forces':
+            train_energy_forces = self.train_forces
+            validation_energy_forces = self.validation_forces
+        ncores = self.config.get('train_NN_instances',1)
+        if ncores == 1:
+            for NN in self.NNs:
+                train_NN((NN, uncertainty_training,self.train_embeddings,train_energy_forces,self.validation_embeddings,validation_energy_forces,embeddings,energies_or_forces))
+        elif ncores >1:
+            ncores = min(ncores,len(self.NNs))
+
+            gen = ((NN,uncertainty_training,self.train_embeddings,train_energy_forces,self.validation_embeddings,validation_energy_forces,embeddings,energies_or_forces) for NN in self.NNs)
+            NNs_tuned = []
+            with mp.Pool(ncores) as pool:
+                for NN in pool.map(train_NN,gen):
+                    NNs_tuned.append(NN)
+
+            self.NNs = NNs_tuned
         
     def parse_data(self):
         dataset = dataset_from_config(self.MLP_config)
@@ -902,6 +906,7 @@ class Nequip_ensemble_NN(uncertainty_base):
             test_forces[key] = torch.empty((0),device=self.device)
             test_indices[key] = torch.empty(0,dtype=int).to(self.device)
         
+        error_threshold=self.config.get('UQ_dataset_error', np.inf)
         for i, data in enumerate(self.train_dataset):
             out = self.model(self.transform_data_input(data))
 
@@ -909,8 +914,8 @@ class Nequip_ensemble_NN(uncertainty_base):
             force_lim = torch.max(force_norm,torch.ones_like(force_norm))
             perc_err = ((out['forces'].detach()-data['forces'])).abs()/force_lim
             
-            if perc_err.max() < self.config.get('UQ_dataset_error', np.inf):
-                self.UQ_validation_indices = torch.cat([self.UQ_validation_indices, self.ML_train_indices[i].unsqueeze(dim=0)])
+            if perc_err.max() < error_threshold:
+                self.UQ_train_indices = torch.cat([self.UQ_train_indices, self.ML_train_indices[i].unsqueeze(dim=0)])
                 for key in self.MLP_config.get('chemical_symbol_to_type'):
                     mask = (data['atom_types']==self.MLP_config.get('chemical_symbol_to_type')[key]).flatten()
                     
@@ -950,7 +955,7 @@ class Nequip_ensemble_NN(uncertainty_base):
             force_lim = torch.max(force_norm,torch.ones_like(force_norm))
             perc_err = ((out['forces'].detach()-data['forces'])).abs()/force_lim
             
-            if perc_err.max() < self.config.get('UQ_dataset_error', .5):
+            if perc_err.max() < error_threshold:
                 self.UQ_validation_indices = torch.cat([self.UQ_validation_indices, self.ML_validation_indices[i].unsqueeze(dim=0)])
                 for key in self.MLP_config.get('chemical_symbol_to_type'):
                     mask = (data['atom_types']==self.MLP_config.get('chemical_symbol_to_type')[key]).flatten()
@@ -1391,3 +1396,6 @@ class Nequip_ensemble_NN(uncertainty_base):
             plt.savefig(filename)
             plt.close()
 
+
+def f(x):
+    return x*x
