@@ -24,7 +24,7 @@ def shell_from_config(config):
     python_nodes = config.get('nodes',1)
 
     conda_environment = config.get('conda_env', 'nequip')
-    spack_environment = config.get('spack_env', 'py-gpaw')
+    spack_environment = config.get('spack_env', '/ry23232 #py-gpaw')
 
     for file in filenames:
         fname = os.path.join(location,file)
