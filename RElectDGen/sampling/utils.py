@@ -4,6 +4,7 @@ import torch
 
 from ase.io import read
 from nequip.data import AtomicData
+from ase.io.formats import UnknownFileTypeError
 
 def sort_by_uncertainty(traj, embeddings, UQ, max_samples, min_uncertainty=0.04, max_uncertainty=np.inf):
 
@@ -167,7 +168,12 @@ def sample_from_dataset(config):
         config.get('trajectory_file')
     )
     if os.path.isfile(trajectory_file_name):
-        traj = read(trajectory_file_name, index=':')
+        try:
+            traj = read(trajectory_file_name, index=':')
+        except UnknownFileTypeError:
+            print('removing unknown traj file format')
+            os.remove(trajectory_file_name)
+            return []
         max_samples = int(min([max([1,0.1*len(traj)]), config.get('max_samples')]))
         n_adversarial_samples = int(config.get('n_adversarial_samples',2*max_samples))
         
