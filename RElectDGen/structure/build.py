@@ -19,14 +19,14 @@ def structure_from_config(config):
     if config.get('slab_direction') is not None and config.get('mixture') is not None:
         ### Generate Slab
         vacuum = config.get('vacuum')
-        config['vacuum'] = 2
+        config['vacuum'] = config.get('adsorbate_height',1)
         supercell = create_slab(config)
 
         slab_area = np.prod(supercell.cell.diagonal()[:2])
         molecule_volume = np.prod(config.get('cell'))
 
         print('Cell z dimension changed from ' + str(config.get('cell')[2]) + f' to {molecule_volume/slab_area}')
-        cell_diag = [*supercell.cell.diagonal()[:2],molecule_volume/slab_area]
+        cell_diag = [*supercell.cell.diagonal()[:2]-config.get('molecule_separation')/2,molecule_volume/slab_area]
         config['cell'] = np.identity(3)*cell_diag
 
         packmolpath = os.path.join(config.get('directory'),config.get('path_to_packmol_inputs'))
@@ -36,6 +36,8 @@ def structure_from_config(config):
             tolerance=config.get('molecule_separation'),
             packmolpath=packmolpath)
 
+        cell_diag = [*supercell.cell.diagonal()[:2],molecule_volume/slab_area]
+        molecules.set_cell(np.identity(3)*cell_diag)
         atomspath = os.path.join(config.get('data_directory'),config.get('atomspath','data/molecules/atoms'))
         molecule_charges = getchargesforpackmol(config.get('molecule'),
                                                 config.get('nmolecules'),
