@@ -401,7 +401,7 @@ class uncertainty_ensemble_NN():
     natoms,
     hidden_dimensions=[], 
     act=torch.nn.ReLU, 
-    batch_size=100,
+    batch_size=500,
     epochs=2000, 
     lr = 0.001, 
     momentum=0.9,
