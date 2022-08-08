@@ -97,9 +97,11 @@ def shell_from_config(config):
 
         else:
             # commands = [f'spack load {spack_environment}']
-            commands = [f'spack env activate {spack_environment}']
+            commands = [
+                f'spack env activate {spack_environment}',
+                'spack load py-gpaw'
+            ]
             
-
             if 'MD' in file:
                 file = os.path.join(config.get('scripts_path'),'gpaw_MD.py')
                 commands += [f'srun  --mpi=pmix  -n {gpaw_cores}' + f' gpaw python {file} --config_file $1 --MLP_config_file $2']
