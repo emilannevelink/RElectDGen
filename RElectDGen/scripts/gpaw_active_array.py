@@ -8,6 +8,7 @@ from ase.parallel import world
 
 from RElectDGen.calculate.recalculate import recalculate_traj_energies
 from RElectDGen.calculate.calculator import oracle_from_config
+from RElectDGen.structure.utils import extend_z
 
 
 def parse_command_line(argsin):
@@ -50,6 +51,9 @@ def main(args=None):
             writer = Trajectory(calc_file,'w')
 
             atoms = traj_calc[array_index]
+
+            atoms = extend_z(atoms,config)
+
             recalculate_traj_energies([atoms], config=config, writer=writer)#,rewrite_pbc=True)
             traj = Trajectory(calc_file)
             if world.rank == 0:

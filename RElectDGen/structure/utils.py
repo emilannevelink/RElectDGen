@@ -58,3 +58,19 @@ def reassign_cluster_charges(atoms, clusters, FragmentDB, run_dir = ''):
         print('Fragment DB is none')
 
     return atoms
+
+def extend_z(atoms, config):
+    if atoms.get_pbc()[2] or sum(atoms.get_pbc())!=2:
+        return atoms
+
+    atoms_copy = copy.deepcopy(atoms)
+    vacuum = config.get('vacuum')
+    atoms_copy.center(vacuum = vacuum,axis=2)
+
+    z_tolerance = config.get('z_tolerance',0)
+    z_difference = atoms_copy.get_cell()[2,2] - atoms.get_cell()[2,2]
+    if z_difference > 0 and z_difference < z_tolerance:
+        return atoms_copy
+    else:
+        return atoms
+    
