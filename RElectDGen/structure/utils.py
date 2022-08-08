@@ -70,6 +70,7 @@ def extend_z(atoms, config):
     z_tolerance = config.get('z_tolerance',0)
     z_difference = atoms_copy.get_cell()[2,2] - atoms.get_cell()[2,2]
     if z_difference > 0 and z_difference < z_tolerance:
+        print(f'Changed supercell z dimension by {z_difference}', flush=True)
         return atoms_copy
     else:
         return atoms
