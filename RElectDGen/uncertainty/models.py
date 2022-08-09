@@ -817,6 +817,9 @@ class Nequip_ensemble_NN(uncertainty_base):
             elif uncertainty_training=='forces':
                 train_energy_forces = self.train_forces
                 validation_energy_forces = self.validation_forces
+            
+            ncores = min(ncores,len(train_indices))
+            ncores = 1 #multiprocessing doesn't work yet
             if ncores == 1:
                 for n in train_indices:
                     print('training ensemble network ', n, flush=True)    
@@ -824,8 +827,7 @@ class Nequip_ensemble_NN(uncertainty_base):
                     NN = train_NN((NN, uncertainty_training,self.train_embeddings,train_energy_forces,self.validation_embeddings,validation_energy_forces,None,None))
                     NNs_trained.append(NN)
             elif ncores >1:
-                ncores = min(ncores,len(train_indices))
-
+            
                 NNs_init = [uncertainty_ensemble_NN(self.latent_size, self.natoms, self.hidden_dimensions, epochs=self.unc_epochs,batch_size=self.unc_batch_size) for n in train_indices]
                 gen = ((NN,uncertainty_training,self.train_embeddings,train_energy_forces,self.validation_embeddings,validation_energy_forces,None,None) for NN in NNs_init)
                 
@@ -858,6 +860,7 @@ class Nequip_ensemble_NN(uncertainty_base):
             train_energy_forces = self.train_forces
             validation_energy_forces = self.validation_forces
         ncores = self.config.get('train_NN_instances',1)
+        ncores = 1 #multiprocessing doesn't work yet
         if ncores == 1:
             for NN in self.NNs:
                 train_NN((NN, uncertainty_training,self.train_embeddings,train_energy_forces,self.validation_embeddings,validation_energy_forces,embeddings,energies_or_forces))
