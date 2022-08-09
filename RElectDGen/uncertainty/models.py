@@ -829,9 +829,16 @@ class Nequip_ensemble_NN(uncertainty_base):
                 NNs_init = [uncertainty_ensemble_NN(self.latent_size, self.natoms, self.hidden_dimensions, epochs=self.unc_epochs,batch_size=self.unc_batch_size) for n in train_indices]
                 gen = ((NN,uncertainty_training,self.train_embeddings,train_energy_forces,self.validation_embeddings,validation_energy_forces,None,None) for NN in NNs_init)
                 
+                def produce(semaphore, generator):
+                    for gen in generator:
+                        semaphore.acquire()
+                        yield gen
+
+                semaphore = mp.Semaphore(ncores)
                 with mp.Pool(ncores) as pool:
-                    for NN in pool.map(train_NN,gen):
+                    for NN in pool.imap_unordered(train_NN,produce(semaphore,gen)):
                         NNs_trained.append(NN)
+                        semaphore.release()
 
             print('done training')
             print('Save NNs')
@@ -859,9 +866,16 @@ class Nequip_ensemble_NN(uncertainty_base):
 
             gen = ((NN,uncertainty_training,self.train_embeddings,train_energy_forces,self.validation_embeddings,validation_energy_forces,embeddings,energies_or_forces) for NN in self.NNs)
             NNs_tuned = []
+            def produce(semaphore, generator):
+                for gen in generator:
+                    semaphore.acquire()
+                    yield gen
+
+            semaphore = mp.Semaphore(ncores)
             with mp.Pool(ncores) as pool:
-                for NN in pool.map(train_NN,gen):
+                for NN in pool.imap_unordered(train_NN,produce(semaphore,gen)):
                     NNs_tuned.append(NN)
+                    semaphore.release()
 
             self.NNs = NNs_tuned
         
