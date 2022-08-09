@@ -9,6 +9,9 @@ def md_func_from_config(config,temperature=None,prefix='MLP'):
         'timestep': config.get(f'{prefix}_MD_timestep') * units.fs
     }
     md_func_name = config.get('MD_sampling_func', 'nvt')
+    if 'npt' in md_func_name and 'GPAW' in prefix:
+        print('GPAW doesnt support stresses, reverting to NVT')
+        md_func_name = 'nvt'
     if md_func_name == 'nve':
         from ase.md.verlet import VelocityVerlet as md_func
     elif md_func_name == 'nvt':
