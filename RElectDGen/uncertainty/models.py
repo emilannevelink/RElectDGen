@@ -819,7 +819,7 @@ class Nequip_ensemble_NN(uncertainty_base):
                 validation_energy_forces = self.validation_forces
             
             ncores = min(ncores,len(train_indices))
-            ncores = 1 #multiprocessing doesn't work yet
+            ncores = 1 #multiprocessing doesn't work yet I think its a slurm issue
             if ncores == 1:
                 for n in train_indices:
                     print('training ensemble network ', n, flush=True)    
