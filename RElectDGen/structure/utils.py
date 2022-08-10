@@ -4,6 +4,8 @@ import numpy as np
 
 from ase.io import read
 
+from RElectDGen.structure.build import structure_from_config
+
 def reassign_cluster_charges(atoms, clusters, FragmentDB, run_dir = ''):
     nclusters = clusters.n_components
     initial_charges = copy.copy(atoms.get_initial_charges())
@@ -68,9 +70,23 @@ def extend_z(atoms, config):
     atoms_copy.center(vacuum = vacuum,axis=2)
 
     z_tolerance = config.get('z_tolerance',0)
-    z_difference = atoms_copy.get_cell()[2,2] - atoms.get_cell()[2,2]
-    if z_difference > 0 and z_difference < z_tolerance:
-        print(f'Changed supercell z dimension by {z_difference}', flush=True)
+
+    initial_structure = structure_from_config(config)
+
+    z_difference_0 = atoms_copy.get_cell()[2,2] - initial_structure.get_cell()[2,2]
+    z_difference_rel = atoms_copy.get_cell()[2,2] - atoms.get_cell()[2,2]
+    if z_difference_0 > 0 and z_difference_0 < z_tolerance:
+        print(f'Changed supercell z dimension by {z_difference_rel}', flush=True)
+        return atoms_copy
+    elif z_difference_0 < 0:
+        atoms_copy.set_cell(initial_structure.get_cell())
+        print('Reset cell to initial cell')
+        return atoms_copy
+    elif z_difference_0 > z_tolerance:
+        cell = initial_structure.get_cell()
+        cell[2,2] += z_tolerance
+        atoms_copy.set_cell(cell)
+        print('Set cell to max')
         return atoms_copy
     else:
         return atoms
