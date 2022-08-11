@@ -3,6 +3,7 @@ import os
 import numpy as np
 
 from ase.io import read
+from ase.parallel import world
 
 from RElectDGen.structure.build import get_initial_structure
 
@@ -75,18 +76,23 @@ def extend_z(atoms, config):
 
     z_difference_0 = atoms_copy.get_cell()[2,2] - initial_structure.get_cell()[2,2]
     z_difference_rel = atoms_copy.get_cell()[2,2] - atoms.get_cell()[2,2]
+    if world.rank == 0:
+        print(z_difference_0,flush=True)
     if z_difference_0 > 0 and z_difference_0 < z_tolerance:
-        print(f'Changed supercell z dimension by {z_difference_rel}', flush=True)
+        if world.rank == 0:
+            print(f'Changed supercell z dimension by {z_difference_rel}', flush=True)
         return atoms_copy
     elif z_difference_0 < 0:
         atoms_copy.set_cell(initial_structure.get_cell())
-        print('Reset cell to initial cell')
+        if world.rank == 0:
+            print('Reset cell to initial cell')
         return atoms_copy
     elif z_difference_0 > z_tolerance:
         cell = initial_structure.get_cell()
         cell[2,2] += z_tolerance
         atoms_copy.set_cell(cell)
-        print('Set cell to max')
+        if world.rank == 0:
+            print('Set cell to max')
         return atoms_copy
     else:
         return atoms
