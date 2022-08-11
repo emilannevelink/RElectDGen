@@ -1,14 +1,17 @@
 import numpy as np
 from ase import units
 
-def md_func_from_config(config,temperature=None):
+def md_func_from_config(config,temperature=None,prefix='MLP'):
     if temperature is None:
-        temperature = config.get('MLP_MD_temperature')
+        temperature = config.get(f'{prefix}_MD_temperature')
         
     md_kwargs = {
-        'timestep': config.get('MLP_MD_timestep') * units.fs
+        'timestep': config.get(f'{prefix}_MD_timestep') * units.fs
     }
     md_func_name = config.get('MD_sampling_func', 'nvt')
+    if 'npt' in md_func_name and 'GPAW' in prefix:
+        print('GPAW doesnt support stresses, reverting to NVT')
+        md_func_name = 'nvt'
     if md_func_name == 'nve':
         from ase.md.verlet import VelocityVerlet as md_func
     elif md_func_name == 'nvt':
