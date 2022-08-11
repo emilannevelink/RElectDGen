@@ -180,6 +180,13 @@ def MD_sampling(config, loop_learning_count=1):
     uncertainty = uncertainty[:max_index]
     config['sorted'] = sorted
 
+    ### Sort trajectory from high to low
+    unc_sorted = uncertainty.sum(dim=-1).max(dim=-1).values.sort()
+    traj = [traj[i] for i in unc_sorted.indices.flipud()]
+    uncertainty = uncertainty[unc_sorted.indices.flipud()]
+    print('Uncertainties sorted', unc_sorted.values.flipud())
+    print('Indices sorted', unc_sorted.indices.flipud())
+
     # Create a function for clustering later
     # print('isolating uncertain clusters', flush=True)
     # clusters, cluster_uncertainties = clusters_from_traj(traj, uncertainty, **config)

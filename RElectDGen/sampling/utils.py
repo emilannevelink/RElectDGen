@@ -131,7 +131,8 @@ def finetune_downselect(traj, embeddings, UQ, min_uncertainty=0.04, max_uncertai
         keep_energies[key] = torch.empty(0, device=UQ.device)
 
     for i, (embedding_i, atoms) in enumerate(zip(embeddings,traj)):
-        
+        if len(calc_inds) >= UQ.config.get('max_samples', len(traj)):
+            break
         active_uncertainty = UQ.predict_uncertainty(atoms, embedding_i, extra_embeddings=keep_embeddings, type='std').detach().cpu().numpy()
         active_uncertainty = active_uncertainty.sum(axis=-1)
 

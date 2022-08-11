@@ -179,6 +179,12 @@ def adv_sampling(config, traj_initial=[], loop_learning_count=1):
             'adv_std_uncertainty': adv_dict['adv_error_std']<config.get('UQ_min_uncertainty')/2,
             'adv_position_difference': float(np.max(positions_differences)) < config.get('minimum_position_difference', 0.05)
         }
+
+        sorted_indices = np.argsort(uncertainties.sum(axis=-1))[::-1]
+        traj_adv = [traj_adv[i] for i in sorted_indices]
+        uncertainties = uncertainties[sorted_indices]
+        print('Uncertainties sorted', uncertainties.sum(axis=-1)[sorted_indices])
+        print('Indices sorted', sorted_indices)
     else:
         checks = {
             'adv_mean_uncertainty': False,
