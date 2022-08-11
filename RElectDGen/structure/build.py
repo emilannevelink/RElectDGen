@@ -13,8 +13,9 @@ def structure_from_config(config):
     config = config.copy()
     constraints = []
     # Load initial structure if it exists
-    if config.get('initial_structure') is not None:
-        return read(config.get('initial_structure'))
+    structure_file = os.path.join(config.get('data_directory'),config.get('structure_file'))
+    if os.path.isfile(structure_file):
+        return read(structure_file)
         
     if config.get('slab_direction') is not None and config.get('mixture') is not None:
         ### Generate Slab

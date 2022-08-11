@@ -4,7 +4,7 @@ import numpy as np
 
 from ase.io import read
 
-from RElectDGen.structure.build import structure_from_config
+from RElectDGen.structure.build import get_initial_structure
 
 def reassign_cluster_charges(atoms, clusters, FragmentDB, run_dir = ''):
     nclusters = clusters.n_components
@@ -71,7 +71,7 @@ def extend_z(atoms, config):
 
     z_tolerance = config.get('z_tolerance',0)
 
-    initial_structure = structure_from_config(config)
+    initial_structure = get_initial_structure(config)
 
     z_difference_0 = atoms_copy.get_cell()[2,2] - initial_structure.get_cell()[2,2]
     z_difference_rel = atoms_copy.get_cell()[2,2] - atoms.get_cell()[2,2]
