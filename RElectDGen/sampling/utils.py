@@ -1,9 +1,11 @@
+from genericpath import isfile
 import os
 import numpy as np
 import torch
 
 from ase.io import read
 from nequip.data import AtomicData
+from RElectDGen.structure.build import get_initial_structure
 
 def sort_by_uncertainty(traj, embeddings, UQ, max_samples, min_uncertainty=0.04, max_uncertainty=np.inf):
 
@@ -200,3 +202,17 @@ def sample_from_dataset(config):
 
     traj = traj_md
     return traj
+
+def sample_from_initial_structures(config):
+    initial_structures_filename = os.path.join(
+        config.get('data_directory'),
+        config.get('initial_structures_file','')
+    )
+    if os.path.isfile(initial_structures_filename):
+        traj = read(initial_structures_filename,index=':')
+        traj_index = torch.randperm(len(traj))[0]
+        supercell = traj[traj_index]
+    else:
+        supercell = get_initial_structure(config)
+        
+    return supercell

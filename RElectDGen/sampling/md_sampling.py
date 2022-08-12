@@ -7,6 +7,7 @@ from ase.io.trajectory import Trajectory
 from ase.md.velocitydistribution import MaxwellBoltzmannDistribution, ZeroRotation, Stationary
 from ase import units
 from ase.md import MDLogger
+from RElectDGen.utils.io import add_to_trajectory
 
 from RElectDGen.utils.md_utils import md_func_from_config
 
@@ -17,19 +18,24 @@ from ..utils.logging import write_to_tmp_dict, add_checks_to_config
 from ..structure.build import get_initial_structure
 import time
 from .utils import sort_by_uncertainty
-from ..sampling.utils import sample_from_dataset
+from ..sampling.utils import sample_from_dataset, sample_from_initial_structures
+from ..structure.segment import clusters_from_traj
 
 def MD_sampling(config, loop_learning_count=1):
     print('Starting timer', flush=True)
     start = time.time()
     MLP_dict = {}
     
+    supercell = get_initial_structure(config)
     traj_initial = sample_from_dataset(config)
-    if len(traj_initial)>0 and not config.get('cluster', False) and not config.get('MD_from_initial', False): 
+    if (
+        len(traj_initial)>0 and 
+        not (config.get('cluster', False) or len(traj_initial[0])<len(supercell)) and 
+        not config.get('MD_from_initial', False)): 
         supercell = traj_initial[0] #ensure you only sample from md
         initialize_velocity=False #velocity already in traj
     else:
-        supercell = get_initial_structure(config)
+        supercell = sample_from_initial_structures(config)
         initialize_velocity=True
     
     
@@ -183,9 +189,11 @@ def MD_sampling(config, loop_learning_count=1):
     uncertainty = uncertainty[:max_index]
     config['sorted'] = sorted
 
-    # Create a function for clustering later
-    # print('isolating uncertain clusters', flush=True)
-    # clusters, cluster_uncertainties = clusters_from_traj(traj, uncertainty, **config)
+    # Cluster atoms objects that are too large
+    if len(supercell) > config.get('max_atoms_to_segment',np.inf):
+        print('isolating uncertain clusters', flush=True)
+        uncertainty_sum = uncertainty.sum(axis=-1) #reduce err and std to single value
+        traj, uncertainty = clusters_from_traj(traj, uncertainty_sum, **config)
 
     tmp1 = time.time()
     print('Time to segment clusters', tmp1-tmp0, 'Elapsed time ', tmp1-start, flush=True)
@@ -208,6 +216,18 @@ def MD_sampling(config, loop_learning_count=1):
 
         checks['MD_count'] = len(traj_uncertain)<=config.get('number_of_samples_check_value',config.get('max_samples')/2)
     
+    ## Add last supercell to initial structures if no atoms were uncertain and
+    ## at maximum timestep
+    if (
+        sum(uncertainty.sum(dim=-1).max(dim=-1).values>min_uncertainty)==0 and
+        config.get('MLP_MD_steps') >= config.get('max_MLP_MD_steps',4000)
+    ):
+        print('Adding to initial structures')
+        initial_structures_filename = os.path.join(
+            config.get('data_directory'),
+            config.get('initial_structures_file','')
+        )
+        add_to_trajectory(traj[-1],initial_structures_filename)
 
     print('checks: ', checks)
 

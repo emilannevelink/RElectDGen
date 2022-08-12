@@ -8,6 +8,8 @@ import numpy as np
 from ase.constraints import FixAtoms, FixBondLengths
 import uuid
 
+from RElectDGen.utils.io import add_to_trajectory
+
 
 def structure_from_config(config):
     config = config.copy()
@@ -294,5 +296,11 @@ def get_initial_structure(config):
     else:
         supercell = structure_from_config(config)
         write(structure_file,supercell)
+        if config.get('initial_structures_file') is not None:
+            initial_structures_filename = os.path.join(
+                config.get('data_directory'),
+                config.get('initial_structures_file')
+            )
+            add_to_trajectory(supercell,initial_structures_filename)
 
     return supercell

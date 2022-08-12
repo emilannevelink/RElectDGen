@@ -568,7 +568,7 @@ def clusters_from_traj(
     max_cluster_size: int = 40,
     sorted: bool = True,
     cores: int = 1,
-    segment_type: str = 'uncertain',
+    segment_type: str = 'distance',
     max_volume_per_atom: int = 150,
     max_samples: int = 10,
     molecule_vacuum: float = 2.0,
