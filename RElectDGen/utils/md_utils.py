@@ -37,5 +37,6 @@ def md_func_from_config(config,temperature=None,prefix='MLP'):
         else:
             md_kwargs['pfactor'] = (ptime*units.fs)**2*0.6 #convert ptime to pfactor
         md_kwargs['mask'] = np.eye(3) # only cell vectors to change magnitude; disallow shear
+        config['MLP_MD_steps']+=1 # Different dynamics are called, so this makes NPT have the same number of steps
 
     return md_func, md_kwargs
