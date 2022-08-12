@@ -84,8 +84,11 @@ def MD_sampling(config, loop_learning_count=1):
     trajectory_file = os.path.join(config.get('data_directory'),config.get('MLP_trajectory_file'))
     traj = Trajectory(trajectory_file, 'w', supercell)
     dyn.attach(traj.write, interval=1)
+    nsteps = config.get('MLP_MD_steps')
+    if 'npt' in str(type(dyn)).lower():
+        nsteps += 1 # Fix different number of steps between NVE / NVT and NPT
     try:
-        dyn.run(config.get('MLP_MD_steps'))
+        dyn.run(nsteps)
     except ValueError:
         print('Value Error: MLP isnt good enough for current number of steps')
     traj.close()
