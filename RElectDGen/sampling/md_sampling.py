@@ -95,7 +95,8 @@ def MD_sampling(config, loop_learning_count=1):
         nsteps += 1 # Fix different number of steps between NVE / NVT and NPT
     try:
         dyn.run(nsteps)
-    except ValueError:
+    except (ValueError, RuntimeError) as e:
+        print(e)
         print('Value Error: MLP isnt good enough for current number of steps')
     traj.close()
 
