@@ -166,6 +166,7 @@ class segment_atoms():
                         pure_slab = create_slab(self.slab_config)
                         cell = pure_slab.cell.diagonal()
                         min_cluster = np.absolute(self.atoms[cluster_indices].positions[:,2]-self.atoms[idx].position[2]).min()
+                        ## Check if uncertain ind is close to the lithium slab
                         if min_cluster <= cell[2]/2:
                             print('segment slab', flush=True)
                             cluster, cluster_indices = self.segment_slab(cluster_indices, slab_indices)
@@ -571,6 +572,7 @@ def clusters_from_traj(
     segment_type: str = 'distance',
     max_volume_per_atom: int = 150,
     max_samples: int = 10,
+    max_atoms_to_segment: int = np.inf,
     molecule_vacuum: float = 2.0,
     overlap_radius: float = 0.5,
     max_electrons: int = 300,
@@ -581,6 +583,8 @@ def clusters_from_traj(
     fragment_type: str = 'iterative',
     **kwargs,
 ):
+
+    max_samples = min(max_samples, max_atoms_to_segment)
 
     ncores = mp.cpu_count()
     
