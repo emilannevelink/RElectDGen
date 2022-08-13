@@ -220,7 +220,7 @@ def MD_sampling(config, loop_learning_count=1):
     ## Add last supercell to initial structures if no atoms were uncertain and
     ## at maximum timestep
     if (
-        sum(uncertainty.sum(dim=-1).max(dim=-1).values>min_uncertainty)==0 and
+        len(traj_uncertain)==0 and checks['MD_max_index'] and
         config.get('MLP_MD_steps') >= config.get('max_MLP_MD_steps',4000)
     ):
         print('Adding to initial structures')
