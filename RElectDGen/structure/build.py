@@ -64,7 +64,10 @@ def structure_from_config(config):
             a0 = config.get('crystal_a0')
             if isinstance(a0, float):
                 a = b = c = a0
-            supercell = bulk(config.get('element'), config.get('crystal_structure'), a=a, b=b, c=c)
+            supercell = bulk(config.get('element'), config.get('crystal_structure'), a=a, b=b, c=c, orthorhombic=True)
+            supercell = supercell.repeat(config.get('supercell_size',[1,1,1]))
+
+        return supercell
 
     if config.get('mixture') is not None:
         assert isinstance(config.get('molecule'), list)
