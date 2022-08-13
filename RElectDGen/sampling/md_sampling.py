@@ -1,5 +1,6 @@
 import ase
 import os
+import copy
 import numpy as np
 import pandas as pd
 
@@ -120,6 +121,7 @@ def MD_sampling(config, loop_learning_count=1):
         print(f'Total energy stable: max E index {max_E_index}', flush=True)
 
     traj = Trajectory(trajectory_file)
+    final_supercell = copy.deepcopy(traj[-1])
     traj = traj[:max_E_index] # Only use E stable indices
     MLP_dict['MLP_MD_steps'] = len(traj)
 
@@ -228,7 +230,7 @@ def MD_sampling(config, loop_learning_count=1):
             config.get('data_directory'),
             config.get('initial_structures_file','')
         )
-        add_to_trajectory(traj[-1],initial_structures_filename)
+        add_to_trajectory(final_supercell,initial_structures_filename)
 
     print('checks: ', checks)
 

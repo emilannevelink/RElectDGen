@@ -572,7 +572,7 @@ def clusters_from_traj(
     segment_type: str = 'distance',
     max_volume_per_atom: int = 150,
     max_samples: int = 10,
-    max_atoms_to_segment: int = np.inf,
+    max_clusters_per_atoms: int = np.inf,
     molecule_vacuum: float = 2.0,
     overlap_radius: float = 0.5,
     max_electrons: int = 300,
@@ -584,7 +584,7 @@ def clusters_from_traj(
     **kwargs,
 ):
 
-    max_samples = min(max_samples, max_atoms_to_segment)
+    max_samples = min(max_samples, max_clusters_per_atoms)
 
     ncores = mp.cpu_count()
     
