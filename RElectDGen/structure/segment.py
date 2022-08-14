@@ -561,6 +561,7 @@ class segment_atoms():
 def clusters_from_traj(
     traj,
     uncertainties,
+    embeddings,
     uncertainty_thresholds: list = [0.2,0.01],
     slab_config: dict = {},
     supercell_size: list = [1,1,1],
@@ -630,7 +631,9 @@ def clusters_from_traj(
         # cluster_ind = np.argsort(df_ind['uncertainty'].values)[::-1]
         clusters_all = [clusters_all[i] for i in df_ind.index]
 
-    return clusters_all, df_ind
+    cluster_embeddings = [embeddings[int(ind)][cluster.arrays['cluster_indices']] for (ind, cluster) in zip(df_ind['traj_ind'],clusters_all)]
+
+    return clusters_all, df_ind, cluster_embeddings
 
 def cluster_from_atoms(args):
     traj_filename, i, uncertainty, uncertainty_thresholds = args[:4]
