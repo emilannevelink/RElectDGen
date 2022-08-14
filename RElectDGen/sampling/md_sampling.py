@@ -225,12 +225,13 @@ def MD_sampling(config, loop_learning_count=1):
         len(traj_uncertain)==0 and checks['MD_max_index'] and
         config.get('MLP_MD_steps') >= config.get('max_MLP_MD_steps',4000)
     ):
-        print('Adding to initial structures')
-        initial_structures_filename = os.path.join(
-            config.get('data_directory'),
-            config.get('initial_structures_file','')
-        )
-        add_to_trajectory(final_supercell,initial_structures_filename)
+        if config.get('initial_structures_file') is not None:
+            print('Adding to initial structures')
+            initial_structures_filename = os.path.join(
+                config.get('data_directory'),
+                config.get('initial_structures_file')
+            )
+            add_to_trajectory(final_supercell,initial_structures_filename)
 
     print('checks: ', checks)
 
