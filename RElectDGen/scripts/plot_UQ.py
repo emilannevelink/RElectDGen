@@ -12,12 +12,14 @@ def parse_command_line(argsin):
                         help='active_learning configuration file')
     parser.add_argument('--allow_calibrate', type=bool, default=False,
                         help='active_learning configuration file')
+    parser.add_argument('--replot', type=bool, default=False,
+                        help='active_learning configuration file')
     args = parser.parse_args(argsin)
 
     with open(args.config,'r') as fl:
         config = yaml.load(fl,yaml.FullLoader)
 
-    return config, args.allow_calibrate
+    return config, args.allow_calibrate, args.replot
 
 def main(args=None):
     print('Starting timer', flush=True)
@@ -25,7 +27,7 @@ def main(args=None):
     MLP_dict = {}
     
 
-    config, allow_calibrate = parse_command_line(args)
+    config, allow_calibrate, replot = parse_command_line(args)
 
     root_dir = os.path.join(
         config.get('directory'),
@@ -46,8 +48,11 @@ def main(args=None):
             train_directory,
             'uncertainty'
         )
-
-        if os.path.isfile(config_final):
+        plot_filename = os.path.join(
+            train_directory,
+            config.get('UQ_plot_filename','UQ_fit.png')
+        )
+        if os.path.isfile(config_final) and (replot or not os.path.isfile(plot_filename)):
             if os.path.isdir(uncertainty_dir) or allow_calibrate:
                 calc_nn, model, MLP_config = nn_from_results(train_directory)
 
@@ -55,10 +60,7 @@ def main(args=None):
 
                 UQ = UQ_func(model, config, MLP_config)
                 UQ.calibrate()
-                plot_filename = os.path.join(
-                    train_directory,
-                    config.get('UQ_plot_filename','UQ_fit.png')
-                )
+                
                 UQ.plot_fit(plot_filename)
 
 if __name__ == "__main__":
