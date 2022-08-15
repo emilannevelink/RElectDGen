@@ -52,6 +52,7 @@ def structure_from_config(config):
         supercell = stack(supercell,molecules)
 
         supercell.center(vacuum = vacuum,axis=2)
+        supercell.pbc=config.get('pbc')
         return supercell
 
     
