@@ -211,10 +211,11 @@ def create_slab(config):
         supercell = ase.build.bcc100(config.get('element'), (config.get('supercell_size')), config.get('crystal_a0'),vacuum=config.get('vacuum'))
 
     #Constrain the bottom of the slab to be fixed
-    indices = range(int(len(supercell.positions)*2/config.get('supercell_size')[2]))
-    constraints.append(FixAtoms(indices = indices))
+    if config.get('fix_slab_atoms', True):
+        indices = range(int(len(supercell.positions)*2/config.get('supercell_size')[2]))
+        constraints.append(FixAtoms(indices = indices))
 
-    supercell.set_constraint(constraints)
+        supercell.set_constraint(constraints)
 
     if config.get('zperiodic', False):
         supercell.cell[2] *= config.get('supercell_size')[2]/(config.get('supercell_size')[2]-1)
