@@ -10,7 +10,7 @@ def parse_command_line(argsin):
     parser = argparse.ArgumentParser()
     parser.add_argument('config', metavar='config_file', type=str,
                         help='active_learning configuration file')
-    parser.add_argument('allow_calibrate', type=bool, default=False,
+    parser.add_argument('--allow_calibrate', type=bool, default=False,
                         help='active_learning configuration file')
     args = parser.parse_args(argsin)
 
@@ -28,6 +28,7 @@ def main(args=None):
     config, allow_calibrate = parse_command_line(args)
 
     root_dir = os.path.join(
+        config.get('directory'),
         config.get('run_dir'),
         config.get('train_directory')
     )
