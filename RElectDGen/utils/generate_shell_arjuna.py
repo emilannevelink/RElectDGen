@@ -99,7 +99,7 @@ def shell_from_config(config):
             # commands = [f'spack load {spack_environment}']
             commands = [
                 f'spack env activate {spack_environment}',
-                'spack load py-gpaw'
+                'spack -L load py-gpaw'
             ]
             
             if 'MD' in file:
