@@ -22,11 +22,13 @@ def reduce_traj_finite(traj, keep = 'finite'):
 def reduce_traj_isolated(traj, cutoff, test=False):
     if test:
         traj_removed = []
+    ind_reduced = []
     traj_reduced = []
-    for atoms in traj:
+    for i, atoms in enumerate(traj):
         src, dst, d = neighborlist.neighbor_list('ijd',atoms,cutoff)
         unique, counts = np.unique(src, return_counts=True)
         if len(unique) == len(atoms):
+            ind_reduced.append(i)
             traj_reduced.append(atoms)
         else:
             traj_removed.append(atoms)
@@ -34,6 +36,6 @@ def reduce_traj_isolated(traj, cutoff, test=False):
         #     print('done')
 
     if test:
-        return traj_reduced, traj_removed
+        return ind_reduced, traj_reduced, traj_removed
     else:
-        return traj_reduced
+        return ind_reduced, traj_reduced

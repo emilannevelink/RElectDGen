@@ -8,6 +8,7 @@ from ase.io.trajectory import Trajectory
 from ase.md.velocitydistribution import MaxwellBoltzmannDistribution, ZeroRotation, Stationary
 from ase import units
 from ase.md import MDLogger
+from RElectDGen.utils.data import reduce_traj_isolated
 from RElectDGen.utils.io import add_to_trajectory
 
 from RElectDGen.utils.md_utils import md_func_from_config
@@ -136,6 +137,7 @@ def MD_sampling(config, loop_learning_count=1):
         traj = traj[::reduction_factor]
         print(f'reduced length of trajectory by {reduction_factor}, new length {len(traj)}, new max_index {expected_max_index}', flush=True)
 
+    _, traj = reduce_traj_isolated(traj,MLP_config.get('r_max'))
     uncertainty, embeddings = UQ.predict_from_traj(traj,max=False)
 
     max_val_ind = uncertainty.sum(dim=-1).max(axis=1)

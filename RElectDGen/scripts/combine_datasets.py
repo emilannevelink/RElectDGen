@@ -60,7 +60,7 @@ def main(args=None):
     print('Reduce finite ', len(traj), len(traj_reduced),flush=True)
     with open(filename_MLP_config,'r') as fl:
         MLP_config = yaml.load(fl,yaml.FullLoader)
-    traj_reduced = reduce_traj_isolated(traj_reduced,MLP_config.get('r_max'))
+    _, traj_reduced = reduce_traj_isolated(traj_reduced,MLP_config.get('r_max'))
 
     print('Reduce isolated ', len(traj), len(traj_reduced),flush=True)
     

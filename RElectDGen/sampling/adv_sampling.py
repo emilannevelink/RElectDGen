@@ -29,6 +29,7 @@ from ..uncertainty import models as uncertainty_models
 # from e3nn_networks.utils.data_helpers import *
 
 from RElectDGen.scripts.gpaw_MD import get_initial_MD_steps
+from RElectDGen.utils.data import reduce_traj_isolated
 
 from ..calculate.calculator import nn_from_results
 from ..structure.segment import clusters_from_traj
@@ -190,6 +191,8 @@ def adv_sampling(config, traj_initial=[], loop_learning_count=1):
     # writer = Trajectory(traj_dump_file, 'w')
     # for atoms in traj_adv:
     #     writer.write(atoms)
+    reduce_ind, traj_adv = reduce_traj_isolated(traj_adv,MLP_config.get('r_max'))
+    embeddings = [emb for i, emb in enumerate(embeddings) if i in reduce_ind]
 
     min_uncertainty = config.get('UQ_min_uncertainty')
     max_uncertainty = config.get('UQ_max_uncertainty')*config.get('adversarial_max_UQ_factor', 1)
