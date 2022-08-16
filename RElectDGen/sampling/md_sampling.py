@@ -197,6 +197,7 @@ def MD_sampling(config, loop_learning_count=1):
         print('isolating uncertain clusters', flush=True)
         uncertainty_sum = uncertainty.sum(axis=-1) #reduce err and std to single value
         traj, undertainty_df, embeddings = clusters_from_traj(traj, uncertainty_sum, embeddings, **config)
+        print('Number of Clusters: ', len(traj))
 
     tmp1 = time.time()
     print('Time to segment clusters', tmp1-tmp0, 'Elapsed time ', tmp1-start, flush=True)
