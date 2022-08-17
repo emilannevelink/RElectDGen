@@ -1322,7 +1322,7 @@ class Nequip_ensemble_NN(uncertainty_base):
 
             if uncertainty_training == 'forces':
                 # ax[0,2].scatter(train_force_pred[key].norm(dim=-1),train_force_unc_pred[key], alpha=alpha)
-                ax[0,2].errorbar(train_force_real[key].norm(dim=-1),train_force_pred[key].norm(dim=-1), alpha=alpha, yerr = train_force_unc_err[key]+train_force_unc_std[key], fmt='o', color=colors[i])
+                ax[0,2].errorbar(train_force_real[key].norm(dim=-1),train_force_pred[key].norm(dim=-1), alpha=alpha, yerr = train_force_unc_err[key], fmt='o', color=colors[i])
                 
                 # ax[0,3].scatter(train_force_real[key].norm(dim=-1),train_force_unc_pred[key], alpha=alpha)
                 ax[0,3].errorbar(train_force_real[key].norm(dim=-1),train_force_unc_pred[key], alpha=alpha, yerr = train_force_unc_std[key], fmt='o', color=colors[i])
@@ -1460,9 +1460,9 @@ class Nequip_ensemble_NN(uncertainty_base):
         ax[0,2].set_title('Train Parity Plot (Unc: Err)')
         ax[0,2].set_xlabel('Magnitude of DFT Forces (eV/Angstrom)')
         ax[0,2].set_ylabel('Magnitude of Predicted Forces (eV/Angstrom)')
-        ax[0,3].set_title('Train Parity Plot (Unc: Std)')
+        ax[0,3].set_title('Train Uncertainty Parity Plot (Unc: Std)')
         ax[0,3].set_xlabel('Magnitude of DFT Forces (eV/Angstrom)')
-        ax[0,3].set_ylabel('Magnitude of Predicted Forces (eV/Angstrom)')
+        ax[0,3].set_ylabel('Mean of Uncertainty Predictions (eV/Angstrom)')
         ax[1,2].set_title('Train Force Errors')
         ax[1,2].set_xlabel('Force Errors (eV/Angstrom)')
         ax[1,2].set_ylabel('Counts')
@@ -1473,9 +1473,9 @@ class Nequip_ensemble_NN(uncertainty_base):
         ax[2,2].set_title('Validation Parity Plot (Unc: Err)')
         ax[2,2].set_xlabel('Magnitude of DFT Forces (eV/Angstrom)')
         ax[2,2].set_ylabel('Magnitude of Predicted Forces (eV/Angstrom)')
-        ax[2,3].set_title('Validation Parity Plot (Unc: Std)')
+        ax[2,3].set_title('Validation Uncertainty Parity Plot (Unc: Std)')
         ax[2,3].set_xlabel('Magnitude of DFT Forces (eV/Angstrom)')
-        ax[2,3].set_ylabel('Magnitude of Predicted Forces (eV/Angstrom)')
+        ax[2,3].set_ylabel('Mean of Uncertainty Predictions (eV/Angstrom)')
         ax[3,2].set_title('Validation Force Errors')
         ax[3,2].set_xlabel('Force Errors (eV/Angstrom)')
         ax[3,2].set_ylabel('Counts')

@@ -54,14 +54,18 @@ def main(args=None):
         )
         if os.path.isfile(config_final) and (replot or not os.path.isfile(plot_filename)):
             if os.path.isdir(uncertainty_dir) or allow_calibrate:
-                calc_nn, model, MLP_config = nn_from_results(train_directory)
+                try:
+                    calc_nn, model, MLP_config = nn_from_results(train_directory)
 
-                UQ_func = getattr(uncertainty_models,config.get('uncertainty_function', 'Nequip_latent_distance'))
+                    UQ_func = getattr(uncertainty_models,config.get('uncertainty_function', 'Nequip_latent_distance'))
 
-                UQ = UQ_func(model, config, MLP_config)
-                UQ.calibrate()
-                
-                UQ.plot_fit(plot_filename)
+                    UQ = UQ_func(model, config, MLP_config)
+                    UQ.calibrate()
+                    
+                    UQ.plot_fit(plot_filename)
+                except Exception as e:
+                    print(train_dir)
+                    print(e)
 
 if __name__ == "__main__":
     main()
