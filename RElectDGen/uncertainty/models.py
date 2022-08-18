@@ -1342,7 +1342,7 @@ class Nequip_ensemble_NN(uncertainty_base):
             ax[1,3].axvline(mean, color=colors[i])
             ax[1,3].text(0.5,0.9-0.1*i,str(np.round(mean.numpy(),4)),va="center", ha="center",transform=ax[1,3].transAxes)
 
-            ax[1,4].scatter(err_real, err_pred, alpha=alpha, colors=[i], label=key)
+            ax[1,4].scatter(err_real, err_pred, alpha=alpha, color=colors[i], label=key)
             min_error = min(min_error, err_real.min(), err_pred.min())
             max_error = max(max_error, err_real.max(), err_pred.max())
             
@@ -1381,7 +1381,7 @@ class Nequip_ensemble_NN(uncertainty_base):
             ax[3,3].text(0.5,0.9-0.1*i,str(np.round(mean.numpy(),4)),va="center", ha="center",transform=ax[3,3].transAxes)
             nval+=len(val_force_real[key])
 
-            ax[3,4].scatter(err_real, err_pred, alpha=alpha, colors=[i], label=key)
+            ax[3,4].scatter(err_real, err_pred, alpha=alpha, color=colors[i], label=key)
             min_error = min(min_error, err_real.min(), err_pred.min())
             max_error = max(max_error, err_real.max(), err_pred.max())
         
