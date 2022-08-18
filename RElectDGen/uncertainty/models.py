@@ -1291,19 +1291,18 @@ class Nequip_ensemble_NN(uncertainty_base):
         ax[0,4].errorbar(train_max_force_real.norm(dim=1),train_max_force_pred.norm(dim=1), alpha=alpha, yerr=train_max_force_err+train_max_force_std, xerr=train_max_force_max_err+train_max_force_max_std, fmt='o')
 
         # ax[1,4].scatter((train_max_force_real-train_max_force_pred).norm(dim=1),train_max_force_err, alpha=alpha)
-        ax[1,4].scatter((train_max_force_real-train_max_force_pred).norm(dim=1), train_max_force_err+train_max_force_std, alpha=alpha)
-        min_error = min((train_max_force_real-train_max_force_pred).norm(dim=1).min(), (train_max_force_err+train_max_force_std).min())
-        max_error = max((train_max_force_real-train_max_force_pred).norm(dim=1).max(), (train_max_force_err+train_max_force_std).max())
-        ax[1,4].plot([min_error,max_error],[min_error,max_error],color='k',linestyle='--')
+        
+        
 
         # ax[2,4].scatter(val_max_force_real.norm(dim=1),val_max_force_pred.norm(dim=1), alpha=alpha)
         ax[2,4].errorbar(val_max_force_real.norm(dim=1),val_max_force_pred.norm(dim=1), alpha=alpha, yerr=val_max_force_err+val_max_force_std, xerr=val_max_force_max_err+val_max_force_max_std, fmt='o')
 
         # ax[3,4].scatter((val_max_force_real-val_max_force_pred).norm(dim=1),val_max_force_err, alpha=alpha)
         ax[3,4].scatter((val_max_force_real-val_max_force_pred).norm(dim=1), val_max_force_err+val_max_force_std, alpha=alpha)
-        min_error = min((val_max_force_real-val_max_force_pred).norm(dim=1).min(), (val_max_force_err+val_max_force_std).min())
-        max_error = max((val_max_force_real-val_max_force_pred).norm(dim=1).max(), (val_max_force_err+val_max_force_std).max())
-        ax[3,4].plot([min_error,max_error],[min_error,max_error],color='k',linestyle='--')
+        
+        min_error = 0
+        max_error = 0
+        
 
         min_force = np.inf
         max_force = -np.inf
@@ -1332,14 +1331,20 @@ class Nequip_ensemble_NN(uncertainty_base):
 
             # ax[1,2].scatter(range(ntrain,ntrain+len(train_force_real[key])),train_force_real[key].norm(dim=-1)-train_force_pred[key].norm(dim=-1), alpha=alpha)
             # ax[1,2].errorbar(range(ntrain,ntrain+len(train_force_real[key])),train_force_real[key].norm(dim=-1)-train_force_pred[key].norm(dim=-1), alpha=alpha, yerr = train_force_unc_err[key], fmt='o')
-            ax[1,2].hist(((train_force_real[key].norm(dim=-1)-train_force_pred[key].norm(dim=-1)).abs()).unsqueeze(0),nbins, alpha=alpha, label=key, color=colors[i])
-            mean = ((train_force_real[key].norm(dim=-1)-train_force_pred[key].norm(dim=-1)).abs()).mean()
+            err_real = (train_force_real[key]-train_force_pred[key]).norm(dim=-1)
+            ax[1,2].hist(err_real.unsqueeze(0),nbins, alpha=alpha, label=key, color=colors[i])
+            mean = err_real.mean()
             ax[1,2].axvline(mean, color=colors[i])
             ax[1,2].text(0.5,0.9-0.1*i,str(np.round(mean.numpy(),4)),va="center", ha="center",transform=ax[1,2].transAxes)
-            ax[1,3].hist((train_force_unc_err[key]+train_force_unc_std[key]).unsqueeze(0),nbins, alpha=alpha, label=key,stacked=True, color=colors[i])
-            mean = (train_force_unc_err[key]+train_force_unc_std[key]).mean()
+            err_pred = (train_force_unc_err[key]+train_force_unc_std[key])
+            ax[1,3].hist(err_pred.unsqueeze(0),nbins, alpha=alpha, label=key,stacked=True, color=colors[i])
+            mean = err_pred.mean()
             ax[1,3].axvline(mean, color=colors[i])
             ax[1,3].text(0.5,0.9-0.1*i,str(np.round(mean.numpy(),4)),va="center", ha="center",transform=ax[1,3].transAxes)
+
+            ax[1,4].scatter(err_real, err_pred, alpha=alpha, colors=[i], label=key)
+            min_error = min(min_error, err_real.min(), err_pred.min())
+            max_error = max(max_error, err_real.max(), err_pred.max())
             
             # ax[1,3].scatter(range(ntrain,ntrain+len(train_force_real[key])),train_force_unc_err[key])
             # ax[1,3].errorbar(range(ntrain,ntrain+len(train_force_real[key])),train_force_unc_err[key], yerr = train_force_unc_std[key], fmt='o')
@@ -1364,15 +1369,21 @@ class Nequip_ensemble_NN(uncertainty_base):
             # ax[3,3].errorbar(range(nval,nval+len(val_force_real[key])),val_force_unc_err[key], yerr = val_force_unc_std[key], fmt='o')
             # ax[3,3].scatter(val_force_real[key].norm(dim=-1)-val_force_pred[key].norm(dim=-1),val_force_unc_err[key], alpha=alpha)
             # ax[3,3].errorbar(val_force_real[key].norm(dim=-1)-val_force_pred[key].norm(dim=-1),val_force_unc_err[key], alpha=alpha, yerr = val_force_unc_std[key], fmt='o')
-            ax[3,2].hist(((val_force_real[key].norm(dim=-1)-val_force_pred[key].norm(dim=-1)).abs()).unsqueeze(0),nbins, alpha=alpha, label=key, color=colors[i])
-            mean = ((val_force_real[key].norm(dim=-1)-val_force_pred[key].norm(dim=-1)).abs()).mean()
+            err_real = (val_force_real[key]-val_force_pred[key]).norm(dim=-1)
+            ax[3,2].hist(err_real.unsqueeze(0),nbins, alpha=alpha, label=key, color=colors[i])
+            mean = err_real.mean()
             ax[3,2].axvline(mean, color=colors[i])
             ax[3,2].text(0.5,0.9-0.1*i,str(np.round(mean.numpy(),4)),va="center", ha="center",transform=ax[3,2].transAxes)
-            ax[3,3].hist((val_force_unc_err[key]+val_force_unc_std[key]).unsqueeze(0),nbins, alpha=alpha, label=key,stacked=True, color=colors[i])
-            mean = (val_force_unc_err[key]+val_force_unc_std[key]).mean()
+            err_pred = (val_force_unc_err[key]+val_force_unc_std[key])
+            ax[3,3].hist(err_pred.unsqueeze(0),nbins, alpha=alpha, label=key,stacked=True, color=colors[i])
+            mean = err_pred.mean()
             ax[3,3].axvline(mean, color=colors[i])
             ax[3,3].text(0.5,0.9-0.1*i,str(np.round(mean.numpy(),4)),va="center", ha="center",transform=ax[3,3].transAxes)
             nval+=len(val_force_real[key])
+
+            ax[3,4].scatter(err_real, err_pred, alpha=alpha, colors=[i], label=key)
+            min_error = min(min_error, err_real.min(), err_pred.min())
+            max_error = max(max_error, err_real.max(), err_pred.max())
         
         ax[0,2].plot([min_force,max_force],[min_force,max_force],color='k',linestyle='--')
         ax[2,2].plot([min_force,max_force],[min_force,max_force],color='k',linestyle='--')
@@ -1380,8 +1391,10 @@ class Nequip_ensemble_NN(uncertainty_base):
         ax[2,3].plot([min_force,max_force],[min_force,max_force],color='k',linestyle='--')
         
         ax[0,4].plot([min_force,max_force],[min_force,max_force],color='k',linestyle='--')
+        ax[1,4].plot([min_error,max_error],[min_error,max_error],color='k',linestyle='--')
         ax[2,4].plot([min_force,max_force],[min_force,max_force],color='k',linestyle='--')
-        
+        ax[3,4].plot([min_error,max_error],[min_error,max_error],color='k',linestyle='--')
+
         ax[1,2].legend()
         ax[1,3].legend()
         ax[3,2].legend()
@@ -1486,15 +1499,15 @@ class Nequip_ensemble_NN(uncertainty_base):
         ax[0,4].set_title('Train Max Force Parity Plot')
         ax[0,4].set_xlabel('DFT Max Force (eV/Angstrom)')
         ax[0,4].set_ylabel('Predicted Max Force (eV/Angstrom)')
-        ax[1,4].set_title('Train Max Force Error Parity Plot')
-        ax[1,4].set_xlabel('DFT Max Force Error (eV/Angstrom)')
-        ax[1,4].set_ylabel('Predicted Max Force Error (eV/Angstrom)')
+        ax[1,4].set_title('Train Force Error Parity Plot')
+        ax[1,4].set_xlabel('DFT Force Error (eV/Angstrom)')
+        ax[1,4].set_ylabel('Predicted Force Error (eV/Angstrom)')
         ax[2,4].set_title('Validation Max Force Parity Plot')
         ax[2,4].set_xlabel('DFT Max Force (eV/Angstrom)')
         ax[2,4].set_ylabel('Predicted Max Force (eV/Angstrom)')
-        ax[3,4].set_title('Validation Max Force Error Parity Plot')
-        ax[3,4].set_xlabel('DFT Max Force Error (eV/Angstrom)')
-        ax[3,4].set_ylabel('Predicted Max Force Error (eV/Angstrom)')
+        ax[3,4].set_title('Validation Force Error Parity Plot')
+        ax[3,4].set_xlabel('DFT Force Error (eV/Angstrom)')
+        ax[3,4].set_ylabel('Predicted Force Error (eV/Angstrom)')
 
 
 

@@ -30,7 +30,7 @@ def reduce_traj_isolated(traj, cutoff, test=False):
         if len(unique) == len(atoms):
             ind_reduced.append(i)
             traj_reduced.append(atoms)
-        else:
+        elif test:
             traj_removed.append(atoms)
         # elif sum(counts==1)>0:
         #     print('done')
