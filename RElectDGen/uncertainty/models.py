@@ -776,7 +776,7 @@ class Nequip_ensemble_NN(uncertainty_base):
         self.hidden_dimensions = self.config.get('uncertainty_hidden_dimensions', [])
         self.unc_epochs = self.config.get('uncertainty_epochs', 2000)
         self.unc_batch_size = self.config.get('uncertainty_batch_size', 100)
-
+        self.optimization_function = config.get('optimization_function','uncertainty_ensemble_NN')
         self.natoms = len(MLP_config['type_names'])
         uncertainty_dir = os.path.join(self.MLP_config['workdir'],self.config.get('uncertainty_dir', 'uncertainty'))
         os.makedirs(uncertainty_dir,exist_ok=True)
@@ -789,7 +789,8 @@ class Nequip_ensemble_NN(uncertainty_base):
         for n in range(self.n_ensemble):
             state_dict_name = self.state_dict_func(n)
             if os.path.isfile(state_dict_name):
-                NN = uncertainty_ensemble_NN(self.latent_size, self.natoms, self.hidden_dimensions)
+                unc_func = getattr(optimization_functions,self.optimization_function)
+                NN = unc_func(self.latent_size, self.natoms, self.hidden_dimensions)
                 try:
                     NN.load_state_dict(torch.load(state_dict_name, map_location=self.device))
                     self.NNs.append(NN)
@@ -820,15 +821,16 @@ class Nequip_ensemble_NN(uncertainty_base):
             
             ncores = min(ncores,len(train_indices))
             ncores = 1 #multiprocessing doesn't work yet I think its a slurm issue
+            unc_func = getattr(optimization_functions,self.optimization_function)  
             if ncores == 1:
                 for n in train_indices:
-                    print('training ensemble network ', n, flush=True)    
-                    NN = uncertainty_ensemble_NN(self.latent_size, self.natoms, self.hidden_dimensions, epochs=self.unc_epochs,batch_size=self.unc_batch_size)
+                    print('training ensemble network ', n, flush=True)  
+                    NN = unc_func(self.latent_size, self.natoms, self.hidden_dimensions, epochs=self.unc_epochs,batch_size=self.unc_batch_size)
                     NN = train_NN((NN, uncertainty_training,self.train_embeddings,train_energy_forces,self.validation_embeddings,validation_energy_forces,None,None))
                     NNs_trained.append(NN)
             elif ncores >1:
             
-                NNs_init = [uncertainty_ensemble_NN(self.latent_size, self.natoms, self.hidden_dimensions, epochs=self.unc_epochs,batch_size=self.unc_batch_size) for n in train_indices]
+                NNs_init = [unc_func(self.latent_size, self.natoms, self.hidden_dimensions, epochs=self.unc_epochs,batch_size=self.unc_batch_size) for n in train_indices]
                 gen = ((NN,uncertainty_training,self.train_embeddings,train_energy_forces,self.validation_embeddings,validation_energy_forces,None,None) for NN in NNs_init)
                 
                 def produce(semaphore, generator):

@@ -785,6 +785,285 @@ class uncertainty_ensemble_NN():
     def load_state_dict(self, state_dict):
         self.model.load_state_dict(state_dict)
 
+class uncertainty_ensemble_NN_local():
+    def __init__(self,
+    input_dim,
+    natoms,
+    hidden_dimensions=[], 
+    act=torch.nn.ReLU, 
+    batch_size=100,
+    epochs=2000, 
+    lr = 0.001, 
+    momentum=0.9,
+    patience= None,
+    early_stopping_patience = None,
+    min_lr = None,
+    fine_tune_train_dataset_percentage = 0.5) -> None:
+        self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        # self.nequip_model = nequip_model #.train()
+        # self.nequip_model.train()
+        self.natoms = natoms
+        self.input_dim = input_dim
+        self.batch_size = batch_size
+        self.initial_lr = lr
+        self.fine_tune_train_dataset_percentage = fine_tune_train_dataset_percentage
+        
+        if patience is None:
+            patience = epochs/10
+        if early_stopping_patience is None:
+            early_stopping_patience = int(patience * 2.5)
+        if min_lr is None:
+            self.min_lr = lr/1e3
+
+        self.patience = patience
+        self.early_stopping_patience = early_stopping_patience
+        
+        self.models = []
+        self.optims = []
+        self.lr_scheduler = []
+        for i in range(natoms):
+            layers = []
+            if len(hidden_dimensions)==0:
+                layers.append(torch.nn.Linear(input_dim+natoms, 1))
+            else:
+                # layers = []
+                for i, hd in enumerate(hidden_dimensions):
+                    if i == 0:
+                        layers.append(torch.nn.Linear(input_dim+natoms, hd))
+                    else:
+                        layers.append(torch.nn.Linear(hidden_dimensions[i-1], hd))
+                    layers.append(act())
+
+                layers.append(torch.nn.Linear(hidden_dimensions[-1], 1))
+            
+            self.models.append(torch.nn.Sequential(*layers).to(self.device))
+            self.optims.append(torch.optim.Adam(self.models[-1].parameters(), lr = lr))
+            self.lr_scheduler.append(LRScheduler(self.optims[-1], patience, self.min_lr))
+        
+        print('Trainable parameters:', sum(p.numel() for p in self.models[-1].parameters() if p.requires_grad),flush=True)
+        self.epochs = epochs
+        self.loss = torch.nn.MSELoss()
+        
+
+    def make_dataloader(self, latents, energies, i):
+        key = list(latents.keys())[i]
+        data = unc_Dataset(latents[key],energies[key])
+        dataloader = DataLoader(data, batch_size=self.batch_size, shuffle=True)
+
+        return dataloader
+
+    def train(self,
+        train_latents,
+        train_energies,
+        validation_latents,
+        validation_energies
+    ):
+        metrics = {}
+        self.best_models = []
+        self.best_loss = []
+        for ii in range(self.natoms):
+
+            train_dataloader = self.make_dataloader(train_latents, train_energies,ii)
+            validation_dataloader = self.make_dataloader(validation_latents, validation_energies, ii)
+        
+            self.best_models.append(copy.deepcopy(self.models[ii]))
+            self.best_loss.append(torch.tensor(np.inf))
+
+            metrics[f'lr_{ii}'] = []
+            metrics[f'train_loss_{ii}'] = []
+            metrics[f'validation_loss_{ii}'] = []
+            
+            for n in range(self.epochs):
+                running_loss = 0
+                for i, data in enumerate(train_dataloader):
+                    latents, energies = data
+                    self.models[ii].train()
+                    self.models[ii].zero_grad()
+
+                    pred = self.models[ii](latents) #pred atomic energies and sum to get total energies
+                    loss = self.loss(pred,energies)
+
+                    # self.optim.zero_grad()
+                    loss.backward()
+
+                    self.optims[ii].step()
+                    running_loss += loss.item()
+                
+                train_loss = running_loss/(i+1)
+                running_loss = 0
+                for i, data in enumerate(validation_dataloader):
+                    latents, energies = data
+                    
+                    pred = self.models[ii](latents) #pred atomic energies and sum to get total energies
+                    loss = self.loss(pred,energies)
+
+                    running_loss += loss.item()
+                validation_loss = running_loss/(i+1)
+                
+                if validation_loss < self.best_loss[ii]:
+                    self.best_epoch = n
+                    self.best_loss[ii] = validation_loss
+                    self.best_models[ii] = copy.deepcopy(self.models[ii])
+                elif n - self.best_epoch > self.early_stopping_patience:
+                    print(f'Validation loss hasnt improved in {self.early_stopping_patience} epochs stopping optimization at epoch {n}')
+                    break
+                
+                self.lr_scheduler[ii](validation_loss)
+                
+                metrics[f'lr_{ii}'].append(self.optims[ii].param_groups[0]['lr'])
+                metrics[f'train_loss_{ii}'].append(train_loss)
+                metrics[f'validation_loss_{ii}'].append(validation_loss)
+
+                if self.optims[ii].param_groups[0]['lr'] == self.min_lr:
+                    print('Reached minimum learning rate')
+                    break
+        
+        self.metrics = metrics
+        self.train_loss = train_loss
+        self.validation_loss = validation_loss
+        self.models = self.best_models
+
+    def predict(self, data, nequip_model=None):
+        if 'node_features' in data:
+            out = data
+        elif nequip_model is not None:
+            if not data['pos'].requires_grad:
+                data['pos'].requires_grad = True
+            out = nequip_model(self.transform_data_input(data))
+        else:
+            ValueError
+        atom_one_hot = torch.nn.functional.one_hot(data['atom_types'].squeeze(),num_classes=self.natoms)
+
+        pred = torch.empty_like(out['atomic_energy'])
+        for ii in range(self.natoms):
+            mask = (data['atom_types']==ii).squeeze()
+            NN_inputs = torch.hstack([out['node_features'], atom_one_hot])[mask]
+            pred[mask] = self.models[ii](NN_inputs)
+
+        return pred #, pred_forces
+
+    def fine_tune(self,
+        train_latents,
+        train_energies,
+        validation_latents,
+        validation_energies,
+        fine_tune_latents, 
+        fine_tune_energies, 
+        fine_tune_epochs=None,
+    ):
+        
+        if fine_tune_epochs is None:
+            fine_tune_epochs = int(self.epochs/10)
+
+        self.fine_tune_early_stopping_patience = self.early_stopping_patience*fine_tune_epochs/self.epochs
+
+        initial_lr = max(self.initial_lr/10, self.min_lr*10)
+        
+        fine_tune_metrics = {}
+        self.best_models = []
+        if not hasattr(self,'best_loss'):
+            self.best_loss = []
+        for ii in range(self.natoms):
+            optim = torch.optim.Adam(self.models[ii].parameters(), lr = initial_lr)
+            lr_scheduler = LRScheduler(optim, self.patience/10, self.min_lr)
+
+            train_dataloader = self.make_dataloader(train_latents, train_energies,ii)
+            validation_dataloader = self.make_dataloader(validation_latents, validation_energies,ii)
+            fine_tune_dataloader = self.make_dataloader(fine_tune_latents, fine_tune_energies,ii)
+
+            i_train_max = self.fine_tune_train_dataset_percentage*len(train_dataloader)
+
+            self.best_models.append(copy.deepcopy(self.models[ii]))
+            self.best_epoch = 0
+            if len(self.best_loss)<self.natoms:
+                self.best_loss.append(torch.tensor(np.inf))
+
+            fine_tune_metrics[f'lr_{ii}'] = []
+            fine_tune_metrics[f'fine_tune_loss_{ii}'] = []
+            fine_tune_metrics[f'train_loss_{ii}'] = []
+            fine_tune_metrics[f'validation_loss_{ii}'] = []
+
+            for n in range(fine_tune_epochs):
+                running_loss = 0
+                for i, data in enumerate(fine_tune_dataloader):
+                    if i > i_train_max:
+                        break
+                    latents, energies = data
+                    self.models[ii].train()
+                    self.models[ii].zero_grad()
+
+                    pred = self.models[ii](latents) #pred atomic energies and sum to get total energies
+                    loss = self.loss(pred,energies)
+
+                    loss.backward()
+
+                    optim.step()
+                    running_loss += loss.item()
+                
+                fine_tune_loss = running_loss/(i+1)
+                running_loss = 0
+                for i, data in enumerate(train_dataloader):
+                    latents, energies = data
+                    self.models[ii].train()
+                    self.models[ii].zero_grad()
+
+                    pred = self.models[ii](latents) #pred atomic energies and sum to get total energies
+                    loss = self.loss(pred,energies)
+
+                    loss.backward()
+
+                    optim.step()
+                    running_loss += loss.item()
+                
+                train_loss = running_loss/(i+1)
+                running_loss = 0
+                for i, data in enumerate(validation_dataloader):
+                    latents, energies = data
+                    
+                    pred = self.models[ii](latents) #pred atomic energies and sum to get total energies
+                    loss = self.loss(pred,energies)
+
+                    running_loss += loss.item()
+                validation_loss = running_loss/(i+1)
+                
+                if validation_loss < self.best_loss[ii]:
+                    self.best_epoch = n
+                    self.best_loss[ii] = validation_loss
+                    self.best_models[ii] = copy.deepcopy(self.models[ii])
+                elif n - self.best_epoch > self.fine_tune_early_stopping_patience:
+                    print(f'Validation loss hasnt improved in {self.fine_tune_early_stopping_patience} epochs stopping optimization at epoch {n}')
+                    break
+                lr_scheduler(validation_loss)
+                
+                fine_tune_metrics[f'lr_{ii}'].append(optim.param_groups[0]['lr'])
+                fine_tune_metrics[f'fine_tune_loss_{ii}'].append(fine_tune_loss)
+                fine_tune_metrics[f'train_loss_{ii}'].append(train_loss)
+                fine_tune_metrics[f'validation_loss_{ii}'].append(validation_loss)
+
+                if optim.param_groups[0]['lr'] == self.min_lr:
+                    break
+            
+        self.fine_tune_metrics = fine_tune_metrics
+        self.train_loss = train_loss
+        self.validation_loss = validation_loss
+        self.models = self.best_models
+
+    def transform_data_input(self, data):
+        # assert len(data['total_energy']) == 1
+        data = AtomicData.to_AtomicDataDict(data)
+        
+        return data
+    def get_state_dict(self):
+        state_dict = {}
+        for i in range(self.natoms):
+            state_dict[str(i)] = self.models[i].state_dict()
+        return state_dict
+
+    def load_state_dict(self, state_dict):
+        for i in range(self.natoms):
+            self.models[i].load_state_dict(state_dict[str(i)])
+
+
 def train_NN(args):
     NN,uncertainty_training,train_embeddings,train_energy_forces,validation_embeddings,validation_energy_forces,other_embeddings,other_energy_forces = args
     print(uncertainty_training)
