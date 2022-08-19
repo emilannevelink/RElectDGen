@@ -850,7 +850,7 @@ class Nequip_ensemble_NN(uncertainty_base):
                 self.NNs.append(NN)
                 print('Best loss ', NN.best_loss, flush=True)
                 torch.save(NN.get_state_dict(), self.state_dict_func(n))
-                pd.DataFrame(NN.metrics).to_csv( self.metrics_func(n))
+                pd.DataFrame(NN.metrics).to_csv(self.metrics_func(n))
 
     def fine_tune(self, embeddings, energies_or_forces):
         print('Fine Tuning Ensemble', flush=True)

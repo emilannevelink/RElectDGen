@@ -869,9 +869,9 @@ class uncertainty_ensemble_NN_local():
             self.best_models.append(copy.deepcopy(self.models[ii]))
             self.best_loss.append(torch.tensor(np.inf))
 
-            metrics[f'lr_{ii}'] = []
-            metrics[f'train_loss_{ii}'] = []
-            metrics[f'validation_loss_{ii}'] = []
+            metrics[f'lr_{ii}'] = np.full((self.epochs),np.nan)
+            metrics[f'train_loss_{ii}'] = np.full((self.epochs),np.nan)
+            metrics[f'validation_loss_{ii}'] = np.full((self.epochs),np.nan)
             
             for n in range(self.epochs):
                 running_loss = 0
@@ -910,9 +910,9 @@ class uncertainty_ensemble_NN_local():
                 
                 self.lr_scheduler[ii](validation_loss)
                 
-                metrics[f'lr_{ii}'].append(self.optims[ii].param_groups[0]['lr'])
-                metrics[f'train_loss_{ii}'].append(train_loss)
-                metrics[f'validation_loss_{ii}'].append(validation_loss)
+                metrics[f'lr_{ii}'][n] = float(self.optims[ii].param_groups[0]['lr'])
+                metrics[f'train_loss_{ii}'][n] = float(train_loss)
+                metrics[f'validation_loss_{ii}'][n] = float(validation_loss)
 
                 if self.optims[ii].param_groups[0]['lr'] == self.min_lr:
                     print('Reached minimum learning rate')
@@ -978,10 +978,10 @@ class uncertainty_ensemble_NN_local():
             if len(self.best_loss)<self.natoms:
                 self.best_loss.append(torch.tensor(np.inf))
 
-            fine_tune_metrics[f'lr_{ii}'] = []
-            fine_tune_metrics[f'fine_tune_loss_{ii}'] = []
-            fine_tune_metrics[f'train_loss_{ii}'] = []
-            fine_tune_metrics[f'validation_loss_{ii}'] = []
+            fine_tune_metrics[f'lr_{ii}'] = np.full((self.epochs),np.nan)
+            fine_tune_metrics[f'fine_tune_loss_{ii}'] = np.full((self.epochs),np.nan)
+            fine_tune_metrics[f'train_loss_{ii}'] = np.full((self.epochs),np.nan)
+            fine_tune_metrics[f'validation_loss_{ii}'] = np.full((self.epochs),np.nan)
 
             for n in range(fine_tune_epochs):
                 running_loss = 0
@@ -1035,10 +1035,10 @@ class uncertainty_ensemble_NN_local():
                     break
                 lr_scheduler(validation_loss)
                 
-                fine_tune_metrics[f'lr_{ii}'].append(optim.param_groups[0]['lr'])
-                fine_tune_metrics[f'fine_tune_loss_{ii}'].append(fine_tune_loss)
-                fine_tune_metrics[f'train_loss_{ii}'].append(train_loss)
-                fine_tune_metrics[f'validation_loss_{ii}'].append(validation_loss)
+                fine_tune_metrics[f'lr_{ii}'][n] = float(optim.param_groups[0]['lr'])
+                fine_tune_metrics[f'fine_tune_loss_{ii}'] = float(fine_tune_loss)
+                fine_tune_metrics[f'train_loss_{ii}'] = float(train_loss)
+                fine_tune_metrics[f'validation_loss_{ii}'] = float(validation_loss)
 
                 if optim.param_groups[0]['lr'] == self.min_lr:
                     break
