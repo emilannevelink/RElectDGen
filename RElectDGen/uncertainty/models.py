@@ -1311,6 +1311,8 @@ class Nequip_ensemble_NN(uncertainty_base):
         ntrain = nval = 0
         
         colors = ['b', 'g', 'r', 'c', 'm', 'k']
+        c_train = []
+        c_val = []
         for i, key in enumerate(self.chemical_symbol_to_type):
             # train_error = train_real[key]-train_pred[key]
             # train_distribution_err = train_error/train_unc_err[key]
@@ -1345,6 +1347,7 @@ class Nequip_ensemble_NN(uncertainty_base):
             ax[1,3].text(0.5,0.9-0.1*i,str(np.round(mean.numpy(),4)),va="center", ha="center",transform=ax[1,3].transAxes)
 
             ax[1,4].scatter(err_real, err_pred, alpha=alpha, color=colors[i], label=key)
+            c_train.append(np.polyfit(err_real,err_pred,1))
             min_error = min(min_error, err_real.min(), err_pred.min())
             max_error = max(max_error, err_real.max(), err_pred.max())
             
@@ -1384,6 +1387,7 @@ class Nequip_ensemble_NN(uncertainty_base):
             nval+=len(val_force_real[key])
 
             ax[3,4].scatter(err_real, err_pred, alpha=alpha, color=colors[i], label=key)
+            c_val.append(np.polyfit(err_real,err_pred,1))
             min_error = min(min_error, err_real.min(), err_pred.min())
             max_error = max(max_error, err_real.max(), err_pred.max())
         
@@ -1396,6 +1400,17 @@ class Nequip_ensemble_NN(uncertainty_base):
         ax[1,4].plot([min_error,max_error],[min_error,max_error],color='k',linestyle='--')
         ax[2,4].plot([min_force,max_force],[min_force,max_force],color='k',linestyle='--')
         ax[3,4].plot([min_error,max_error],[min_error,max_error],color='k',linestyle='--')
+        xplot = np.linspace(min_error,max_error)
+        for i, c in enumerate(c_train):
+            yplot = np.poly1d(c)(xplot)
+            ax[1,4].plot(xplot,yplot,color=colors[i],linestyle='--')
+            ax[1,4].text(0.1,0.9-0.1*i,f'S: {str(np.round(c[1],4))}; I: {str(np.round(c[0],4))}',va="center", ha="left",transform=ax[1,4].transAxes)
+        for i, c in enumerate(c_val):
+            yplot = np.poly1d(c)(xplot)
+            ax[3,4].plot(xplot,yplot,color=colors[i],linestyle='--')
+            ax[3,4].text(0.1,0.9-0.1*i,f'S: {str(np.round(c[1],4))}; I: {str(np.round(c[0],4))}',va="center", ha="left",transform=ax[3,4].transAxes)
+            # ax[3,4].text(0.1,0.9,'Intercept: ' + str(np.round(c[1],4)),va="center", ha="left",transform=ax[3,4].transAxes)
+            # ax[3,4].text(0.1,0.8,'Slope: ' + str(np.round(c[0],4)),va="center", ha="left",transform=ax[3,4].transAxes)
 
         ax[1,2].legend()
         ax[1,3].legend()
