@@ -1349,7 +1349,7 @@ class Nequip_ensemble_NN(uncertainty_base):
             # ax[1,4].scatter(err_real, err_pred, alpha=alpha, color=colors[i], label=key)
             c_train.append(np.polyfit(err_real,err_pred,1))
             c_t = np.polyfit(err_pred,err_real,1)
-            ax[3,4].scatter(err_real, np.poly1d(c_t)(err_pred), alpha=alpha, color=colors[i], label=key)
+            ax[1,4].scatter(err_real, np.poly1d(c_t)(err_pred), alpha=alpha, color=colors[i], label=key)
             min_error = min(min_error, err_real.min(), err_pred.min())
             max_error = max(max_error, err_real.max(), err_pred.max())
             
