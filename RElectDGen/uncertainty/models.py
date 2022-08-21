@@ -1346,8 +1346,10 @@ class Nequip_ensemble_NN(uncertainty_base):
             ax[1,3].axvline(mean, color=colors[i])
             ax[1,3].text(0.5,0.9-0.1*i,str(np.round(mean.numpy(),4)),va="center", ha="center",transform=ax[1,3].transAxes)
 
-            ax[1,4].scatter(err_real, err_pred, alpha=alpha, color=colors[i], label=key)
+            # ax[1,4].scatter(err_real, err_pred, alpha=alpha, color=colors[i], label=key)
             c_train.append(np.polyfit(err_real,err_pred,1))
+            c_t = np.polyfit(err_pred,err_real,1)
+            ax[3,4].scatter(err_real, np.poly1d(c_t)(err_pred), alpha=alpha, color=colors[i], label=key)
             min_error = min(min_error, err_real.min(), err_pred.min())
             max_error = max(max_error, err_real.max(), err_pred.max())
             
@@ -1386,8 +1388,11 @@ class Nequip_ensemble_NN(uncertainty_base):
             ax[3,3].text(0.5,0.9-0.1*i,str(np.round(mean.numpy(),4)),va="center", ha="center",transform=ax[3,3].transAxes)
             nval+=len(val_force_real[key])
 
-            ax[3,4].scatter(err_real, err_pred, alpha=alpha, color=colors[i], label=key)
+            # ax[3,4].scatter(err_real, err_pred, alpha=alpha, color=colors[i], label=key)
             c_val.append(np.polyfit(err_real,err_pred,1))
+            c_t = np.polyfit(err_pred,err_real,1)
+            ax[3,4].scatter(err_real, np.poly1d(c_t)(err_pred), alpha=alpha, color=colors[i], label=key)
+            
             min_error = min(min_error, err_real.min(), err_pred.min())
             max_error = max(max_error, err_real.max(), err_pred.max())
         
@@ -1404,11 +1409,11 @@ class Nequip_ensemble_NN(uncertainty_base):
         for i, c in enumerate(c_train):
             yplot = np.poly1d(c)(xplot)
             ax[1,4].plot(xplot,yplot,color=colors[i],linestyle='--')
-            ax[1,4].text(0.1,0.9-0.1*i,f'S: {str(np.round(c[1],4))}; I: {str(np.round(c[0],4))}',va="center", ha="left",transform=ax[1,4].transAxes)
+            ax[1,4].text(0.1,0.9-0.1*i,f'I: {str(np.round(c[1],4))}; S: {str(np.round(c[0],4))}',va="center", ha="left",transform=ax[1,4].transAxes)
         for i, c in enumerate(c_val):
             yplot = np.poly1d(c)(xplot)
             ax[3,4].plot(xplot,yplot,color=colors[i],linestyle='--')
-            ax[3,4].text(0.1,0.9-0.1*i,f'S: {str(np.round(c[1],4))}; I: {str(np.round(c[0],4))}',va="center", ha="left",transform=ax[3,4].transAxes)
+            ax[3,4].text(0.1,0.9-0.1*i,f'I: {str(np.round(c[1],4))}; S: {str(np.round(c[0],4))}',va="center", ha="left",transform=ax[3,4].transAxes)
             # ax[3,4].text(0.1,0.9,'Intercept: ' + str(np.round(c[1],4)),va="center", ha="left",transform=ax[3,4].transAxes)
             # ax[3,4].text(0.1,0.8,'Slope: ' + str(np.round(c[0],4)),va="center", ha="left",transform=ax[3,4].transAxes)
 
