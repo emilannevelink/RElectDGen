@@ -184,8 +184,8 @@ def main(args=None):
         current_train_idcs = set(np.array(MLP_config.get('train_idcs')))
         current_val_idcs = set(np.array(MLP_config.get('val_idcs')))
 
-        n_train_add = config.get('n_train') - len(current_train_idcs)
-        n_val_add = config.get('n_val') - len(current_val_idcs)
+        n_train_add = MLP_config_new.get('n_train') - len(current_train_idcs)
+        n_val_add = MLP_config_new.get('n_val') - len(current_val_idcs)
 
         all_indices = set(torch.arange(0,len(traj),1).numpy())
         remaining_idcs = torch.tensor(list(all_indices.difference(current_train_idcs).difference(current_val_idcs)))
@@ -198,9 +198,8 @@ def main(args=None):
         MLP_config_new['val_idcs'] = val_idcs
         
         for i, conf in enumerate(MLP_configs):
-            MLP_config_new['root'] = os.path.dirname(config['train_directory']) + f'_{i}'
             if load:
-            
+                MLP_config_new['root'] = os.path.dirname(config['train_directory']) + f'_{i}'
                 MLP_config_new['workdir_load'] = conf['workdir']
 
             tmp_MLP_filename = f'tmp_MLP_{i}.yaml'
