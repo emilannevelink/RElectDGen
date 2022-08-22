@@ -122,7 +122,7 @@ def main(args=None):
         n_train_add = MLP_config_new.get('n_train')
         n_val_add = MLP_config_new.get('n_val')
 
-        traj = Trajectory(MLP_config['dataset_file_name'])
+        traj = Trajectory(MLP_config_new['dataset_file_name'])
         all_indices = set(torch.arange(0,len(traj),1).numpy())
         
         ind_select = torch.randperm(len(all_indices))
