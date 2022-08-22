@@ -118,6 +118,22 @@ def main(args=None):
             else:
                 print(f'Previous train and validation losses are close enough for network {i}', flush=True) 
 
+    if train:
+        n_train_add = MLP_config_new.get('n_train')
+        n_val_add = MLP_config_new.get('n_val')
+
+        traj = Trajectory(MLP_config['dataset_file_name'])
+        all_indices = set(torch.arange(0,len(traj),1).numpy())
+        
+        ind_select = torch.randperm(len(all_indices))
+
+        train_idcs = all_indices[ind_select[:n_train_add]]
+        val_idcs =all_indices[ind_select[n_train_add:n_train_add+n_val_add]]
+        MLP_config_new['train_idcs'] = train_idcs
+        MLP_config_new['val_idcs'] = val_idcs
+        
+        
+
     uncertainty_dict = {}
     load = False
     if not train:
@@ -151,34 +167,10 @@ def main(args=None):
                 print(f'First uncertain datapoint {uncertain_data.min()}, of {len(uncertain_data)} uncertain point from {len(traj)} data points',flush=True)
                 train = True
 
-                # Add train 
-                current_train_idcs = set(np.array(MLP_config.get('train_idcs')))
-                current_val_idcs = set(np.array(MLP_config.get('val_idcs')))
-
-                n_train_add = config.get('n_train') - len(current_train_idcs)
-                n_val_add = config.get('n_val') - len(current_val_idcs)
-
-                all_indices = set(torch.arange(0,len(traj),1).numpy())
-                remaining_idcs = torch.tensor(list(all_indices.difference(current_train_idcs).difference(current_val_idcs)))
-
-                ind_select = torch.randperm(len(remaining_idcs))
-
-                train_idcs = torch.cat([MLP_config.get('train_idcs'), remaining_idcs[ind_select[:n_train_add]]])
-                val_idcs = torch.cat([MLP_config.get('val_idcs'), remaining_idcs[ind_select[n_train_add:n_train_add+n_val_add]]])
-                MLP_config_new['train_idcs'] = train_idcs
-                MLP_config_new['val_idcs'] = val_idcs
-                
                 for i, conf in enumerate(MLP_configs):
                     if MLP_config_new.get('load_previous') and check_NN_parameters(MLP_config_new, conf):
-                        MLP_config_new['root'] = os.path.dirname(config['train_directory']) + f'_{i}'
-                        MLP_config_new['workdir_load'] = conf['workdir']
-
-                        tmp_MLP_filename = f'tmp_MLP_{i}.yaml'
-                        with open(tmp_MLP_filename, "w+") as fp:
-                            yaml.dump(dict(MLP_config_new), fp)
-
-                    print('Load previous', flush = True)
-                    load = True
+                        print('Load previous', flush = True)
+                        load = True
 
             else:
                 print('No uncertain points, reusing neural network')
@@ -186,6 +178,36 @@ def main(args=None):
             del UQ, uncertainty, embedding, uncertain_data, MLP_config, MLP_config_new
 
     gc.collect()
+
+    if train:
+        current_train_idcs = set(np.array(MLP_config.get('train_idcs')))
+        current_val_idcs = set(np.array(MLP_config.get('val_idcs')))
+
+        n_train_add = config.get('n_train') - len(current_train_idcs)
+        n_val_add = config.get('n_val') - len(current_val_idcs)
+
+        all_indices = set(torch.arange(0,len(traj),1).numpy())
+        remaining_idcs = torch.tensor(list(all_indices.difference(current_train_idcs).difference(current_val_idcs)))
+
+        ind_select = torch.randperm(len(remaining_idcs))
+
+        train_idcs = torch.cat([MLP_config.get('train_idcs'), remaining_idcs[ind_select[:n_train_add]]])
+        val_idcs = torch.cat([MLP_config.get('val_idcs'), remaining_idcs[ind_select[n_train_add:n_train_add+n_val_add]]])
+        MLP_config_new['train_idcs'] = train_idcs
+        MLP_config_new['val_idcs'] = val_idcs
+        
+        for i, conf in enumerate(MLP_configs):
+            MLP_config_new['root'] = os.path.dirname(config['train_directory']) + f'_{i}'
+            if load:
+            
+                MLP_config_new['workdir_load'] = conf['workdir']
+
+            tmp_MLP_filename = f'tmp_MLP_{i}.yaml'
+            with open(tmp_MLP_filename, "w+") as fp:
+                yaml.dump(dict(MLP_config_new), fp)
+
+            print('Load previous', flush = True)
+            load = True
 
     logging_dict = {
         **uncertainty_dict,
