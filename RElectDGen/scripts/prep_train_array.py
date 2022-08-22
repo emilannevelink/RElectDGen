@@ -95,14 +95,15 @@ def main(args=None):
     torch._C._jit_set_bailout_depth(MLP_config_new.get("_jit_bailout_depth",2))
     tmp_filename = os.path.join(config.get('directory'),config.get('run_dir'),config.get('tmp_file','tmp.json'))
     
-    # Load ensemble 0 model
-    train, models, MLP_configs = use_previous_model(MLP_config_new)
+    n_ensemble = config.get('n_uncertainty_ensembles',4)
+    
+    train, models, MLP_configs = use_previous_model(MLP_config_new, n_ensemble)
     MLP_config = MLP_configs[0]
 
     if config.get('force_retrain', False):
         train = True
 
-    n_ensemble = config.get('n_uncertainty_ensembles',4)
+    
 
     if not train:
         #Check to make sure the previously trained network had training and validation losses that were 'close' to each other
