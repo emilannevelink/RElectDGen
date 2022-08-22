@@ -118,7 +118,7 @@ def main(args=None):
             else:
                 print(f'Previous train and validation losses are close enough for network {i}', flush=True) 
 
-    traj = Trajectory(MLP_config['dataset_file_name'])
+    traj = Trajectory(MLP_config_new['dataset_file_name'])
     if max(max(MLP_config.get('train_idcs')),max(MLP_config.get('val_idcs'))) > len(traj):
         train = True
 
