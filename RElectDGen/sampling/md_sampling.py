@@ -44,16 +44,28 @@ def MD_sampling(config, loop_learning_count=1):
     #Delete Bondlength constraints
     supercell.constraints = [constraint for constraint in supercell.constraints if type(constraint)!=ase.constraints.FixBondLengths]
     
-
+    uncertainty_function = config.get('uncertainty_function', 'Nequip_latent_distance')
     ### Setup NN ASE calculator
-    calc_nn, model, MLP_config = nn_from_results()
+    if uncertainty_function in ['Nequip_ensemble']:
+        n_ensemble = config.get('n_uncertainty_ensembles',4)
+        model = []
+        MLP_config = []
+        for i in range(n_ensemble):
+            root = os.path.dirname(config['train_directory']) + f'_{i}'
+            calc_nn, mod, config = nn_from_results(root=root)
+            model.append(mod)
+            MLP_config.append(config)
+            r_max = config.get('r_max')
+    else:
+        calc_nn, model, MLP_config = nn_from_results()
+        r_max = MLP_config.get('r_max')
     supercell.calc = calc_nn
 
     tmp0 = time.time()
     print('Time to initialize', tmp0-start,flush=True)
 
     ### Calibrate Uncertainty Quantification
-    UQ_func = getattr(uncertainty_models,config.get('uncertainty_function', 'Nequip_latent_distance'))
+    UQ_func = getattr(uncertainty_models,uncertainty_function)
 
     UQ = UQ_func(model, config, MLP_config)
     UQ.calibrate()
@@ -137,7 +149,7 @@ def MD_sampling(config, loop_learning_count=1):
         traj = traj[::reduction_factor]
         print(f'reduced length of trajectory by {reduction_factor}, new length {len(traj)}, new max_index {expected_max_index}', flush=True)
 
-    _, traj = reduce_traj_isolated(traj,MLP_config.get('r_max'))
+    _, traj = reduce_traj_isolated(traj,r_max)
     uncertainty, embeddings = UQ.predict_from_traj(traj,max=False)
 
     max_val_ind = uncertainty.sum(dim=-1).max(axis=1)

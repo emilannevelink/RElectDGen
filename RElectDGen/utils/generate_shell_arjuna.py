@@ -31,7 +31,23 @@ def shell_from_config(config):
         
         slurm_config = slurm_config_from_config(config,file)
 
-        if 'train' in file:
+        if 'train_prep' in file:
+            commands = [
+                "spack unload -a",
+                "source /home/spack/.spack/opt/spack/linux-centos7-broadwell/gcc-11.2.0/miniconda3-4.9.2-et7ujxrrzevxewx65fnmzqkftwwkrsyc/etc/profile.d/conda.sh",
+                f'conda activate {conda_environment}',
+                'rm results/processed*/ -r',
+                'REDGEN-combine-datasets --config_file $1 --MLP_config_file $2',
+                'REDGEN-train-prep --config_file $1 --MLP_config_file $2',
+            ]
+        elif 'train_array' in file:
+            commands = [
+                "spack unload -a",
+                "source /home/spack/.spack/opt/spack/linux-centos7-broadwell/gcc-11.2.0/miniconda3-4.9.2-et7ujxrrzevxewx65fnmzqkftwwkrsyc/etc/profile.d/conda.sh",
+                f'conda activate {conda_environment}',
+                f'REDGEN-train-array --config_file $1 --MLP_config_file $2' + " --array_index ${SLURM_ARRAY_TASK_ID}"
+            ]
+        elif 'train' in file:
             commands = [
                 "spack unload -a",
                 "strings /usr/lib64/libstdc++.so.6 | grep CXXABI",
@@ -45,10 +61,6 @@ def shell_from_config(config):
                 'REDGEN-train-NN --config_file $1 --MLP_config_file $2',
                 # 'python ${1}scripts/'+f'{branch}/train_NN.py --config_file $2 --MLP_config_file $3',
             ]
-            # slurm_config['n'] = python_cores
-            # slurm_config['N'] = python_nodes
-            # slurm_config['--ntasks'] = 1
-            # slurm_config['--cpus-per-task'] = python_cores
         elif 'restart' in file:
             commands = [
                 "spack unload -a",

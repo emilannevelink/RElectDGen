@@ -67,7 +67,7 @@ def oracle_from_config(config,atoms=None):
 
     return calculator
 
-def nn_from_results(train_directory=None):
+def nn_from_results(root='results',train_directory=None):
     # spack cannot load nequip due to older ase version
     import torch
     from nequip.utils import Config
@@ -77,7 +77,7 @@ def nn_from_results(train_directory=None):
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     if train_directory is None:
-        train_directory = get_results_dir()
+        train_directory = get_results_dir(root)
     
     # file_config = train_directory + "/config_final.yaml"
     # MLP_config = Config.from_file(file_config)

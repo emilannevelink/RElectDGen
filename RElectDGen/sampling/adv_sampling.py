@@ -83,13 +83,29 @@ def adv_sampling(config, traj_initial=[], loop_learning_count=1):
     start = time.time()
     adv_dict = {}
     
-    ### Setup NN ASE calculator
-    calc_nn, model, MLP_config = nn_from_results()
     
+    uncertainty_function = config.get('uncertainty_function', 'Nequip_latent_distance')
+    ### Setup NN ASE calculator
+    if uncertainty_function in ['Nequip_ensemble']:
+        n_ensemble = config.get('n_uncertainty_ensembles',4)
+        model = []
+        MLP_config = []
+        for i in range(n_ensemble):
+            root = os.path.dirname(config['train_directory']) + f'_{i}'
+            calc_nn, mod, config = nn_from_results(root=root)
+            model.append(mod)
+            MLP_config.append(config)
+            r_max = config.get('r_max')
+    else:
+        calc_nn, model, MLP_config = nn_from_results()
+        r_max = MLP_config.get('r_max')
+    
+
     tmp0 = time.time()
     print('Time to initialize', tmp0-start)
 
-    UQ_func = getattr(uncertainty_models,config.get('uncertainty_function', 'Nequip_latent_distance'))
+
+    UQ_func = getattr(uncertainty_models,uncertainty_function)
 
     UQ = UQ_func(model, config, MLP_config)
     UQ.calibrate()
@@ -191,7 +207,7 @@ def adv_sampling(config, traj_initial=[], loop_learning_count=1):
     # writer = Trajectory(traj_dump_file, 'w')
     # for atoms in traj_adv:
     #     writer.write(atoms)
-    reduce_ind, traj_adv = reduce_traj_isolated(traj_adv,MLP_config.get('r_max'))
+    reduce_ind, traj_adv = reduce_traj_isolated(traj_adv,r_max)
     embeddings = [emb for i, emb in enumerate(embeddings) if i in reduce_ind]
 
     min_uncertainty = config.get('UQ_min_uncertainty')

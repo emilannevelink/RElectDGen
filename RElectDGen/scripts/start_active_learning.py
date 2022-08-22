@@ -76,6 +76,7 @@ def main(args=None):
         shell_filenames = [
             'submits/train_NN.sh',
             'submits/MLP_MD.sh',
+            'submits/train_array.sh',
             'submits/adv_sampling.sh',
             'submits/MD_adv_sampling.sh',
             'submits/gpaw_active.sh',
@@ -107,9 +108,32 @@ def main(args=None):
                     job_ids.append(int(process.stdout.split(b' ')[-1]))
                     job_types.append(shell_file)
 
-                else:
+                if 'train_prep' in shell_file:
+
+                    shell_file = 'submits/train_prep.sh'
+                    if len(job_ids)>0:
+                        commands = ['sbatch', f'--dependency=afterok:{job_ids[-1]}', shell_file, active_learning_config, MLP_config_filename, str(i)]
+                    else:
+                        commands = ['sbatch', shell_file, active_learning_config, MLP_config_filename, str(i)]
+
+                    command_string = ' '.join(commands)
+                    process = subprocess.run(command_string, capture_output=True, shell=True)
+                    job_ids.append(int(process.stdout.split(b' ')[-1]))
+                    job_types.append(shell_file)
+
+                    shell_file = 'submits/train_array.sh'
+                    n_ensemble = config.get('n_uncertainty_ensembles',4)
+                    if len(job_ids)>0:
+                        commands = ['sbatch', f'--dependency=afterok:{job_ids[-1]}', f'--array=0-{n_ensemble}', shell_file, active_learning_config, MLP_config_filename, str(i)]
+                    else:
+                        commands = ['sbatch', f'--array=0-{n_ensemble}', shell_file,active_learning_config, MLP_config_filename, str(i)]
                     
-                
+                    command_string = ' '.join(commands)
+                    process = subprocess.run(command_string, capture_output=True, shell=True)
+                    job_ids.append(int(process.stdout.split(b' ')[-1]))
+                    job_types.append(shell_file)
+
+                else:
                     if len(job_ids)>0:
                         commands = ['sbatch', f'--dependency=afterok:{job_ids[-1]}', shell_file, active_learning_config, MLP_config_filename, str(i)]
                     else:

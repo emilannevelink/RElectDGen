@@ -1538,6 +1538,656 @@ class Nequip_ensemble_NN(uncertainty_base):
             plt.savefig(filename)
             plt.close()
 
+class Nequip_ensemble(uncertainty_base):
+    def __init__(self, model, config, MLP_config):
+        super().__init__(model, config[0], MLP_config)
+
+        self.config = config
+
+    def calibrate(self, debug = False):
+        self.parse_data()
+
+    def fine_tune(self, embeddings, energies_or_forces):
+        pass
+        
+    def parse_data(self):
+        dataset = dataset_from_config(self.MLP_config)
+
+        self.ML_train_indices = torch.tensor(self.MLP_config.train_idcs, dtype=int,device=self.device)
+        self.UQ_train_indices = torch.empty((0), dtype= int,device=self.device)
+        self.ML_validation_indices = torch.tensor(self.MLP_config.val_idcs, dtype=int,device=self.device)
+        self.UQ_validation_indices = torch.empty((0),dtype= int,device=self.device)
+        self.UQ_test_indices = torch.empty((0),dtype= int,device=self.device)
+
+        self.train_dataset = dataset[self.MLP_config.train_idcs]
+        self.validation_dataset = dataset[self.MLP_config.val_idcs]
+
+        train_embeddings = {}
+        train_energies = {}
+        train_forces = {}
+        train_indices = {}
+        validation_embeddings = {}
+        validation_energies = {}
+        validation_forces = {}
+        validation_indices = {}
+        test_embeddings = {}
+        test_energies = {}
+        test_forces = {}
+        test_indices = {}
+
+        for key in self.chemical_symbol_to_type:
+            train_embeddings[key] = torch.empty((0,self.latent_size+self.natoms),device=self.device)
+            train_energies[key] = torch.empty((0),device=self.device)
+            train_forces[key] = torch.empty((0),device=self.device)
+            train_indices[key] = torch.empty(0,dtype=int).to(self.device)
+
+            validation_embeddings[key] = torch.empty((0,self.latent_size+self.natoms),device=self.device)
+            validation_energies[key] = torch.empty((0),device=self.device)
+            validation_forces[key] = torch.empty((0),device=self.device)
+            validation_indices[key] = torch.empty(0,dtype=int).to(self.device)
+
+            test_embeddings[key] = torch.empty((0,self.latent_size+self.natoms),device=self.device)
+            test_energies[key] = torch.empty((0),device=self.device)
+            test_forces[key] = torch.empty((0),device=self.device)
+            test_indices[key] = torch.empty(0,dtype=int).to(self.device)
+        
+        error_threshold=self.config.get('UQ_dataset_error', np.inf)
+        for i, data in enumerate(self.train_dataset):
+            out = self.model(self.transform_data_input(data))
+
+            force_norm = data['forces'].norm(dim=1).unsqueeze(dim=1)
+            force_lim = torch.max(force_norm,torch.ones_like(force_norm))
+            perc_err = ((out['forces'].detach()-data['forces'])).abs()/force_lim
+            
+            if perc_err.max() < error_threshold:
+                self.UQ_train_indices = torch.cat([self.UQ_train_indices, self.ML_train_indices[i].unsqueeze(dim=0)])
+                for key in self.MLP_config.get('chemical_symbol_to_type'):
+                    mask = (data['atom_types']==self.MLP_config.get('chemical_symbol_to_type')[key]).flatten()
+                    
+                    atom_one_hot = torch.nn.functional.one_hot(data['atom_types'].squeeze()[mask],num_classes=self.natoms).to(self.device)
+                    NN_inputs = torch.hstack([out['node_features'][mask].detach(), atom_one_hot])
+                    
+                    train_embeddings[key] = torch.cat([train_embeddings[key],NN_inputs])
+                    train_energies[key] = torch.cat([train_energies[key], out['atomic_energy'][mask].detach()])
+                    train_forces[key] = torch.cat([train_forces[key], data['forces'][mask].detach().norm(dim=1).unsqueeze(1)])
+
+                    # npoints = torch.tensor([train_indices[key][-1]+sum(mask) if i>0 else sum(mask)]).to(self.device)
+                    # train_indices[key] = torch.cat([train_indices[key],npoints]).to(self.device)
+            else:
+                self.UQ_test_indices = torch.cat([self.UQ_test_indices, self.ML_train_indices[i].unsqueeze(dim=0)])
+                for key in self.MLP_config.get('chemical_symbol_to_type'):
+                    mask = (data['atom_types']==self.MLP_config.get('chemical_symbol_to_type')[key]).flatten()
+                    
+                    atom_one_hot = torch.nn.functional.one_hot(data['atom_types'].squeeze()[mask],num_classes=self.natoms).to(self.device)
+                    NN_inputs = torch.hstack([out['node_features'][mask].detach(), atom_one_hot])
+                    
+                    test_embeddings[key] = torch.cat([test_embeddings[key],NN_inputs])
+                    test_energies[key] = torch.cat([test_energies[key], out['atomic_energy'][mask].detach()])
+                    test_forces[key] = torch.cat([test_forces[key], data['forces'][mask].detach().norm(dim=1).unsqueeze(1)])
+
+                    # npoints = torch.tensor([test_indices[key][-1]+sum(mask) if i>0 else sum(mask)]).to(self.device)
+                    # test_indices[key] = torch.cat([test_indices[key],npoints]).to(self.device)
+
+        self.train_embeddings = train_embeddings
+        self.train_energies = train_energies
+        self.train_forces = train_forces
+        self.train_indices = train_indices
+
+        for i, data in enumerate(self.validation_dataset):
+            out = self.model(self.transform_data_input(data))
+
+            force_norm = data['forces'].norm(dim=1).unsqueeze(dim=1)
+            force_lim = torch.max(force_norm,torch.ones_like(force_norm))
+            perc_err = ((out['forces'].detach()-data['forces'])).abs()/force_lim
+            
+            if perc_err.max() < error_threshold:
+                self.UQ_validation_indices = torch.cat([self.UQ_validation_indices, self.ML_validation_indices[i].unsqueeze(dim=0)])
+                for key in self.MLP_config.get('chemical_symbol_to_type'):
+                    mask = (data['atom_types']==self.MLP_config.get('chemical_symbol_to_type')[key]).flatten()
+
+                    atom_one_hot = torch.nn.functional.one_hot(data['atom_types'].squeeze()[mask],num_classes=self.natoms).to(self.device)
+                    NN_inputs = torch.hstack([out['node_features'][mask].detach(), atom_one_hot])
+
+                    validation_embeddings[key] = torch.cat([validation_embeddings[key],NN_inputs])
+                    validation_energies[key] = torch.cat([validation_energies[key], out['atomic_energy'][mask].detach()])
+                    validation_forces[key] = torch.cat([validation_forces[key], data['forces'][mask].detach().norm(dim=1).unsqueeze(1)])
+                    
+                    # npoints = torch.tensor([validation_indices[key][-1]+sum(mask) if i>0 else sum(mask)]).to(self.device)
+                    # validation_indices[key] = torch.cat([validation_indices[key],npoints]).to(self.device)
+            else:
+                self.UQ_test_indices = torch.cat([self.UQ_test_indices, self.ML_validation_indices[i].unsqueeze(dim=0)])
+                for key in self.MLP_config.get('chemical_symbol_to_type'):
+                    mask = (data['atom_types']==self.MLP_config.get('chemical_symbol_to_type')[key]).flatten()
+
+                    atom_one_hot = torch.nn.functional.one_hot(data['atom_types'].squeeze()[mask],num_classes=self.natoms).to(self.device)
+                    NN_inputs = torch.hstack([out['node_features'][mask].detach(), atom_one_hot])
+
+                    test_embeddings[key] = torch.cat([test_embeddings[key],NN_inputs])
+                    test_energies[key] = torch.cat([test_energies[key], out['atomic_energy'][mask].detach()])
+                    test_forces[key] = torch.cat([test_forces[key], data['forces'][mask].detach().norm(dim=1).unsqueeze(1)])
+                    
+                    # npoints = torch.tensor([test_indices[key][-1]+sum(mask) if i>0 else sum(mask)]).to(self.device)
+                    # test_indices[key] = torch.cat([test_indices[key],npoints]).to(self.device)
+        
+        self.validation_embeddings = validation_embeddings
+        self.validation_energies = validation_energies
+        self.validation_forces = validation_forces
+        self.validation_indices = validation_indices
+
+        self.test_embeddings = test_embeddings
+        self.test_energies = test_energies
+        self.test_forces = test_forces
+        self.test_indices = test_indices
+
+    def adversarial_loss(self, data, T, distances='train_val'):
+
+        data = self.transform_data_input(data)
+
+        
+        self.uncertainties = self.predict_uncertainty(data, distances=distances).to(self.device)
+        
+        adv_loss = 0
+        for key in self.chemical_symbol_to_type:
+            if distances == 'train_val':
+                energies = torch.cat([self.train_energies[key], self.test_energies[key]])
+            else:
+                energies = self.train_energies[key]
+            
+            emean = energies.mean()
+            estd = max([energies.std(),1]) # Only allow contraction
+
+            kT = self.kb * T
+            Q = torch.exp(-(energies-emean)/estd/kT).sum()
+
+            mask = data['atom_types'] == self.chemical_symbol_to_type[key]
+            probability = 1/Q * torch.exp(-(self.atom_energies[mask]-emean)/estd/kT)
+            
+            adv_loss += (probability * self.uncertainties[mask.flatten()].sum(dim=-1)).sum()
+
+        return adv_loss
+
+    def predict_uncertainty(self, data, atom_embedding=None, distances='train_val', extra_embeddings=None,type='full'):
+
+        
+        data = self.transform_data_input(data)
+        force_outputs = torch.empty(len(self.model),*data['pos'].shape)
+        atom_energies = torch.empty(len(self.model),len(data['pos']))
+        for i, model in enumerate(self.model):
+            out = model(data)
+            force_outputs[i] = out['forces']
+            atom_energies[i] = out['atomic_energy']
+
+        self.atom_energies = atom_energies.mean(dim=0)
+        self.atom_embedding = out['node_features']
+        
+        uncertainties_std = force_outputs.std(axis=0)
+        uncertainties_mean = torch.zeros_like(uncertainties_std)
+
+        uncertainty = torch.vstack([uncertainties_mean,uncertainties_std]).T
+
+        return uncertainty
+
+    def predict_from_traj(self, traj, max=True, batch_size=1):
+        uncertainty = []
+        atom_embeddings = []
+        # data = [self.transform(atoms) for atoms in traj]
+        # dataset = DataLoader(data, batch_size=batch_size)
+        # for i, batch in enumerate(dataset):
+        #     uncertainty.append(self.predict_uncertainty(batch))
+        #     atom_embeddings.append(self.atom_embedding)
+        for atoms in traj:
+            uncertainty.append(self.predict_uncertainty(atoms).detach())
+            atom_embeddings.append(self.atom_embedding.detach())
+        
+        
+        uncertainty = torch.cat(uncertainty).cpu()
+        atom_embeddings = torch.cat(atom_embeddings).cpu()
+
+        if max:
+            atom_lengths = [len(atoms) for atoms in traj]
+            start_inds = [0] + np.cumsum(atom_lengths[:-1]).tolist()
+            end_inds = np.cumsum(atom_lengths).tolist()
+
+            uncertainty_partition = [uncertainty[si:ei] for si, ei in zip(start_inds,end_inds)]
+            embeddings = [atom_embeddings[si:ei] for si, ei in zip(start_inds,end_inds)]
+            
+            return torch.vstack([unc[torch.argmax(unc.sum(dim=1))] for unc in uncertainty_partition]), embeddings
+        else:
+            uncertainty = uncertainty.reshape(len(traj),-1, 2)
+            return uncertainty, atom_embeddings.reshape(len(traj),-1,atom_embeddings.shape[-1])
+
+    def plot_fit(self, filename=None):
+            
+        if not hasattr(self, 'train_dataset'):
+            self.parse_data()
+            
+        train_energy_real = torch.empty((0),device=self.device)
+        train_energy_pred = torch.empty((0),device=self.device)
+        train_energy_unc_pred = torch.empty((0),device=self.device)
+        train_max_force_real = torch.empty((0),device=self.device)
+        train_max_force_pred = torch.empty((0),device=self.device)
+
+        val_energy_real = torch.empty((0),device=self.device)
+        val_energy_pred = torch.empty((0),device=self.device)
+        val_energy_unc_pred = torch.empty((0),device=self.device)
+        val_max_force_real = torch.empty((0),device=self.device)
+        val_max_force_pred = torch.empty((0),device=self.device)
+
+        train_energy_err = torch.empty((0),device=self.device)
+        train_energy_std = torch.empty((0),device=self.device)
+        train_max_force_err = torch.empty((0),device=self.device)
+        train_max_force_std = torch.empty((0),device=self.device)
+        train_max_force_max_err = torch.empty((0),device=self.device)
+        train_max_force_max_std = torch.empty((0),device=self.device)
+
+        val_energy_err = torch.empty((0),device=self.device)
+        val_energy_std = torch.empty((0),device=self.device)
+
+        val_energy_err = torch.empty((0),device=self.device)
+        val_energy_std = torch.empty((0),device=self.device)
+        val_max_force_err = torch.empty((0),device=self.device)
+        val_max_force_std = torch.empty((0),device=self.device)
+        val_max_force_max_err = torch.empty((0),device=self.device)
+        val_max_force_max_std = torch.empty((0),device=self.device)
+
+        train_force_real = {}
+        train_force_pred = {}
+        train_force_unc_pred = {}
+        train_force_unc_err = {}
+        train_force_unc_std = {}
+        for key in self.chemical_symbol_to_type:
+            train_force_real[key] = torch.empty((0),device=self.device)
+            train_force_pred[key] = torch.empty((0),device=self.device)
+            train_force_unc_pred[key] = torch.empty((0),device=self.device)
+            train_force_unc_err[key] = torch.empty((0),device=self.device)
+            train_force_unc_std[key] = torch.empty((0),device=self.device)
+        for data in self.train_dataset:
+            natoms = len(data['pos'])
+            train_energy_real = torch.cat([train_energy_real,data['total_energy']/natoms])
+            out = self.model(self.transform_data_input(data))
+            unc = self.predict_uncertainty(data).detach()
+            train_energy_pred = torch.cat([train_energy_pred,out['atomic_energy'].detach().mean().unsqueeze(dim=0)])
+            train_energy_unc_pred = torch.cat([train_energy_unc_pred,self.pred_atom_energies.mean(dim=0).detach().mean().unsqueeze(dim=0)])
+
+            train_energy_err = torch.cat([train_energy_err,unc[:,0].max().unsqueeze(dim=0)])
+            train_energy_std = torch.cat([train_energy_std,unc[:,1].max().unsqueeze(dim=0)])
+
+            ind = torch.argmax((data['forces'].detach()-out['forces'].detach()).norm(dim=1))
+            train_max_force_real = torch.cat([train_max_force_real, data['forces'].detach()[ind].unsqueeze(dim=0)])
+            train_max_force_pred = torch.cat([train_max_force_pred, out['forces'].detach()[ind].unsqueeze(dim=0)])
+            train_max_force_err = torch.cat([train_max_force_err, unc[ind,0].unsqueeze(0)])
+            train_max_force_std = torch.cat([train_max_force_std, unc[ind,1].unsqueeze(0)])
+            ind_unc_max = torch.argmax(unc.sum(1))
+            train_max_force_max_err = torch.cat([train_max_force_max_err, unc[ind_unc_max,0].unsqueeze(0)])
+            train_max_force_max_std = torch.cat([train_max_force_max_std, unc[ind_unc_max,1].unsqueeze(0)])
+
+            for key in self.chemical_symbol_to_type:
+                mask = (data['atom_types']==self.MLP_config.get('chemical_symbol_to_type')[key]).flatten()
+                train_force_real[key] = torch.cat([train_force_real[key],data['forces'].detach()[mask]])
+                train_force_pred[key] = torch.cat([train_force_pred[key],out['forces'].detach()[mask]])
+                train_force_unc_pred[key] = torch.cat([train_force_unc_pred[key],self.pred_atom_energies.mean(dim=0).detach()[mask]])
+                train_force_unc_err[key] = torch.cat([train_force_unc_err[key],unc[mask,0]])
+                train_force_unc_std[key] = torch.cat([train_force_unc_std[key],unc[mask,1]])
+
+        val_force_real = {}
+        val_force_pred = {}
+        val_force_unc_pred = {}
+        val_force_unc_err = {}
+        val_force_unc_std = {}
+        for key in self.chemical_symbol_to_type:
+            val_force_real[key] = torch.empty((0),device=self.device)
+            val_force_pred[key] = torch.empty((0),device=self.device)
+            val_force_unc_pred[key] = torch.empty((0),device=self.device)
+            val_force_unc_err[key] = torch.empty((0),device=self.device)
+            val_force_unc_std[key] = torch.empty((0),device=self.device)
+        for data in self.validation_dataset:
+            natoms = len(data['pos'])
+            val_energy_real = torch.cat([val_energy_real,data['total_energy']/natoms])
+            out = self.model(self.transform_data_input(data))
+            unc = self.predict_uncertainty(data).detach()
+            val_energy_pred = torch.cat([val_energy_pred,out['atomic_energy'].detach().mean().unsqueeze(dim=0)])
+            val_energy_unc_pred = torch.cat([val_energy_unc_pred,self.pred_atom_energies.mean(dim=0).detach().mean().unsqueeze(dim=0)])
+
+            val_energy_err = torch.cat([val_energy_err,unc[:,0].max().unsqueeze(dim=0)])
+            val_energy_std = torch.cat([val_energy_std,unc[:,1].max().unsqueeze(dim=0)])
+
+            ind = torch.argmax((data['forces'].detach()-out['forces'].detach()).norm(dim=1))
+            val_max_force_real = torch.cat([val_max_force_real, data['forces'].detach()[ind].unsqueeze(dim=0)])
+            val_max_force_pred = torch.cat([val_max_force_pred, out['forces'].detach()[ind].unsqueeze(dim=0)])
+            val_max_force_err = torch.cat([val_max_force_err, unc[ind,0].unsqueeze(0)])
+            val_max_force_std = torch.cat([val_max_force_std, unc[ind,1].unsqueeze(0)])
+            ind_unc_max = torch.argmax(unc.sum(1))
+            val_max_force_max_err = torch.cat([val_max_force_max_err, unc[ind_unc_max,0].unsqueeze(0)])
+            val_max_force_max_std = torch.cat([val_max_force_max_std, unc[ind_unc_max,1].unsqueeze(0)])
+
+            for key in self.chemical_symbol_to_type:
+                mask = (data['atom_types']==self.MLP_config.get('chemical_symbol_to_type')[key]).flatten()
+                val_force_real[key] = torch.cat([val_force_real[key],data['forces'].detach()[mask]])
+                val_force_pred[key] = torch.cat([val_force_pred[key],out['forces'].detach()[mask]])
+                val_force_unc_pred[key] = torch.cat([val_force_unc_pred[key],self.pred_atom_energies.mean(dim=0).detach()[mask]])
+                val_force_unc_err[key] = torch.cat([val_force_unc_err[key],unc[mask,0]])
+                val_force_unc_std[key] = torch.cat([val_force_unc_std[key],unc[mask,1]])
+            
+        # print(train_real.shape, train_pred.shape) 
+        # print(val_real.shape, val_pred.shape) 
+        # print(train_unc_err.shape, val_unc_err.shape) 
+
+        uncertainty_training = self.config.get('uncertainty_training','energy')
+        nbins = self.config.get('plot_bins',25)
+        fig, ax = plt.subplots(4,5, figsize=(25,20))
+        min_energy = np.inf
+        max_energy = -np.inf
+        alpha = 0.5
+        min_energy = min([min_energy, train_energy_real.min(), train_energy_pred.min(), val_energy_real.min(), val_energy_pred.min()])
+        max_energy = max([max_energy, train_energy_real.max(), train_energy_pred.max(), val_energy_real.max(),val_energy_pred.max()])
+
+        if uncertainty_training == 'forces':
+            ax[0,0].scatter(train_energy_real,train_energy_pred, alpha=alpha)
+            # ax[0,0].errorbar(train_energy_real,train_energy_pred, alpha=alpha, yerr = train_energy_err, fmt='o')
+            
+            ax[0,1].scatter(train_energy_real,train_energy_pred, alpha=alpha)
+            # ax[0,1].errorbar(train_energy_real,train_energy_pred, alpha=alpha, yerr = train_energy_std, fmt='o')
+        else:
+            ax[0,0].errorbar(train_energy_real,train_energy_pred, alpha=alpha, yerr = train_energy_err, fmt='o')
+            ax[0,1].errorbar(train_energy_real,train_energy_unc_pred, alpha=alpha, yerr = train_energy_std, fmt='o')
+
+        # ax[1,0].scatter(list(range(len(train_energy_real))),train_energy_real-train_energy_pred, alpha=alpha)
+        # ax[1,0].errorbar(list(range(len(train_energy_real))),train_energy_real-train_energy_pred, alpha=alpha, yerr = train_energy_err, fmt='o')
+        
+        # ax[1,1].scatter(list(range(len(train_energy_real))),train_energy_err)
+        # ax[1,1].errorbar(list(range(len(train_energy_real))),train_energy_err, yerr = train_energy_std, fmt='o')
+        # ax[1,1].scatter(train_energy_real-train_energy_pred,train_energy_err, alpha=alpha)
+        # ax[1,1].errorbar(train_energy_real-train_energy_pred,train_energy_err, alpha=alpha, yerr = train_energy_std, fmt='o')
+        ax[1,0].hist(((train_energy_real-train_energy_pred).abs()).unsqueeze(0),nbins, alpha=alpha)
+        mean = ((train_energy_real-train_energy_pred).abs()).mean()
+        ax[1,0].axvline(mean)
+        ax[1,0].text(0.9,0.9,str(np.round(mean.numpy(),4)),va="center", ha="center",transform=ax[1,0].transAxes)
+        
+        ax[1,1].hist((train_energy_err+train_energy_std).unsqueeze(0),nbins, alpha=alpha)
+        mean = (train_energy_err+train_energy_std).mean()
+        ax[1,1].axvline(mean)
+        ax[1,1].text(0.9,0.9,str(np.round(mean.numpy(),4)),va="center", ha="center",transform=ax[1,1].transAxes)
+        
+        if uncertainty_training == 'forces':
+            ax[2,0].scatter(val_energy_real,val_energy_pred, alpha=alpha)
+            # ax[2,0].errorbar(val_energy_real,val_energy_pred, alpha=alpha, yerr = val_energy_err, fmt='o')
+            
+            ax[2,1].scatter(val_energy_real,val_energy_pred, alpha=alpha)
+            # ax[2,1].errorbar(val_energy_real,val_energy_pred, alpha=alpha, yerr = val_energy_std, fmt='o')
+        else:
+            ax[2,0].errorbar(val_energy_real,val_energy_pred, alpha=alpha, yerr = val_energy_err, fmt='o')
+            ax[2,1].errorbar(val_energy_real,val_energy_unc_pred, alpha=alpha, yerr = val_energy_std, fmt='o')
+
+        # ax[3,0].scatter(list(range(len(val_energy_real))),val_energy_real-val_energy_pred, alpha=alpha)
+        # ax[3,0].errorbar(list(range(len(val_energy_real))),val_energy_real-val_energy_pred, alpha=alpha, yerr = val_energy_err, fmt='o')
+        
+        # ax[3,1].scatter(list(range(len(val_energy_real))),val_energy_err)
+        # ax[3,1].errorbar(list(range(len(val_energy_real))),val_energy_err, yerr = val_energy_std, fmt='o')
+        # ax[3,1].scatter(val_energy_real-val_energy_pred,val_energy_err, alpha=alpha)
+        # ax[3,1].errorbar(val_energy_real-val_energy_pred,val_energy_err, alpha=alpha, yerr = val_energy_std, fmt='o')
+        ax[3,0].hist(((val_energy_real-val_energy_pred).abs()).unsqueeze(0),nbins, alpha=alpha)
+        mean = (val_energy_real-val_energy_pred).abs().mean()
+        ax[3,0].axvline(mean)
+        ax[3,0].text(0.9,0.9,str(np.round(mean.numpy(),4)),va="center", ha="center",transform=ax[3,0].transAxes)
+        ax[3,1].hist((val_energy_err+val_energy_std).unsqueeze(0),nbins, alpha=alpha)
+        mean = (val_energy_err+val_energy_std).mean()
+        ax[3,1].axvline(mean)
+        ax[3,1].text(0.9,0.9,str(np.round(mean.numpy(),4)),va="center", ha="center",transform=ax[3,1].transAxes)
+        
+        ax[0,0].plot([min_energy,max_energy],[min_energy,max_energy],color='k',linestyle='--')
+        ax[2,0].plot([min_energy,max_energy],[min_energy,max_energy],color='k',linestyle='--')
+        ax[0,1].plot([min_energy,max_energy],[min_energy,max_energy],color='k',linestyle='--')
+        ax[2,1].plot([min_energy,max_energy],[min_energy,max_energy],color='k',linestyle='--')
+
+        # ax[0,4].scatter(train_max_force_real.norm(dim=1),train_max_force_pred.norm(dim=1), alpha=alpha)
+        ax[0,4].errorbar(train_max_force_real.norm(dim=1),train_max_force_pred.norm(dim=1), alpha=alpha, yerr=train_max_force_err+train_max_force_std, xerr=train_max_force_max_err+train_max_force_max_std, fmt='o')
+
+        # ax[1,4].scatter((train_max_force_real-train_max_force_pred).norm(dim=1),train_max_force_err, alpha=alpha)
+        
+        
+
+        # ax[2,4].scatter(val_max_force_real.norm(dim=1),val_max_force_pred.norm(dim=1), alpha=alpha)
+        ax[2,4].errorbar(val_max_force_real.norm(dim=1),val_max_force_pred.norm(dim=1), alpha=alpha, yerr=val_max_force_err+val_max_force_std, xerr=val_max_force_max_err+val_max_force_max_std, fmt='o')
+
+        # ax[3,4].scatter((val_max_force_real-val_max_force_pred).norm(dim=1),val_max_force_err, alpha=alpha)
+        ax[3,4].scatter((val_max_force_real-val_max_force_pred).norm(dim=1), val_max_force_err+val_max_force_std, alpha=alpha)
+        
+        min_error = 0
+        max_error = 0
+        
+
+        min_force = np.inf
+        max_force = -np.inf
+        ntrain = nval = 0
+        
+        colors = ['b', 'g', 'r', 'c', 'm', 'k']
+        c_train = []
+        c_val = []
+        for i, key in enumerate(self.chemical_symbol_to_type):
+            # train_error = train_real[key]-train_pred[key]
+            # train_distribution_err = train_error/train_unc_err[key]
+            # train_distribution_std = train_error/train_unc_std[key]
+            # train_distribution = train_error/(train_unc_err[key]+train_unc_std[key])
+            # np.histogram(train_distribution.flatten())
+
+            min_force = min([min_force, train_force_real[key].norm(dim=-1).min(), train_force_pred[key].norm(dim=-1).min(), val_force_real[key].norm(dim=-1).min(), val_force_pred[key].norm(dim=-1).min()])
+            max_force = max([max_force, train_force_real[key].norm(dim=-1).max(), train_force_pred[key].norm(dim=-1).max(), val_force_real[key].norm(dim=-1).max(), val_force_pred[key].norm(dim=-1).max()])
+
+            if uncertainty_training == 'forces':
+                # ax[0,2].scatter(train_force_pred[key].norm(dim=-1),train_force_unc_pred[key], alpha=alpha)
+                ax[0,2].errorbar(train_force_real[key].norm(dim=-1),train_force_pred[key].norm(dim=-1), alpha=alpha, yerr = train_force_unc_err[key], fmt='o', color=colors[i])
+                
+                # ax[0,3].scatter(train_force_real[key].norm(dim=-1),train_force_unc_pred[key], alpha=alpha)
+                ax[0,3].errorbar(train_force_real[key].norm(dim=-1),train_force_unc_pred[key], alpha=alpha, yerr = train_force_unc_std[key], fmt='o', color=colors[i])
+            else:
+                ax[0,2].errorbar(train_force_real[key].norm(dim=-1),train_force_pred[key].norm(dim=-1), alpha=alpha, yerr = train_force_unc_err[key], fmt='o', color=colors[i])
+                ax[0,3].errorbar(train_force_real[key].norm(dim=-1),train_force_pred[key].norm(dim=-1), alpha=alpha, yerr = train_force_unc_std[key], fmt='o', color=colors[i])
+
+            # ax[1,2].scatter(range(ntrain,ntrain+len(train_force_real[key])),train_force_real[key].norm(dim=-1)-train_force_pred[key].norm(dim=-1), alpha=alpha)
+            # ax[1,2].errorbar(range(ntrain,ntrain+len(train_force_real[key])),train_force_real[key].norm(dim=-1)-train_force_pred[key].norm(dim=-1), alpha=alpha, yerr = train_force_unc_err[key], fmt='o')
+            err_real = (train_force_real[key]-train_force_pred[key]).norm(dim=-1)
+            ax[1,2].hist(err_real.unsqueeze(0),nbins, alpha=alpha, label=key, color=colors[i])
+            mean = err_real.mean()
+            ax[1,2].axvline(mean, color=colors[i])
+            ax[1,2].text(0.5,0.9-0.1*i,str(np.round(mean.numpy(),4)),va="center", ha="center",transform=ax[1,2].transAxes)
+            err_pred = (train_force_unc_err[key]+train_force_unc_std[key])
+            ax[1,3].hist(err_pred.unsqueeze(0),nbins, alpha=alpha, label=key,stacked=True, color=colors[i])
+            mean = err_pred.mean()
+            ax[1,3].axvline(mean, color=colors[i])
+            ax[1,3].text(0.5,0.9-0.1*i,str(np.round(mean.numpy(),4)),va="center", ha="center",transform=ax[1,3].transAxes)
+
+            # ax[1,4].scatter(err_real, err_pred, alpha=alpha, color=colors[i], label=key)
+            c_train.append(np.polyfit(err_real,err_pred,1))
+            c_t = np.polyfit(err_pred,err_real,1)
+            ax[1,4].scatter(err_real, np.poly1d(c_t)(err_pred), alpha=alpha, color=colors[i], label=key)
+            min_error = min(min_error, err_real.min(), err_pred.min())
+            max_error = max(max_error, err_real.max(), err_pred.max())
+            
+            # ax[1,3].scatter(range(ntrain,ntrain+len(train_force_real[key])),train_force_unc_err[key])
+            # ax[1,3].errorbar(range(ntrain,ntrain+len(train_force_real[key])),train_force_unc_err[key], yerr = train_force_unc_std[key], fmt='o')
+            # ax[1,3].scatter(train_force_real[key].norm(dim=-1)-train_force_pred[key].norm(dim=-1),train_force_unc_err[key], alpha=alpha)
+            # ax[1,3].errorbar(train_force_real[key].norm(dim=-1)-train_force_pred[key].norm(dim=-1),train_force_unc_err[key], alpha=alpha, yerr = train_force_unc_std[key], fmt='o')
+            ntrain+=len(train_force_real[key])
+
+            if uncertainty_training == 'forces':
+                # ax[2,2].scatter(val_force_pred[key].norm(dim=-1),val_force_unc_pred[key], alpha=alpha)
+                ax[2,2].errorbar(val_force_real[key].norm(dim=-1),val_force_pred[key].norm(dim=-1), alpha=alpha, yerr = val_force_unc_err[key]+val_force_unc_std[key], fmt='o', color=colors[i])
+                
+                # ax[2,3].scatter(val_force_real[key].norm(dim=-1),val_force_unc_pred[key], alpha=alpha)
+                ax[2,3].errorbar(val_force_real[key].norm(dim=-1),val_force_unc_pred[key], alpha=alpha, yerr = val_force_unc_std[key], fmt='o', color=colors[i])
+            else:
+                ax[2,2].errorbar(val_force_real[key].norm(dim=-1),val_force_pred[key].norm(dim=-1), alpha=alpha, yerr = val_force_unc_err[key], fmt='o', color=colors[i])
+                ax[2,3].errorbar(val_force_real[key].norm(dim=-1),val_force_pred[key].norm(dim=-1), alpha=alpha, yerr = val_force_unc_std[key], fmt='o', color=colors[i])
+            
+            # ax[3,2].scatter(range(nval,nval+len(val_force_real[key])),val_force_real[key].norm(dim=-1)-val_force_pred[key].norm(dim=-1), alpha=alpha)
+            # ax[3,2].errorbar(range(nval,nval+len(val_force_real[key])),val_force_real[key].norm(dim=-1)-val_force_pred[key].norm(dim=-1), alpha=alpha, yerr = val_force_unc_err[key], fmt='o')
+            
+            # ax[3,3].scatter(range(nval,nval+len(val_force_real[key])),val_force_unc_err[key])
+            # ax[3,3].errorbar(range(nval,nval+len(val_force_real[key])),val_force_unc_err[key], yerr = val_force_unc_std[key], fmt='o')
+            # ax[3,3].scatter(val_force_real[key].norm(dim=-1)-val_force_pred[key].norm(dim=-1),val_force_unc_err[key], alpha=alpha)
+            # ax[3,3].errorbar(val_force_real[key].norm(dim=-1)-val_force_pred[key].norm(dim=-1),val_force_unc_err[key], alpha=alpha, yerr = val_force_unc_std[key], fmt='o')
+            err_real = (val_force_real[key]-val_force_pred[key]).norm(dim=-1)
+            ax[3,2].hist(err_real.unsqueeze(0),nbins, alpha=alpha, label=key, color=colors[i])
+            mean = err_real.mean()
+            ax[3,2].axvline(mean, color=colors[i])
+            ax[3,2].text(0.5,0.9-0.1*i,str(np.round(mean.numpy(),4)),va="center", ha="center",transform=ax[3,2].transAxes)
+            err_pred = (val_force_unc_err[key]+val_force_unc_std[key])
+            ax[3,3].hist(err_pred.unsqueeze(0),nbins, alpha=alpha, label=key,stacked=True, color=colors[i])
+            mean = err_pred.mean()
+            ax[3,3].axvline(mean, color=colors[i])
+            ax[3,3].text(0.5,0.9-0.1*i,str(np.round(mean.numpy(),4)),va="center", ha="center",transform=ax[3,3].transAxes)
+            nval+=len(val_force_real[key])
+
+            # ax[3,4].scatter(err_real, err_pred, alpha=alpha, color=colors[i], label=key)
+            c_val.append(np.polyfit(err_real,err_pred,1))
+            c_t = np.polyfit(err_pred,err_real,1)
+            ax[3,4].scatter(err_real, np.poly1d(c_t)(err_pred), alpha=alpha, color=colors[i], label=key)
+            
+            min_error = min(min_error, err_real.min(), err_pred.min())
+            max_error = max(max_error, err_real.max(), err_pred.max())
+        
+        ax[0,2].plot([min_force,max_force],[min_force,max_force],color='k',linestyle='--')
+        ax[2,2].plot([min_force,max_force],[min_force,max_force],color='k',linestyle='--')
+        ax[0,3].plot([min_force,max_force],[min_force,max_force],color='k',linestyle='--')
+        ax[2,3].plot([min_force,max_force],[min_force,max_force],color='k',linestyle='--')
+        
+        ax[0,4].plot([min_force,max_force],[min_force,max_force],color='k',linestyle='--')
+        ax[1,4].plot([min_error,max_error],[min_error,max_error],color='k',linestyle='--')
+        ax[2,4].plot([min_force,max_force],[min_force,max_force],color='k',linestyle='--')
+        ax[3,4].plot([min_error,max_error],[min_error,max_error],color='k',linestyle='--')
+        xplot = np.linspace(min_error,max_error)
+        for i, c in enumerate(c_train):
+            yplot = np.poly1d(c)(xplot)
+            ax[1,4].plot(xplot,yplot,color=colors[i],linestyle='--')
+            ax[1,4].text(0.1,0.9-0.1*i,f'I: {str(np.round(c[1],4))}; S: {str(np.round(c[0],4))}',va="center", ha="left",transform=ax[1,4].transAxes)
+        for i, c in enumerate(c_val):
+            yplot = np.poly1d(c)(xplot)
+            ax[3,4].plot(xplot,yplot,color=colors[i],linestyle='--')
+            ax[3,4].text(0.1,0.9-0.1*i,f'I: {str(np.round(c[1],4))}; S: {str(np.round(c[0],4))}',va="center", ha="left",transform=ax[3,4].transAxes)
+            # ax[3,4].text(0.1,0.9,'Intercept: ' + str(np.round(c[1],4)),va="center", ha="left",transform=ax[3,4].transAxes)
+            # ax[3,4].text(0.1,0.8,'Slope: ' + str(np.round(c[0],4)),va="center", ha="left",transform=ax[3,4].transAxes)
+
+        ax[1,2].legend()
+        ax[1,3].legend()
+        ax[3,2].legend()
+        ax[3,3].legend()
+        ax[1,2].set_yscale('log')
+        ax[1,3].set_yscale('log')
+        ax[3,2].set_yscale('log')
+        ax[3,3].set_yscale('log')
+        # # ax[0,0].set_xscale('log')
+        # # ax[0,0].set_yscale('log')
+        # # ax[0,1].set_xscale('log')
+        # # ax[0,1].set_yscale('log')
+        # ax[0,2].set_xscale('log')
+        # ax[0,2].set_yscale('log')
+        # ax[0,3].set_xscale('log')
+        # ax[0,3].set_yscale('log')
+        # ax[0,4].set_xscale('log')
+        # ax[0,4].set_yscale('log')
+        # # ax[1,0].set_xscale('log')
+        # ax[1,0].set_yscale('log')
+        # # ax[1,1].set_xscale('log')
+        # ax[1,1].set_yscale('log')
+        # # ax[1,2].set_xscale('log')
+        # ax[1,2].set_yscale('log')
+        # # ax[1,3].set_xscale('log')
+        # ax[1,3].set_yscale('log')
+        # # ax[1,4].set_xscale('log')
+        # # ax[1,4].set_yscale('log')
+        # # ax[2,0].set_xscale('log')
+        # # ax[2,0].set_yscale('log')
+        # # ax[2,1].set_xscale('log')
+        # # ax[2,1].set_yscale('log')
+        # ax[2,2].set_xscale('log')
+        # ax[2,2].set_yscale('log')
+        # ax[2,3].set_xscale('log')
+        # ax[2,3].set_yscale('log')
+        # ax[2,4].set_xscale('log')
+        # ax[2,4].set_yscale('log')
+        # # ax[3,0].set_xscale('log')
+        # ax[3,0].set_yscale('log')
+        # # ax[3,1].set_xscale('log')
+        # ax[3,1].set_yscale('log')
+        # # ax[3,2].set_xscale('log')
+        # # ax[3,2].set_yscale('log')
+        # # ax[3,3].set_xscale('log')
+        # ax[3,3].set_yscale('log')
+        # ax[3,4].set_xscale('log')
+        # ax[3,4].set_yscale('log')
+
+        ax[0,0].set_title('Train Parity Plot (Unc: Err)')
+        ax[0,0].set_xlabel('DFT Total Energy (eV/atom)')
+        ax[0,0].set_ylabel('Predicted Total Energy (eV/atom)')
+        ax[0,1].set_title('Train Parity Plot (Unc: Std)')
+        ax[0,1].set_xlabel('DFT Total Energy (eV/atom)')
+        ax[0,1].set_ylabel('Predicted Total Energy (eV/atom)')
+        ax[1,0].set_title('Train Energy Errors')
+        ax[1,0].set_xlabel('Energy Errors (eV/atom)')
+        ax[1,0].set_ylabel('Counts')
+        ax[1,1].set_title('Train Prediction Errors')
+        ax[1,1].set_xlabel('Prediction Errors')
+        ax[1,1].set_ylabel('Counts')
+
+        ax[2,0].set_title('Validation Parity Plot  (Unc: Err)')
+        ax[2,0].set_xlabel('DFT Total Energy (eV/atom)')
+        ax[2,0].set_ylabel('Predicted Total Energy (eV/atom)')
+        ax[2,1].set_title('Validation Parity Plot (Unc: Std)')
+        ax[2,1].set_xlabel('DFT Total Energy (eV/atom)')
+        ax[2,1].set_ylabel('Predicted Total Energy (eV/atom)')
+        ax[3,0].set_title('Validation Energy Errors ')
+        ax[3,0].set_xlabel('Energy Errors (eV/atom)')
+        ax[3,0].set_ylabel('Counts')
+        ax[3,1].set_title('Validation Prediction Errors')
+        ax[3,1].set_xlabel('Prediction Errors')
+        ax[3,1].set_ylabel('Counts')
+
+        ax[0,2].set_title('Train Parity Plot (Unc: Err)')
+        ax[0,2].set_xlabel('Magnitude of DFT Forces (eV/Angstrom)')
+        ax[0,2].set_ylabel('Magnitude of Predicted Forces (eV/Angstrom)')
+        ax[0,3].set_title('Train Uncertainty Parity Plot (Unc: Std)')
+        ax[0,3].set_xlabel('Magnitude of DFT Forces (eV/Angstrom)')
+        ax[0,3].set_ylabel('Mean of Uncertainty Predictions (eV/Angstrom)')
+        ax[1,2].set_title('Train Force Errors')
+        ax[1,2].set_xlabel('Force Errors (eV/Angstrom)')
+        ax[1,2].set_ylabel('Counts')
+        ax[1,3].set_title('Train Prediction Errors')
+        ax[1,3].set_xlabel('Prediction Errors')
+        ax[1,3].set_ylabel('Counts')
+
+        ax[2,2].set_title('Validation Parity Plot (Unc: Err)')
+        ax[2,2].set_xlabel('Magnitude of DFT Forces (eV/Angstrom)')
+        ax[2,2].set_ylabel('Magnitude of Predicted Forces (eV/Angstrom)')
+        ax[2,3].set_title('Validation Uncertainty Parity Plot (Unc: Std)')
+        ax[2,3].set_xlabel('Magnitude of DFT Forces (eV/Angstrom)')
+        ax[2,3].set_ylabel('Mean of Uncertainty Predictions (eV/Angstrom)')
+        ax[3,2].set_title('Validation Force Errors')
+        ax[3,2].set_xlabel('Force Errors (eV/Angstrom)')
+        ax[3,2].set_ylabel('Counts')
+        ax[3,3].set_title('Validation Prediction Errors')
+        ax[3,3].set_xlabel('Prediction Errors')
+        ax[3,3].set_ylabel('Counts')
+
+        ax[0,4].set_title('Train Max Force Parity Plot')
+        ax[0,4].set_xlabel('DFT Max Force (eV/Angstrom)')
+        ax[0,4].set_ylabel('Predicted Max Force (eV/Angstrom)')
+        ax[1,4].set_title('Train Force Error Parity Plot')
+        ax[1,4].set_xlabel('DFT Force Error (eV/Angstrom)')
+        ax[1,4].set_ylabel('Predicted Force Error (eV/Angstrom)')
+        ax[2,4].set_title('Validation Max Force Parity Plot')
+        ax[2,4].set_xlabel('DFT Max Force (eV/Angstrom)')
+        ax[2,4].set_ylabel('Predicted Max Force (eV/Angstrom)')
+        ax[3,4].set_title('Validation Force Error Parity Plot')
+        ax[3,4].set_xlabel('DFT Force Error (eV/Angstrom)')
+        ax[3,4].set_ylabel('Predicted Force Error (eV/Angstrom)')
+
+
+
+        if filename is not None:
+            os.makedirs(os.path.dirname(filename), exist_ok=True)
+            plt.savefig(filename)
+            plt.close()
+
 
 def f(x):
     return x*x

@@ -53,13 +53,13 @@ def check_NN_parameters(MLP_config_new, MLP_config_old):
 
     return value
 
-def get_results_dir():
+def get_results_dir(root='results'):
     max_time = 0
-    for tmp in os.listdir('results'):
+    for tmp in os.listdir(root):
         if not tmp.startswith('processed'):
-            time_tmp = os.stat('results/'+tmp).st_mtime
+            time_tmp = os.stat(os.path.join(root,tmp)).st_mtime
             if time_tmp>max_time:
                 max_time = time_tmp
-                train_directory = 'results/'+ tmp
+                train_directory = os.path.join(root,tmp)
     
     return train_directory
