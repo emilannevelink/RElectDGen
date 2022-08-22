@@ -129,9 +129,9 @@ def main(args=None):
 
         train_idcs = all_indices[ind_select[:n_train_add]]
         val_idcs =all_indices[ind_select[n_train_add:n_train_add+n_val_add]]
-        for conf in MLP_configs:
-            conf['train_idcs'] = train_idcs
-            conf['val_idcs'] = val_idcs
+        
+        MLP_config['train_idcs'] = train_idcs
+        MLP_config['val_idcs'] = val_idcs
         
         
 
