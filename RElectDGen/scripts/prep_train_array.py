@@ -183,9 +183,12 @@ def main(args=None):
         remaining_idcs = torch.tensor(list(all_indices.difference(current_train_idcs).difference(current_val_idcs)))
 
         ind_select = torch.randperm(len(remaining_idcs))
-
-        train_idcs = torch.cat([MLP_config.get('train_idcs'), remaining_idcs[ind_select[:n_train_add]]])
-        val_idcs = torch.cat([MLP_config.get('val_idcs'), remaining_idcs[ind_select[n_train_add:n_train_add+n_val_add]]])
+        if reset_train_indices:
+            train_idcs = remaining_idcs[ind_select[:n_train_add]]
+            val_idcs = remaining_idcs[ind_select[n_train_add:n_train_add+n_val_add]]
+        else:
+            train_idcs = torch.cat([MLP_config.get('train_idcs'), remaining_idcs[ind_select[:n_train_add]]])
+            val_idcs = torch.cat([MLP_config.get('val_idcs'), remaining_idcs[ind_select[n_train_add:n_train_add+n_val_add]]])
         MLP_config_new['train_idcs'] = train_idcs
         MLP_config_new['val_idcs'] = val_idcs
         
