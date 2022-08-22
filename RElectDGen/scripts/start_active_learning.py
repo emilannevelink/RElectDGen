@@ -76,7 +76,7 @@ def main(args=None):
         shell_filenames = [
             'submits/train_NN.sh',
             'submits/MLP_MD.sh',
-            'submits/train_array.sh',
+            'submits/train_prep.sh',
             'submits/adv_sampling.sh',
             'submits/MD_adv_sampling.sh',
             'submits/gpaw_active.sh',
