@@ -49,6 +49,10 @@ def main(args=None):
     
     tmp_filename = os.path.join(config.get('directory'),config.get('run_dir'),config.get('tmp_file','tmp.json'))
 
+    train_directory = config['train_directory']
+    if train_directory[-1] == '/':
+        train_directory = train_directory[:-1]
+
     if os.path.isfile(tmp_filename):
         with open(tmp_filename,'r') as fl:
             logging_dict = json.load(fl)
@@ -70,7 +74,7 @@ def main(args=None):
 
         # print(process.stderr.decode('ascii'))
 
-    root = os.path.dirname(config['train_directory']) + f'_{array_index}'
+    root = train_directory + f'_{array_index}'
     mae_dict = get_mae_from_results(root,index=array_index)
 
     logging_dict = {

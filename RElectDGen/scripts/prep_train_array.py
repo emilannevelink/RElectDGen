@@ -103,13 +103,15 @@ def main(args=None):
     if config.get('force_retrain', False):
         train = True
 
-    
+    train_directory = config['train_directory']
+    if train_directory[-1] == '/':
+        train_directory = train_directory[:-1]
 
     if not train:
         #Check to make sure the previously trained network had training and validation losses that were 'close' to each other
         
         for i in range(n_ensemble):
-            root = os.path.dirname(config['train_directory']) + f'_{i}'
+            root = train_directory + f'_{i}'
             prev_mae_dict = get_mae_from_results(root,index=i)
             print(prev_mae_dict[f'best_validation_loss_{i}'],prev_mae_dict[f'best_training_loss_{i}'], flush=True)
             if not np.isclose(prev_mae_dict[f'best_validation_loss_{i}'],prev_mae_dict[f'best_training_loss_{i}'],rtol=10):
@@ -193,7 +195,7 @@ def main(args=None):
         MLP_config_new['val_idcs'] = val_idcs
         
         for i, conf in enumerate(MLP_configs):
-            MLP_config_new['root'] = os.path.dirname(config['train_directory']) + f'_{i}'
+            MLP_config_new['root'] = train_directory + f'_{i}'
             if load:
                 MLP_config_new['workdir_load'] = conf['workdir']
 
