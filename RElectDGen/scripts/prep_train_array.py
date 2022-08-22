@@ -118,33 +118,21 @@ def main(args=None):
             else:
                 print(f'Previous train and validation losses are close enough for network {i}', flush=True) 
 
-    traj = Trajectory(MLP_config_new['dataset_file_name'])
-    if max(max(MLP_config.get('train_idcs')),max(MLP_config.get('val_idcs'))) > len(traj):
-        train = True
-
-    if train:
-        n_train_add = MLP_config_new.get('n_train')
-        n_val_add = MLP_config_new.get('n_val')
-
-        all_indices = torch.arange(0,len(traj),1,dtype=int)
-        
-        ind_select = torch.randperm(len(all_indices))
-
-        train_idcs = all_indices[ind_select[:n_train_add]]
-        val_idcs =all_indices[ind_select[n_train_add:n_train_add+n_val_add]]
-        
-        MLP_config['train_idcs'] = train_idcs
-        MLP_config['val_idcs'] = val_idcs
-        
-        
+    
 
     uncertainty_dict = {}
     load = False
+    reset_train_indices = True
     if not train:
         last_dataset_size, current_dataset_size = get_dataset_sizes(config, tmp_filename)
-        if last_dataset_size == current_dataset_size:
+        traj = Trajectory(MLP_config_new['dataset_file_name'])
+        if max(max(MLP_config.get('train_idcs')),max(MLP_config.get('val_idcs'))) > len(traj):
+            train = True
+
+        elif last_dataset_size == current_dataset_size:
             print('Dataset size hasnt changed', flush=True)
             train = False
+            reset_train_indices = False
         else:
             gc.collect()
             ### Calibrate Uncertainty Quantification
@@ -171,6 +159,7 @@ def main(args=None):
                     if MLP_config_new.get('load_previous') and check_NN_parameters(MLP_config_new, conf):
                         print('Load previous', flush = True)
                         load = True
+                        reset_train_indices = False
 
             else:
                 print('No uncertain points, reusing neural network')
@@ -180,8 +169,12 @@ def main(args=None):
     gc.collect()
 
     if train:
-        current_train_idcs = set(np.array(MLP_config.get('train_idcs')))
-        current_val_idcs = set(np.array(MLP_config.get('val_idcs')))
+        if reset_train_indices:
+            current_train_idcs = set([])
+            current_val_idcs = set([])
+        else:
+            current_train_idcs = set(np.array(MLP_config.get('train_idcs')))
+            current_val_idcs = set(np.array(MLP_config.get('val_idcs')))
 
         n_train_add = MLP_config_new.get('n_train') - len(current_train_idcs)
         n_val_add = MLP_config_new.get('n_val') - len(current_val_idcs)
