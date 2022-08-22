@@ -119,13 +119,13 @@ def main(args=None):
                 print(f'Previous train and validation losses are close enough for network {i}', flush=True) 
 
     
-
+    traj = Trajectory(MLP_config_new['dataset_file_name'])
     uncertainty_dict = {}
     load = False
     reset_train_indices = True
     if not train:
         last_dataset_size, current_dataset_size = get_dataset_sizes(config, tmp_filename)
-        traj = Trajectory(MLP_config_new['dataset_file_name'])
+        
         if max(max(MLP_config.get('train_idcs')),max(MLP_config.get('val_idcs'))) > len(traj):
             train = True
 
