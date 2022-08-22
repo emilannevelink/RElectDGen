@@ -1540,7 +1540,7 @@ class Nequip_ensemble_NN(uncertainty_base):
 
 class Nequip_ensemble(uncertainty_base):
     def __init__(self, model, config, MLP_config):
-        super().__init__(model, config[0], MLP_config)
+        super().__init__(model, config, MLP_config[0])
 
         self.config = config
 

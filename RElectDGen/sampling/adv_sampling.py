@@ -83,7 +83,10 @@ def adv_sampling(config, traj_initial=[], loop_learning_count=1):
     start = time.time()
     adv_dict = {}
     
-    
+    train_directory = config['train_directory']
+    if train_directory[-1] == '/':
+        train_directory = train_directory[:-1]
+
     uncertainty_function = config.get('uncertainty_function', 'Nequip_latent_distance')
     ### Setup NN ASE calculator
     if uncertainty_function in ['Nequip_ensemble']:
@@ -91,7 +94,7 @@ def adv_sampling(config, traj_initial=[], loop_learning_count=1):
         model = []
         MLP_config = []
         for i in range(n_ensemble):
-            root = os.path.dirname(config['train_directory']) + f'_{i}'
+            root = train_directory + f'_{i}'
             calc_nn, mod, config = nn_from_results(root=root)
             model.append(mod)
             MLP_config.append(config)
