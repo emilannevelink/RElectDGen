@@ -124,9 +124,9 @@ def main(args=None):
                     shell_file = 'submits/train_array.sh'
                     n_ensemble = config.get('n_uncertainty_ensembles',4)
                     if len(job_ids)>0:
-                        commands = ['sbatch', f'--dependency=afterok:{job_ids[-1]}', f'--array=0-{n_ensemble}', shell_file, active_learning_config, MLP_config_filename, str(i)]
+                        commands = ['sbatch', f'--dependency=afterok:{job_ids[-1]}', f'--array=0-{n_ensemble-1}', shell_file, active_learning_config, MLP_config_filename, str(i)]
                     else:
-                        commands = ['sbatch', f'--array=0-{n_ensemble}', shell_file,active_learning_config, MLP_config_filename, str(i)]
+                        commands = ['sbatch', f'--array=0-{n_ensemble-1}', shell_file,active_learning_config, MLP_config_filename, str(i)]
                     
                     command_string = ' '.join(commands)
                     process = subprocess.run(command_string, capture_output=True, shell=True)

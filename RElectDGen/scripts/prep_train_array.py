@@ -193,8 +193,8 @@ def main(args=None):
         MLP_config_new['val_idcs'] = val_idcs
         
         for i, conf in enumerate(MLP_configs):
+            MLP_config_new['root'] = os.path.dirname(config['train_directory']) + f'_{i}'
             if load:
-                MLP_config_new['root'] = os.path.dirname(config['train_directory']) + f'_{i}'
                 MLP_config_new['workdir_load'] = conf['workdir']
 
             tmp_MLP_filename = f'tmp_MLP_{i}.yaml'
