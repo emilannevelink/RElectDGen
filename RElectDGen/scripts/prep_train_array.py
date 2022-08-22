@@ -118,11 +118,14 @@ def main(args=None):
             else:
                 print(f'Previous train and validation losses are close enough for network {i}', flush=True) 
 
+    traj = Trajectory(MLP_config['dataset_file_name'])
+    if max(max(MLP_config.get('train_idcs')),max(MLP_config.get('val_idcs'))) > len(traj):
+        train = True
+
     if train:
         n_train_add = MLP_config_new.get('n_train')
         n_val_add = MLP_config_new.get('n_val')
 
-        traj = Trajectory(MLP_config_new['dataset_file_name'])
         all_indices = torch.arange(0,len(traj),1,dtype=int)
         
         ind_select = torch.randperm(len(all_indices))
@@ -138,12 +141,8 @@ def main(args=None):
     uncertainty_dict = {}
     load = False
     if not train:
-        
-        traj = Trajectory(MLP_config['dataset_file_name'])
         last_dataset_size, current_dataset_size = get_dataset_sizes(config, tmp_filename)
-        if max(max(MLP_config.get('train_idcs')),max(MLP_config.get('val_idcs'))) > len(traj):
-            train = True     
-        elif last_dataset_size == current_dataset_size:
+        if last_dataset_size == current_dataset_size:
             print('Dataset size hasnt changed', flush=True)
             train = False
         else:
@@ -205,9 +204,6 @@ def main(args=None):
             tmp_MLP_filename = f'tmp_MLP_{i}.yaml'
             with open(tmp_MLP_filename, "w+") as fp:
                 yaml.dump(dict(MLP_config_new), fp)
-
-            print('Load previous', flush = True)
-            load = True
 
     logging_dict = {
         **uncertainty_dict,
