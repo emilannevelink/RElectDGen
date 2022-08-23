@@ -1774,13 +1774,13 @@ class Nequip_ensemble(uncertainty_base):
             
         train_energy_real = torch.empty((0),device=self.device)
         train_energy_pred = torch.empty((0),device=self.device)
-        train_energy_unc_pred = torch.empty((0),device=self.device)
+        # train_energy_unc_pred = torch.empty((0),device=self.device)
         train_max_force_real = torch.empty((0),device=self.device)
         train_max_force_pred = torch.empty((0),device=self.device)
 
         val_energy_real = torch.empty((0),device=self.device)
         val_energy_pred = torch.empty((0),device=self.device)
-        val_energy_unc_pred = torch.empty((0),device=self.device)
+        # val_energy_unc_pred = torch.empty((0),device=self.device)
         val_max_force_real = torch.empty((0),device=self.device)
         val_max_force_pred = torch.empty((0),device=self.device)
 
@@ -1892,15 +1892,8 @@ class Nequip_ensemble(uncertainty_base):
         min_energy = min([min_energy, train_energy_real.min(), train_energy_pred.min(), val_energy_real.min(), val_energy_pred.min()])
         max_energy = max([max_energy, train_energy_real.max(), train_energy_pred.max(), val_energy_real.max(),val_energy_pred.max()])
 
-        if uncertainty_training == 'forces':
-            ax[0,0].scatter(train_energy_real,train_energy_pred, alpha=alpha)
-            # ax[0,0].errorbar(train_energy_real,train_energy_pred, alpha=alpha, yerr = train_energy_err, fmt='o')
-            
-            ax[0,1].scatter(train_energy_real,train_energy_pred, alpha=alpha)
-            # ax[0,1].errorbar(train_energy_real,train_energy_pred, alpha=alpha, yerr = train_energy_std, fmt='o')
-        else:
-            ax[0,0].errorbar(train_energy_real,train_energy_pred, alpha=alpha, yerr = train_energy_err, fmt='o')
-            ax[0,1].errorbar(train_energy_real,train_energy_unc_pred, alpha=alpha, yerr = train_energy_std, fmt='o')
+        ax[0,0].scatter(train_energy_real,train_energy_pred, alpha=alpha)
+        ax[0,1].scatter(train_energy_real,train_energy_pred, alpha=alpha)
 
         # ax[1,0].scatter(list(range(len(train_energy_real))),train_energy_real-train_energy_pred, alpha=alpha)
         # ax[1,0].errorbar(list(range(len(train_energy_real))),train_energy_real-train_energy_pred, alpha=alpha, yerr = train_energy_err, fmt='o')
@@ -1919,15 +1912,9 @@ class Nequip_ensemble(uncertainty_base):
         ax[1,1].axvline(mean)
         ax[1,1].text(0.9,0.9,str(np.round(mean.numpy(),4)),va="center", ha="center",transform=ax[1,1].transAxes)
         
-        if uncertainty_training == 'forces':
-            ax[2,0].scatter(val_energy_real,val_energy_pred, alpha=alpha)
-            # ax[2,0].errorbar(val_energy_real,val_energy_pred, alpha=alpha, yerr = val_energy_err, fmt='o')
-            
-            ax[2,1].scatter(val_energy_real,val_energy_pred, alpha=alpha)
-            # ax[2,1].errorbar(val_energy_real,val_energy_pred, alpha=alpha, yerr = val_energy_std, fmt='o')
-        else:
-            ax[2,0].errorbar(val_energy_real,val_energy_pred, alpha=alpha, yerr = val_energy_err, fmt='o')
-            ax[2,1].errorbar(val_energy_real,val_energy_unc_pred, alpha=alpha, yerr = val_energy_std, fmt='o')
+    
+        ax[2,0].scatter(val_energy_real,val_energy_pred, alpha=alpha)
+        ax[2,1].scatter(val_energy_real,val_energy_pred, alpha=alpha)
 
         # ax[3,0].scatter(list(range(len(val_energy_real))),val_energy_real-val_energy_pred, alpha=alpha)
         # ax[3,0].errorbar(list(range(len(val_energy_real))),val_energy_real-val_energy_pred, alpha=alpha, yerr = val_energy_err, fmt='o')
