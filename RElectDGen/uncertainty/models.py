@@ -2040,8 +2040,9 @@ class Nequip_ensemble(uncertainty_base):
             ax[1,3].text(0.5,0.9-0.1*i,str(np.round(mean.numpy(),4)),va="center", ha="center",transform=ax[1,3].transAxes)
 
             # ax[1,4].scatter(err_real, err_pred, alpha=alpha, color=colors[i], label=key)
-            c_train.append(np.polyfit(err_real,err_pred,1))
             c_t = np.polyfit(err_pred,err_real,1)
+            c_train.append(c_t)
+            
             ax[1,4].scatter(err_real, np.poly1d(c_t)(err_pred), alpha=alpha, color=colors[i], label=key)
             min_error = min(min_error, err_real.min(), err_pred.min())
             max_error = max(max_error, err_real.max(), err_pred.max())
@@ -2082,8 +2083,9 @@ class Nequip_ensemble(uncertainty_base):
             nval+=len(val_force_real[key])
 
             # ax[3,4].scatter(err_real, err_pred, alpha=alpha, color=colors[i], label=key)
-            c_val.append(np.polyfit(err_real,err_pred,1))
             c_t = np.polyfit(err_pred,err_real,1)
+            c_val.append(c_t)
+            
             ax[3,4].scatter(err_real, np.poly1d(c_t)(err_pred), alpha=alpha, color=colors[i], label=key)
             
             min_error = min(min_error, err_real.min(), err_pred.min())
