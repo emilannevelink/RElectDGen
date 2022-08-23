@@ -65,6 +65,11 @@ def main(args=None):
                     train_directory,
                     'config_final.yaml'
                 )
+                if j ==0:
+                    plot_filename = os.path.join(
+                        train_directory,
+                        config.get('UQ_plot_filename','UQ_fit.png')
+                    )
                 if not os.path.isfile(config_final) or (os.path.isfile(plot_filename) and not replot):
                     plot = False
                 else:
@@ -77,19 +82,6 @@ def main(args=None):
 
                 UQ = UQ_func(model, config, MLP_config)
                 UQ.calibrate()
-                plot_filename = os.path.join(
-                    train_directory,
-                    config.get('UQ_plot_filename','UQ_fit.png')
-                )
-                root_dir = train_root + f'_{0}'
-                train_directory = os.path.join(
-                    root_dir,
-                    td[0]
-                )
-                plot_filename = os.path.join(
-                    train_directory,
-                    config.get('UQ_plot_filename','UQ_fit.png')
-                )
                 
                 UQ.plot_fit(plot_filename)
     else:
