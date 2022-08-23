@@ -1719,7 +1719,7 @@ class Nequip_ensemble(uncertainty_base):
 
         calibrated = torch.zeros_like(raw,device=self.device)
         for key in self.chemical_symbol_to_type:
-            mask = (atom_types==key).flatten()
+            mask = (atom_types==self.chemical_symbol_to_type[key]).flatten()
 
             for i, coeff in enumerate(self.calibration_coeffs[key][::-1]):
                 calibrated[mask] = coeff*raw[mask].pow(i)
