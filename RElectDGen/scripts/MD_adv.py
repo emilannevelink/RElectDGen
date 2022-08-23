@@ -82,10 +82,10 @@ def main(args=None):
         MLP_config = []
         for i in range(n_ensemble):
             root = train_directory + f'_{i}'
-            calc_nn, mod, config = nn_from_results(root=root)
+            calc_nn, mod, conf = nn_from_results(root=root)
             model.append(mod)
-            MLP_config.append(config)
-            r_max = config.get('r_max')
+            MLP_config.append(conf)
+            r_max = conf.get('r_max')
     else:
         calc_nn, model, MLP_config = nn_from_results()
         r_max = MLP_config.get('r_max')
