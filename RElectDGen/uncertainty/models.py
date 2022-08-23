@@ -1727,6 +1727,7 @@ class Nequip_ensemble(uncertainty_base):
             force_outputs[i] = out['forces']
             atom_energies[i] = out['atomic_energy'].squeeze()
 
+        self.atom_forces = force_outputs.mean(dim=0)
         self.atom_energies = atom_energies.mean(dim=0)
         self.atom_embedding = out['node_features']
         
@@ -1802,29 +1803,29 @@ class Nequip_ensemble(uncertainty_base):
 
         train_force_real = {}
         train_force_pred = {}
-        train_force_unc_pred = {}
+        # train_force_unc_pred = {}
         train_force_unc_err = {}
         train_force_unc_std = {}
         for key in self.chemical_symbol_to_type:
             train_force_real[key] = torch.empty((0),device=self.device)
             train_force_pred[key] = torch.empty((0),device=self.device)
-            train_force_unc_pred[key] = torch.empty((0),device=self.device)
+            # train_force_unc_pred[key] = torch.empty((0),device=self.device)
             train_force_unc_err[key] = torch.empty((0),device=self.device)
             train_force_unc_std[key] = torch.empty((0),device=self.device)
         for data in self.train_dataset:
             natoms = len(data['pos'])
             train_energy_real = torch.cat([train_energy_real,data['total_energy']/natoms])
-            out = self.model(self.transform_data_input(data))
+            # out = self.model(self.transform_data_input(data))
             unc = self.predict_uncertainty(data).detach()
-            train_energy_pred = torch.cat([train_energy_pred,out['atomic_energy'].detach().mean().unsqueeze(dim=0)])
-            train_energy_unc_pred = torch.cat([train_energy_unc_pred,self.pred_atom_energies.mean(dim=0).detach().mean().unsqueeze(dim=0)])
+            train_energy_pred = torch.cat([train_energy_pred,self.atom_energies.detach().mean().unsqueeze(dim=0)])
+            # train_energy_unc_pred = torch.cat([train_energy_unc_pred,self.pred_atom_energies.mean(dim=0).detach().mean().unsqueeze(dim=0)])
 
-            train_energy_err = torch.cat([train_energy_err,unc[:,0].max().unsqueeze(dim=0)])
-            train_energy_std = torch.cat([train_energy_std,unc[:,1].max().unsqueeze(dim=0)])
+            # train_energy_err = torch.cat([train_energy_err,unc[:,0].max().unsqueeze(dim=0)])
+            # train_energy_std = torch.cat([train_energy_std,unc[:,1].max().unsqueeze(dim=0)])
 
-            ind = torch.argmax((data['forces'].detach()-out['forces'].detach()).norm(dim=1))
+            ind = torch.argmax((data['forces'].detach()-self.atom_forces.detach()).norm(dim=1))
             train_max_force_real = torch.cat([train_max_force_real, data['forces'].detach()[ind].unsqueeze(dim=0)])
-            train_max_force_pred = torch.cat([train_max_force_pred, out['forces'].detach()[ind].unsqueeze(dim=0)])
+            train_max_force_pred = torch.cat([train_max_force_pred, self.atom_forces.detach()[ind].unsqueeze(dim=0)])
             train_max_force_err = torch.cat([train_max_force_err, unc[ind,0].unsqueeze(0)])
             train_max_force_std = torch.cat([train_max_force_std, unc[ind,1].unsqueeze(0)])
             ind_unc_max = torch.argmax(unc.sum(1))
@@ -1834,36 +1835,36 @@ class Nequip_ensemble(uncertainty_base):
             for key in self.chemical_symbol_to_type:
                 mask = (data['atom_types']==self.MLP_config.get('chemical_symbol_to_type')[key]).flatten()
                 train_force_real[key] = torch.cat([train_force_real[key],data['forces'].detach()[mask]])
-                train_force_pred[key] = torch.cat([train_force_pred[key],out['forces'].detach()[mask]])
-                train_force_unc_pred[key] = torch.cat([train_force_unc_pred[key],self.pred_atom_energies.mean(dim=0).detach()[mask]])
+                train_force_pred[key] = torch.cat([train_force_pred[key],self.atom_forces.detach()[mask]])
+                # train_force_unc_pred[key] = torch.cat([train_force_unc_pred[key],self.pred_atom_energies.mean(dim=0).detach()[mask]])
                 train_force_unc_err[key] = torch.cat([train_force_unc_err[key],unc[mask,0]])
                 train_force_unc_std[key] = torch.cat([train_force_unc_std[key],unc[mask,1]])
 
         val_force_real = {}
         val_force_pred = {}
-        val_force_unc_pred = {}
+        # val_force_unc_pred = {}
         val_force_unc_err = {}
         val_force_unc_std = {}
         for key in self.chemical_symbol_to_type:
             val_force_real[key] = torch.empty((0),device=self.device)
             val_force_pred[key] = torch.empty((0),device=self.device)
-            val_force_unc_pred[key] = torch.empty((0),device=self.device)
+            # val_force_unc_pred[key] = torch.empty((0),device=self.device)
             val_force_unc_err[key] = torch.empty((0),device=self.device)
             val_force_unc_std[key] = torch.empty((0),device=self.device)
         for data in self.validation_dataset:
             natoms = len(data['pos'])
             val_energy_real = torch.cat([val_energy_real,data['total_energy']/natoms])
-            out = self.model(self.transform_data_input(data))
+            # out = self.model(self.transform_data_input(data))
             unc = self.predict_uncertainty(data).detach()
-            val_energy_pred = torch.cat([val_energy_pred,out['atomic_energy'].detach().mean().unsqueeze(dim=0)])
-            val_energy_unc_pred = torch.cat([val_energy_unc_pred,self.pred_atom_energies.mean(dim=0).detach().mean().unsqueeze(dim=0)])
+            val_energy_pred = torch.cat([val_energy_pred,self.atom_forces.detach().mean().unsqueeze(dim=0)])
+            # val_energy_unc_pred = torch.cat([val_energy_unc_pred,self.pred_atom_energies.mean(dim=0).detach().mean().unsqueeze(dim=0)])
 
             val_energy_err = torch.cat([val_energy_err,unc[:,0].max().unsqueeze(dim=0)])
             val_energy_std = torch.cat([val_energy_std,unc[:,1].max().unsqueeze(dim=0)])
 
-            ind = torch.argmax((data['forces'].detach()-out['forces'].detach()).norm(dim=1))
+            ind = torch.argmax((data['forces'].detach()-self.atom_forces.detach()).norm(dim=1))
             val_max_force_real = torch.cat([val_max_force_real, data['forces'].detach()[ind].unsqueeze(dim=0)])
-            val_max_force_pred = torch.cat([val_max_force_pred, out['forces'].detach()[ind].unsqueeze(dim=0)])
+            val_max_force_pred = torch.cat([val_max_force_pred, self.atom_forces.detach()[ind].unsqueeze(dim=0)])
             val_max_force_err = torch.cat([val_max_force_err, unc[ind,0].unsqueeze(0)])
             val_max_force_std = torch.cat([val_max_force_std, unc[ind,1].unsqueeze(0)])
             ind_unc_max = torch.argmax(unc.sum(1))
@@ -1873,8 +1874,8 @@ class Nequip_ensemble(uncertainty_base):
             for key in self.chemical_symbol_to_type:
                 mask = (data['atom_types']==self.MLP_config.get('chemical_symbol_to_type')[key]).flatten()
                 val_force_real[key] = torch.cat([val_force_real[key],data['forces'].detach()[mask]])
-                val_force_pred[key] = torch.cat([val_force_pred[key],out['forces'].detach()[mask]])
-                val_force_unc_pred[key] = torch.cat([val_force_unc_pred[key],self.pred_atom_energies.mean(dim=0).detach()[mask]])
+                val_force_pred[key] = torch.cat([val_force_pred[key],self.atom_forces.detach()[mask]])
+                # val_force_unc_pred[key] = torch.cat([val_force_unc_pred[key],self.pred_atom_energies.mean(dim=0).detach()[mask]])
                 val_force_unc_err[key] = torch.cat([val_force_unc_err[key],unc[mask,0]])
                 val_force_unc_std[key] = torch.cat([val_force_unc_std[key],unc[mask,1]])
             
@@ -1988,7 +1989,7 @@ class Nequip_ensemble(uncertainty_base):
                 ax[0,2].errorbar(train_force_real[key].norm(dim=-1),train_force_pred[key].norm(dim=-1), alpha=alpha, yerr = train_force_unc_err[key], fmt='o', color=colors[i])
                 
                 # ax[0,3].scatter(train_force_real[key].norm(dim=-1),train_force_unc_pred[key], alpha=alpha)
-                ax[0,3].errorbar(train_force_real[key].norm(dim=-1),train_force_unc_pred[key], alpha=alpha, yerr = train_force_unc_std[key], fmt='o', color=colors[i])
+                # ax[0,3].errorbar(train_force_real[key].norm(dim=-1),train_force_unc_pred[key], alpha=alpha, yerr = train_force_unc_std[key], fmt='o', color=colors[i])
             else:
                 ax[0,2].errorbar(train_force_real[key].norm(dim=-1),train_force_pred[key].norm(dim=-1), alpha=alpha, yerr = train_force_unc_err[key], fmt='o', color=colors[i])
                 ax[0,3].errorbar(train_force_real[key].norm(dim=-1),train_force_pred[key].norm(dim=-1), alpha=alpha, yerr = train_force_unc_std[key], fmt='o', color=colors[i])
@@ -2024,7 +2025,7 @@ class Nequip_ensemble(uncertainty_base):
                 ax[2,2].errorbar(val_force_real[key].norm(dim=-1),val_force_pred[key].norm(dim=-1), alpha=alpha, yerr = val_force_unc_err[key]+val_force_unc_std[key], fmt='o', color=colors[i])
                 
                 # ax[2,3].scatter(val_force_real[key].norm(dim=-1),val_force_unc_pred[key], alpha=alpha)
-                ax[2,3].errorbar(val_force_real[key].norm(dim=-1),val_force_unc_pred[key], alpha=alpha, yerr = val_force_unc_std[key], fmt='o', color=colors[i])
+                # ax[2,3].errorbar(val_force_real[key].norm(dim=-1),val_force_unc_pred[key], alpha=alpha, yerr = val_force_unc_std[key], fmt='o', color=colors[i])
             else:
                 ax[2,2].errorbar(val_force_real[key].norm(dim=-1),val_force_pred[key].norm(dim=-1), alpha=alpha, yerr = val_force_unc_err[key], fmt='o', color=colors[i])
                 ax[2,3].errorbar(val_force_real[key].norm(dim=-1),val_force_pred[key].norm(dim=-1), alpha=alpha, yerr = val_force_unc_std[key], fmt='o', color=colors[i])
