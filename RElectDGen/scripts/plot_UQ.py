@@ -35,37 +35,88 @@ def main(args=None):
         config.get('train_directory')
     )
 
-    for train_dir in os.listdir(root_dir):
-        train_directory = os.path.join(
-            root_dir,
-            train_dir
-        )
-        config_final = os.path.join(
-            train_directory,
-            'config_final.yaml'
-        )
-        uncertainty_dir = os.path.join(
-            train_directory,
-            'uncertainty'
-        )
-        plot_filename = os.path.join(
-            train_directory,
-            config.get('UQ_plot_filename','UQ_fit.png')
-        )
-        if os.path.isfile(config_final) and (replot or not os.path.isfile(plot_filename)):
-            if os.path.isdir(uncertainty_dir) or allow_calibrate:
-                try:
-                    calc_nn, model, MLP_config = nn_from_results(train_directory)
+    uncertainty_function = config.get('uncertainty_function', 'Nequip_latent_distance')
 
-                    UQ_func = getattr(uncertainty_models,config.get('uncertainty_function', 'Nequip_latent_distance'))
+    if uncertainty_function in ['Nequip_ensemble']:
+        n_ensemble = config.get('n_uncertainty_ensembles',4)
+        train_dirs = []
+        for i in range(n_ensemble):
+            root = train_directory + f'_{i}'
+            train_dirs.append(os.listdir(root_dir))
+        
+        for i, td in enumerate(zip(train_dirs)):
+            model = []
+            MLP_config = []
+            plot = True
+            for j in range(n_ensemble):
+                root_dir = train_directory + f'_{j}'
+                train_directory = os.path.join(
+                    root_dir,
+                    td[j]
+                )
+                config_final = os.path.join(
+                    train_directory,
+                    'config_final.yaml'
+                )
+                if not os.path.isfile(config_final) or (os.path.isfile(plot_filename) and not replot):
+                    plot = False
+                else:
+                    calc_nn, mod, conf = nn_from_results(train_directory=train_directory)
+                    model.append(mod)
+                    MLP_config.append(conf)
+            if plot:
 
-                    UQ = UQ_func(model, config, MLP_config)
-                    UQ.calibrate()
-                    
-                    UQ.plot_fit(plot_filename)
-                except Exception as e:
-                    print(train_dir)
-                    print(e)
+                UQ_func = getattr(uncertainty_models,)
+
+                UQ = UQ_func(model, config, MLP_config)
+                UQ.calibrate()
+                plot_filename = os.path.join(
+                    train_directory,
+                    config.get('UQ_plot_filename','UQ_fit.png')
+                )
+                root_dir = train_directory + f'_{0}'
+                train_directory = os.path.join(
+                    root_dir,
+                    td[0]
+                )
+                plot_filename = os.path.join(
+                    train_directory,
+                    config.get('UQ_plot_filename','UQ_fit.png')
+                )
+                
+                UQ.plot_fit(plot_filename)
+    else:
+        for train_dir in os.listdir(root_dir):
+            train_directory = os.path.join(
+                root_dir,
+                train_dir
+            )
+            config_final = os.path.join(
+                train_directory,
+                'config_final.yaml'
+            )
+            uncertainty_dir = os.path.join(
+                train_directory,
+                'uncertainty'
+            )
+            plot_filename = os.path.join(
+                train_directory,
+                config.get('UQ_plot_filename','UQ_fit.png')
+            )
+            if os.path.isfile(config_final) and (replot or not os.path.isfile(plot_filename)):
+                if os.path.isdir(uncertainty_dir) or allow_calibrate:
+                    try:
+                        calc_nn, model, MLP_config = nn_from_results(train_directory)
+
+                        UQ_func = getattr(uncertainty_models,)
+
+                        UQ = UQ_func(model, config, MLP_config)
+                        UQ.calibrate()
+                        
+                        UQ.plot_fit(plot_filename)
+                    except Exception as e:
+                        print(train_dir)
+                        print(e)
 
 if __name__ == "__main__":
     main()
