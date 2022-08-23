@@ -1547,7 +1547,7 @@ class Nequip_ensemble(uncertainty_base):
         self.calibration_polyorder = self.config.get('calibration_polyorder',1)
         calibration_coeffs = {}
         for key in self.MLP_config.get('chemical_symbol_to_type'):    
-            calibration_coeffs[key] = torch.zeros(self.calibration_polyorder+1,device=self.device)
+            calibration_coeffs[key] = np.zeros(self.calibration_polyorder+1,device=self.device)
             if self.calibration_polyorder>0:
                 calibration_coeffs[key][-2] = 1
         self.calibration_coeffs = calibration_coeffs
