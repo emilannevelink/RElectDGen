@@ -1003,7 +1003,7 @@ class Nequip_ensemble_NN(uncertainty_base):
                     
                     # npoints = torch.tensor([test_indices[key][-1]+sum(mask) if i>0 else sum(mask)]).to(self.device)
                     # test_indices[key] = torch.cat([test_indices[key],npoints]).to(self.device)
-        
+
         self.validation_embeddings = validation_embeddings
         self.validation_energies = validation_energies
         self.validation_forces = validation_forces
@@ -1301,7 +1301,7 @@ class Nequip_ensemble_NN(uncertainty_base):
         ax[2,4].errorbar(val_max_force_real.norm(dim=1),val_max_force_pred.norm(dim=1), alpha=alpha, yerr=val_max_force_err+val_max_force_std, xerr=val_max_force_max_err+val_max_force_max_std, fmt='o')
 
         # ax[3,4].scatter((val_max_force_real-val_max_force_pred).norm(dim=1),val_max_force_err, alpha=alpha)
-        ax[3,4].scatter((val_max_force_real-val_max_force_pred).norm(dim=1), val_max_force_err+val_max_force_std, alpha=alpha)
+        # ax[3,4].scatter((val_max_force_real-val_max_force_pred).norm(dim=1), val_max_force_err+val_max_force_std, alpha=alpha)
         
         min_error = 0
         max_error = 0
@@ -1544,6 +1544,13 @@ class Nequip_ensemble(uncertainty_base):
         super().__init__(model, config, MLP_config[0])
 
         self.config = config
+        self.calibration_polyorder = self.config.get('calibration_polyorder',1)
+        calibration_coeffs = {}
+        for key in self.MLP_config.get('chemical_symbol_to_type'):    
+            calibration_coeffs[key] = torch.zeros(self.calibration_polyorder,device=self.device)
+            if self.calibration_polyorder>0:
+                calibration_coeffs[key][-2] = 1
+
 
     def calibrate(self, debug = False):
         self.parse_data()
@@ -1575,6 +1582,8 @@ class Nequip_ensemble(uncertainty_base):
         test_energies = {}
         test_forces = {}
         test_indices = {}
+        err_pred = {}
+        err_real = {}
 
         for key in self.chemical_symbol_to_type:
             train_embeddings[key] = torch.empty((0,self.latent_size+self.natoms),device=self.device)
@@ -1591,6 +1600,8 @@ class Nequip_ensemble(uncertainty_base):
             test_energies[key] = torch.empty((0),device=self.device)
             test_forces[key] = torch.empty((0),device=self.device)
             test_indices[key] = torch.empty(0,dtype=int).to(self.device)
+            err_pred[key] = torch.empty(0,dtype=int).to(self.device)
+            err_real[key] = torch.empty(0,dtype=int).to(self.device)
         
         error_threshold=self.config.get('UQ_dataset_error', np.inf)
         for i, data in enumerate(self.train_dataset):
@@ -1650,6 +1661,13 @@ class Nequip_ensemble(uncertainty_base):
             force_norm = data['forces'].norm(dim=1).unsqueeze(dim=1)
             force_lim = torch.max(force_norm,torch.ones_like(force_norm))
             perc_err = ((force_outputs.detach().mean(dim=0)-data['forces'])).abs()/force_lim
+            force_error = ((force_outputs.detach().mean(dim=0)-data['forces'])).abs()
+            pred_uncertainty = self.predict_uncertainty(data).sum(dim=0)
+
+            for key in self.MLP_config.get('chemical_symbol_to_type'):
+                mask = (data['atom_types']==self.MLP_config.get('chemical_symbol_to_type')[key]).flatten()
+                err_real[key] = torch.cat([err_real[key],force_error[mask]])
+                err_pred[key] = torch.cat([err_pred[key],pred_uncertainty[mask]])
             
             if perc_err.max() < error_threshold:
                 self.UQ_validation_indices = torch.cat([self.UQ_validation_indices, self.ML_validation_indices[i].unsqueeze(dim=0)])
@@ -1680,6 +1698,13 @@ class Nequip_ensemble(uncertainty_base):
                     # npoints = torch.tensor([test_indices[key][-1]+sum(mask) if i>0 else sum(mask)]).to(self.device)
                     # test_indices[key] = torch.cat([test_indices[key],npoints]).to(self.device)
         
+
+        #Calibration curves
+        calibration_coeffs = {}
+        for key in self.MLP_config.get('chemical_symbol_to_type'):    
+            calibration_coeffs[key] = np.polyfit(err_pred,err_real,self.calibration_polyorder)
+
+        self.calibration_coeffs = calibration_coeffs
         self.validation_embeddings = validation_embeddings
         self.validation_energies = validation_energies
         self.validation_forces = validation_forces
@@ -1689,6 +1714,17 @@ class Nequip_ensemble(uncertainty_base):
         self.test_energies = test_energies
         self.test_forces = test_forces
         self.test_indices = test_indices
+    
+    def apply_calibration(self, atom_types, raw):
+
+        calibrated = torch.zeros_like(raw,device=self.device)
+        for key in self.chemical_symbol_to_type:
+            mask = (atom_types==key).squeeze()
+
+            for i, coeff in enumerate(self.calibration_coeffs[key][::-1]):
+                calibrated[mask] = coeff*raw[mask].pow(i)
+
+        return calibrated
 
     def adversarial_loss(self, data, T, distances='train_val'):
 
@@ -1736,7 +1772,8 @@ class Nequip_ensemble(uncertainty_base):
 
         uncertainty = torch.vstack([uncertainties_mean,uncertainties_std]).T
 
-        return uncertainty
+        uncertainty_calibrated = self.apply_calibration(out['atom_types'],uncertainty)
+        return uncertainty_calibrated
 
     def predict_from_traj(self, traj, max=True, batch_size=1):
         uncertainty = []
