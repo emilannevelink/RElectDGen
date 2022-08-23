@@ -49,7 +49,7 @@ def main(args=None):
             train_dirs.append(os.listdir(root_dir))
         
         print(train_dirs)
-        for i, td in enumerate(zip(train_dirs)):
+        for i, td in enumerate(zip(*train_dirs)):
             model = []
             MLP_config = []
             plot = True
