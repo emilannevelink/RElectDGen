@@ -1599,7 +1599,7 @@ class Nequip_ensemble(uncertainty_base):
             for i, model in enumerate(self.model):
                 out = model(self.transform_data_input(data))
                 force_outputs[i] = out['forces']
-                atom_energies[i] = out['atomic_energy']
+                atom_energies[i] = out['atomic_energy'].squeeze()
 
             force_norm = data['forces'].norm(dim=1).unsqueeze(dim=1)
             force_lim = torch.max(force_norm,torch.ones_like(force_norm))
@@ -1645,7 +1645,7 @@ class Nequip_ensemble(uncertainty_base):
             for i, model in enumerate(self.model):
                 out = model(self.transform_data_input(data))
                 force_outputs[i] = out['forces']
-                atom_energies[i] = out['atomic_energy']
+                atom_energies[i] = out['atomic_energy'].squeeze()
 
             force_norm = data['forces'].norm(dim=1).unsqueeze(dim=1)
             force_lim = torch.max(force_norm,torch.ones_like(force_norm))
@@ -1725,7 +1725,7 @@ class Nequip_ensemble(uncertainty_base):
         for i, model in enumerate(self.model):
             out = model(data)
             force_outputs[i] = out['forces']
-            atom_energies[i] = out['atomic_energy']
+            atom_energies[i] = out['atomic_energy'].squeeze()
 
         self.atom_energies = atom_energies.mean(dim=0)
         self.atom_embedding = out['node_features']
