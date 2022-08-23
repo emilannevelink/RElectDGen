@@ -48,13 +48,14 @@ def main(args=None):
             root_dir = train_root + f'_{i}'
             train_dirs.append(os.listdir(root_dir))
         
+        print(train_dirs)
         for i, td in enumerate(zip(train_dirs)):
             model = []
             MLP_config = []
             plot = True
             print(td)
-            print(td[j])
             for j in range(n_ensemble):
+                print(td[j])
                 root_dir = train_root + f'_{j}'
                 train_directory = os.path.join(
                     root_dir,
