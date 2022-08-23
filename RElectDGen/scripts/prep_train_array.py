@@ -5,6 +5,7 @@ import os
 import yaml
 import time
 import gc
+import shutil
 
 import torch
 from nequip.model import model_from_config
@@ -198,6 +199,14 @@ def main(args=None):
             MLP_config_new['root'] = train_directory + f'_{i}'
             if load:
                 MLP_config_new['workdir_load'] = conf['workdir']
+
+            for dir in os.listdir(MLP_config_new['root']):
+                if 'processed_dataset' in dir:
+                    delete_directory = os.path.join(
+                        MLP_config_new['root'],
+                        dir
+                    )
+                    shutil.rmtree(delete_directory)
 
             tmp_MLP_filename = f'tmp_MLP_{i}.yaml'
             with open(tmp_MLP_filename, "w+") as fp:
