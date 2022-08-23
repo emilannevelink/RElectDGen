@@ -28,12 +28,12 @@ def md_func_from_config(config,temperature=None,prefix='MLP'):
         md_kwargs['externalstress'] = np.array(config.get('external_stress')) * 1.01325e-4/160.21766
         ttime = config.get('NPT_ttime')
         if ttime is None:
-            md_kwargs['ttime'] = md_kwargs['timestep']*100
+            md_kwargs['ttime'] = md_kwargs['timestep']*500
         else:
             md_kwargs['ttime'] = ttime*units.fs
         ptime = config.get('NPT_ptime')
         if ptime is None:
-            md_kwargs['pfactor'] = (md_kwargs['timestep']*500)**2*0.6 #convert ptime to pfactor
+            md_kwargs['pfactor'] = (md_kwargs['timestep']*1000)**2*0.6 #convert ptime to pfactor
         else:
             md_kwargs['pfactor'] = (ptime*units.fs)**2*0.6 #convert ptime to pfactor
         md_kwargs['mask'] = np.eye(3) # only cell vectors to change magnitude; disallow shear

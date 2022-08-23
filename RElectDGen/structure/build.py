@@ -8,6 +8,8 @@ import numpy as np
 from ase.constraints import FixAtoms, FixBondLengths
 import uuid
 
+from RElectDGen.utils.io import add_to_trajectory
+
 
 def structure_from_config(config):
     config = config.copy()
@@ -51,6 +53,7 @@ def structure_from_config(config):
         supercell = stack(supercell,molecules)
 
         supercell.center(vacuum = vacuum,axis=2)
+        supercell.pbc=config.get('pbc')
         return supercell
 
     
@@ -209,10 +212,11 @@ def create_slab(config):
         supercell = ase.build.bcc100(config.get('element'), (config.get('supercell_size')), config.get('crystal_a0'),vacuum=config.get('vacuum'))
 
     #Constrain the bottom of the slab to be fixed
-    indices = range(int(len(supercell.positions)*2/config.get('supercell_size')[2]))
-    constraints.append(FixAtoms(indices = indices))
+    if config.get('fix_slab_atoms', True):
+        indices = range(int(len(supercell.positions)*2/config.get('supercell_size')[2]))
+        constraints.append(FixAtoms(indices = indices))
 
-    supercell.set_constraint(constraints)
+        supercell.set_constraint(constraints)
 
     if config.get('zperiodic', False):
         supercell.cell[2] *= config.get('supercell_size')[2]/(config.get('supercell_size')[2]-1)
@@ -300,5 +304,11 @@ def get_initial_structure(config):
     else:
         supercell = structure_from_config(config)
         write(structure_file,supercell)
+        if config.get('initial_structures_file') is not None:
+            initial_structures_filename = os.path.join(
+                config.get('data_directory'),
+                config.get('initial_structures_file')
+            )
+            add_to_trajectory(supercell,initial_structures_filename)
 
     return supercell

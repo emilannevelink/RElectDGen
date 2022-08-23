@@ -73,8 +73,9 @@ def main(args=None):
             print(e)
             print('error')
 
-        traj_writer = Trajectory(trajectory_file,mode='a')
-        [traj_writer.write(atoms) for (ind, atoms) in zip(calc_ind,traj_active) if calc_inds_uncertain[ind]<n_MD_uncertain]
+        if len(traj_active)>0:
+            traj_writer = Trajectory(trajectory_file,mode='a')
+            [traj_writer.write(atoms) for (ind, atoms) in zip(calc_ind,traj_active) if calc_inds_uncertain[ind]<n_MD_uncertain]
 
         if sum(np.array(calc_inds_uncertain)>=n_MD_uncertain)>0:
             traj_writer = Trajectory(adversarial_trajectory,mode='a')

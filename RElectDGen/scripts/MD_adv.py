@@ -69,10 +69,29 @@ def main(args=None):
 
     uncertain = MD_uncertain + adv_uncertain
     embeddings = MD_embedding_uncertain + adv_embedding_uncertain
-    
-    calc_nn, model, MLP_config = nn_from_results()
 
-    UQ_func = getattr(uncertainty_models,config.get('uncertainty_function', 'Nequip_latent_distance'))
+    train_directory = config['train_directory']
+    if train_directory[-1] == '/':
+        train_directory = train_directory[:-1]
+    
+    uncertainty_function = config.get('uncertainty_function', 'Nequip_latent_distance')
+    ### Setup NN ASE calculator
+    if uncertainty_function in ['Nequip_ensemble']:
+        n_ensemble = config.get('n_uncertainty_ensembles',4)
+        model = []
+        MLP_config = []
+        for i in range(n_ensemble):
+            root = train_directory + f'_{i}'
+            calc_nn, mod, conf = nn_from_results(root=root)
+            model.append(mod)
+            MLP_config.append(conf)
+            r_max = conf.get('r_max')
+    else:
+        calc_nn, model, MLP_config = nn_from_results()
+        r_max = MLP_config.get('r_max')
+    
+
+    UQ_func = getattr(uncertainty_models,uncertainty_function)
 
     UQ = UQ_func(model, config, MLP_config)
     UQ.calibrate()

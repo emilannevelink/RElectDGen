@@ -166,6 +166,7 @@ class segment_atoms():
                         pure_slab = create_slab(self.slab_config)
                         cell = pure_slab.cell.diagonal()
                         min_cluster = np.absolute(self.atoms[cluster_indices].positions[:,2]-self.atoms[idx].position[2]).min()
+                        ## Check if uncertain ind is close to the lithium slab
                         if min_cluster <= cell[2]/2:
                             print('segment slab', flush=True)
                             cluster, cluster_indices = self.segment_slab(cluster_indices, slab_indices)
@@ -560,6 +561,7 @@ class segment_atoms():
 def clusters_from_traj(
     traj,
     uncertainties,
+    embeddings,
     uncertainty_thresholds: list = [0.2,0.01],
     slab_config: dict = {},
     supercell_size: list = [1,1,1],
@@ -568,9 +570,10 @@ def clusters_from_traj(
     max_cluster_size: int = 40,
     sorted: bool = True,
     cores: int = 1,
-    segment_type: str = 'uncertain',
+    segment_type: str = 'distance',
     max_volume_per_atom: int = 150,
     max_samples: int = 10,
+    max_clusters_per_atoms: int = np.inf,
     molecule_vacuum: float = 2.0,
     overlap_radius: float = 0.5,
     max_electrons: int = 300,
@@ -581,6 +584,8 @@ def clusters_from_traj(
     fragment_type: str = 'iterative',
     **kwargs,
 ):
+
+    max_samples = min(max_samples, max_clusters_per_atoms)
 
     ncores = mp.cpu_count()
     
@@ -626,7 +631,9 @@ def clusters_from_traj(
         # cluster_ind = np.argsort(df_ind['uncertainty'].values)[::-1]
         clusters_all = [clusters_all[i] for i in df_ind.index]
 
-    return clusters_all, df_ind
+    cluster_embeddings = [embeddings[int(ind)][cluster.arrays['cluster_indices']] for (ind, cluster) in zip(df_ind['traj_ind'],clusters_all)]
+
+    return clusters_all, df_ind, cluster_embeddings
 
 def cluster_from_atoms(args):
     traj_filename, i, uncertainty, uncertainty_thresholds = args[:4]

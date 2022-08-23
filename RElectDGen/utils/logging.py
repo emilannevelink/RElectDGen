@@ -18,23 +18,33 @@ def write_to_tmp_dict(filename,dict):
         json.dump(new_dict,fl)
 
 
-def get_mae_from_results():
+def get_mae_from_results(root='results', index = None):
 
-    results_dir = get_results_dir()
+    results_dir = get_results_dir(root=root)
 
     results_metrics = os.path.join(results_dir,'metrics_epoch.csv')
     data = pd.read_csv(results_metrics)
 
     best_ind = np.argmin(data[' validation_loss'])
 
-    mae_dict = {
-        'training_f_mae': float(data[' training_loss_f'][best_ind]),
-        'training_e_mae': float(data[' training_e_mae'][best_ind]),
-        'validation_f_mae': float(data[' validation_loss_f'][best_ind]),
-        'validation_e_mae': float(data[' validation_e_mae'][best_ind]),
-        'best_training_loss': float(np.min(data[' training_loss'])),
-        'best_validation_loss': float(np.min(data[' validation_loss'])),
-    }
+    if index is None:
+        mae_dict = {
+            'training_f_mae': float(data['training_loss_f'][best_ind]),
+            'training_e_mae': float(data['training_e_mae'][best_ind]),
+            'validation_f_mae': float(data['validation_loss_f'][best_ind]),
+            'validation_e_mae': float(data['validation_e_mae'][best_ind]),
+            'best_training_loss': float(np.min(data['training_loss'])),
+            'best_validation_loss': float(np.min(data['validation_loss'])),
+        }
+    else:
+        mae_dict = {
+            f'training_f_mae_{index}': float(data['training_loss_f'][best_ind]),
+            f'training_e_mae_{index}': float(data['training_e_mae'][best_ind]),
+            f'validation_f_mae_{index}': float(data['validation_loss_f'][best_ind]),
+            f'validation_e_mae_{index}': float(data['validation_e_mae'][best_ind]),
+            f'best_training_loss_{index}': float(np.min(data['training_loss'])),
+            f'best_validation_loss_{index}': float(np.min(data['validation_loss'])),
+        }
 
     return mae_dict
 

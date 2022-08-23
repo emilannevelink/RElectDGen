@@ -1,16 +1,7 @@
 import os
-from collections import OrderedDict
-import torch
-from nequip.utils import Config
-from nequip.ase.nequip_calculator import NequIPCalculator
-from nequip.data.transforms import TypeMapper
-from nequip.data import dataset_from_config
-from nequip.model import model_from_config
 import numpy as np
 from ase.parallel import world
 from nequip.train import Trainer
-
-from RElectDGen.utils.save import get_results_dir
 
 def oracle_from_config(config,atoms=None):
 
@@ -76,10 +67,17 @@ def oracle_from_config(config,atoms=None):
 
     return calculator
 
-def nn_from_results(train_directory=None):
+def nn_from_results(root='results',train_directory=None):
+    # spack cannot load nequip due to older ase version
+    import torch
+    from nequip.utils import Config
+    from nequip.ase.nequip_calculator import NequIPCalculator
+    from nequip.data.transforms import TypeMapper
+    from RElectDGen.utils.save import get_results_dir
+
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     if train_directory is None:
-        train_directory = get_results_dir()
+        train_directory = get_results_dir(root)
     
     # file_config = train_directory + "/config_final.yaml"
     # MLP_config = Config.from_file(file_config)

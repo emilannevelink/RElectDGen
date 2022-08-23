@@ -1,3 +1,4 @@
+from genericpath import isfile
 import os
 import numpy as np
 import torch
@@ -5,6 +6,7 @@ import torch
 from ase.io import read
 from nequip.data import AtomicData
 from ase.io.formats import UnknownFileTypeError
+from RElectDGen.structure.build import get_initial_structure
 
 def sort_by_uncertainty(traj, embeddings, UQ, max_samples, min_uncertainty=0.04, max_uncertainty=np.inf):
 
@@ -151,7 +153,11 @@ def finetune_downselect(traj, embeddings, UQ, min_uncertainty=0.04, max_uncertai
 
                 NN_inputs = torch.hstack([embedding_i[mask], atom_one_hot[mask]])
                 keep_embeddings[key] = torch.cat([keep_embeddings[key],NN_inputs])
-                keep_energies[key] = torch.cat([keep_energies[key], out['atomic_energy'].detach()[mask]])
+                uncertainty_training = UQ.config.get('uncertainty_training','energy')
+                if uncertainty_training=='energy':
+                    keep_energies[key] = torch.cat([keep_energies[key], out['atomic_energy'].detach()[mask]])
+                elif uncertainty_training=='forces':
+                    keep_energies[key] = torch.cat([keep_energies[key], out['forces'].detach()[mask].norm(dim=1).unsqueeze(1)])
 
             print(i, flush=True)
             UQ.fine_tune(keep_embeddings, keep_energies)
@@ -203,3 +209,17 @@ def sample_from_dataset(config):
 
     traj = traj_md
     return traj
+
+def sample_from_initial_structures(config):
+    initial_structures_filename = os.path.join(
+        config.get('data_directory'),
+        config.get('initial_structures_file','')
+    )
+    if os.path.isfile(initial_structures_filename):
+        traj = read(initial_structures_filename,index=':')
+        traj_index = torch.randperm(len(traj))[0]
+        supercell = traj[traj_index]
+    else:
+        supercell = get_initial_structure(config)
+        
+    return supercell

@@ -2,7 +2,7 @@ import argparse
 import yaml, os
 from ase.io import read, Trajectory
 from ..utils.save import update_config_trainval
-from ..utils.data import reduce_traj
+from ..utils.data import reduce_traj_finite, reduce_traj_isolated
 
 from RElectDGen.utils.logging import write_to_tmp_dict
 
@@ -56,9 +56,13 @@ def main(args=None):
         print(adversarial_trajectory, flush=True)
 
     combined_size = len(traj)
-    traj_reduced = reduce_traj(traj)
+    traj_reduced = reduce_traj_finite(traj)
+    print('Reduce finite ', len(traj), len(traj_reduced),flush=True)
+    with open(filename_MLP_config,'r') as fl:
+        MLP_config = yaml.load(fl,yaml.FullLoader)
+    _, traj_reduced = reduce_traj_isolated(traj_reduced,MLP_config.get('r_max'))
 
-    print(len(traj), len(traj_reduced),flush=True)
+    print('Reduce isolated ', len(traj), len(traj_reduced),flush=True)
     
     reduced_size = len(traj)
 

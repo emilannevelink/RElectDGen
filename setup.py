@@ -22,6 +22,8 @@ setup(
             "REDGEN-combine-datasets = RElectDGen.scripts.combine_datasets:main",
             "REDGEN-gpaw-MD = RElectDGen.scripts.gpaw_MD:main",
             "REDGEN-train-NN = RElectDGen.scripts.train_NN:main",
+            "REDGEN-train-prep = RElectDGen.scripts.prep_train_array:main",
+            "REDGEN-train-array = RElectDGen.scripts.train_array:main",
             "REDGEN-MLP-MD = RElectDGen.scripts.MLP_MD:main",
             "REDGEN-MLP-MD-run = RElectDGen.scripts.MD_run:main",
             "REDGEN-sample-adv = RElectDGen.scripts.adv_sampling:main",
@@ -31,6 +33,7 @@ setup(
             "REDGEN-gpaw-summary = RElectDGen.scripts.gpaw_summary_array:main",
             "REDGEN-log = RElectDGen.scripts.write_to_log:main",
             "REDGEN-restart = RElectDGen.scripts.restart:main",
+            "REDGEN-plot-UQ = RElectDGen.scripts.plot_UQ:main",
         ]
     },
     install_requires=[

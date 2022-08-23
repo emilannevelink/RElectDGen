@@ -1,5 +1,6 @@
 import ase
 import os
+import copy
 import numpy as np
 import pandas as pd
 
@@ -7,9 +8,8 @@ from ase.io.trajectory import Trajectory
 from ase.md.velocitydistribution import MaxwellBoltzmannDistribution, ZeroRotation, Stationary
 from ase import units
 from ase.md import MDLogger
-
-import yaml
-import torch
+from RElectDGen.utils.data import reduce_traj_isolated
+from RElectDGen.utils.io import add_to_trajectory
 
 from RElectDGen.utils.md_utils import md_func_from_config
 
@@ -20,33 +20,58 @@ from ..utils.logging import write_to_tmp_dict, add_checks_to_config
 from ..structure.build import get_initial_structure
 import time
 from .utils import sort_by_uncertainty
-from ..sampling.utils import sample_from_dataset
+from ..sampling.utils import sample_from_dataset, sample_from_initial_structures
+from ..structure.segment import clusters_from_traj
 
 def MD_sampling(config, loop_learning_count=1):
     print('Starting timer', flush=True)
     start = time.time()
     MLP_dict = {}
     
+    supercell = get_initial_structure(config)
     traj_initial = sample_from_dataset(config)
-    if len(traj_initial)>0 and not config.get('cluster', False) and not config.get('MD_from_initial', False): 
+    if (
+        len(traj_initial)>0 and 
+        not (config.get('cluster', False) or len(traj_initial[0])<len(supercell)) and 
+        not config.get('MD_from_initial', False)): 
         supercell = traj_initial[0] #ensure you only sample from md
+        initialize_velocity=False #velocity already in traj
     else:
-        supercell = get_initial_structure(config)
+        supercell = sample_from_initial_structures(config)
+        initialize_velocity=True
     
     
     #Delete Bondlength constraints
     supercell.constraints = [constraint for constraint in supercell.constraints if type(constraint)!=ase.constraints.FixBondLengths]
     
 
+    train_directory = config['train_directory']
+    if train_directory[-1] == '/':
+        train_directory = train_directory[:-1]
+
+
+    uncertainty_function = config.get('uncertainty_function', 'Nequip_latent_distance')
     ### Setup NN ASE calculator
-    calc_nn, model, MLP_config = nn_from_results()
+    if uncertainty_function in ['Nequip_ensemble']:
+        n_ensemble = config.get('n_uncertainty_ensembles',4)
+        model = []
+        MLP_config = []
+        for i in range(n_ensemble):
+            root = train_directory + f'_{i}'
+            calc_nn, mod, conf = nn_from_results(root=root)
+            model.append(mod)
+            MLP_config.append(conf)
+            r_max = conf.get('r_max')
+    else:
+        calc_nn, model, MLP_config = nn_from_results()
+        r_max = MLP_config.get('r_max')
     supercell.calc = calc_nn
 
     tmp0 = time.time()
     print('Time to initialize', tmp0-start,flush=True)
 
     ### Calibrate Uncertainty Quantification
-    UQ_func = getattr(uncertainty_models,config.get('uncertainty_function', 'Nequip_latent_distance'))
+    UQ_func = getattr(uncertainty_models,uncertainty_function)
 
     UQ = UQ_func(model, config, MLP_config)
     UQ.calibrate()
@@ -66,9 +91,10 @@ def MD_sampling(config, loop_learning_count=1):
 
     ### Run MLP MD
     MLP_dict['MLP_MD_temperature'] = config.get('MLP_MD_temperature') + (loop_learning_count-1)*config.get('MLP_MD_dT')
-    MaxwellBoltzmannDistribution(supercell, temperature_K=MLP_dict['MLP_MD_temperature'])
-    ZeroRotation(supercell)
-    Stationary(supercell)
+    if initialize_velocity:
+        MaxwellBoltzmannDistribution(supercell, temperature_K=MLP_dict['MLP_MD_temperature'])
+        ZeroRotation(supercell)
+        Stationary(supercell)
 
     print(MLP_dict['MLP_MD_temperature'],flush=True)
 
@@ -84,9 +110,13 @@ def MD_sampling(config, loop_learning_count=1):
     trajectory_file = os.path.join(config.get('data_directory'),config.get('MLP_trajectory_file'))
     traj = Trajectory(trajectory_file, 'w', supercell)
     dyn.attach(traj.write, interval=1)
+    nsteps = config.get('MLP_MD_steps')
+    if 'npt' in str(type(dyn)).lower():
+        nsteps += 1 # Fix different number of steps between NVE / NVT and NPT
     try:
-        dyn.run(config.get('MLP_MD_steps'))
-    except ValueError:
+        dyn.run(nsteps)
+    except (ValueError, RuntimeError) as e:
+        print(e)
         print('Value Error: MLP isnt good enough for current number of steps')
     traj.close()
 
@@ -110,6 +140,7 @@ def MD_sampling(config, loop_learning_count=1):
         print(f'Total energy stable: max E index {max_E_index}', flush=True)
 
     traj = Trajectory(trajectory_file)
+    final_supercell = copy.deepcopy(traj[-1])
     traj = traj[:max_E_index] # Only use E stable indices
     MLP_dict['MLP_MD_steps'] = len(traj)
 
@@ -124,6 +155,7 @@ def MD_sampling(config, loop_learning_count=1):
         traj = traj[::reduction_factor]
         print(f'reduced length of trajectory by {reduction_factor}, new length {len(traj)}, new max_index {expected_max_index}', flush=True)
 
+    _, traj = reduce_traj_isolated(traj,r_max)
     uncertainty, embeddings = UQ.predict_from_traj(traj,max=False)
 
     max_val_ind = uncertainty.sum(dim=-1).max(axis=1)
@@ -180,16 +212,23 @@ def MD_sampling(config, loop_learning_count=1):
     uncertainty = uncertainty[:max_index]
     config['sorted'] = sorted
 
+    # Create a function for clustering later
+    # print('isolating uncertain clusters', flush=True)
+    # clusters, cluster_uncertainties = clusters_from_traj(traj, uncertainty, **config)
+    # Cluster atoms objects that are too large
+    if len(supercell) > config.get('max_atoms_to_segment',np.inf):
+        print('isolating uncertain clusters', flush=True)
+        uncertainty_sum = uncertainty.sum(axis=-1) #reduce err and std to single value
+        traj, undertainty_df, embeddings = clusters_from_traj(traj, uncertainty_sum, embeddings, **config)
+        print('Number of Clusters: ', len(traj))
+        uncertainty, embeddings = UQ.predict_from_traj(traj,max=True)
+
     ### Sort trajectory from high to low
     unc_sorted = uncertainty.sum(dim=-1).max(dim=-1).values.sort()
     traj = [traj[i] for i in unc_sorted.indices.flipud()]
     uncertainty = uncertainty[unc_sorted.indices.flipud()]
     print('Uncertainties sorted', unc_sorted.values.flipud())
     print('Indices sorted', unc_sorted.indices.flipud())
-
-    # Create a function for clustering later
-    # print('isolating uncertain clusters', flush=True)
-    # clusters, cluster_uncertainties = clusters_from_traj(traj, uncertainty, **config)
 
     tmp1 = time.time()
     print('Time to segment clusters', tmp1-tmp0, 'Elapsed time ', tmp1-start, flush=True)
@@ -212,6 +251,19 @@ def MD_sampling(config, loop_learning_count=1):
 
         checks['MD_count'] = len(traj_uncertain)<=config.get('number_of_samples_check_value',config.get('max_samples')/2)
     
+    ## Add last supercell to initial structures if no atoms were uncertain and
+    ## at maximum timestep
+    if (
+        len(traj_uncertain)==0 and checks['MD_max_index'] and
+        config.get('MLP_MD_steps') >= config.get('max_MLP_MD_steps',4000)
+    ):
+        if config.get('initial_structures_file') is not None:
+            print('Adding to initial structures')
+            initial_structures_filename = os.path.join(
+                config.get('data_directory'),
+                config.get('initial_structures_file')
+            )
+            add_to_trajectory(final_supercell,initial_structures_filename)
 
     print('checks: ', checks)
 
