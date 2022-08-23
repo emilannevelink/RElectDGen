@@ -1594,11 +1594,16 @@ class Nequip_ensemble(uncertainty_base):
         
         error_threshold=self.config.get('UQ_dataset_error', np.inf)
         for i, data in enumerate(self.train_dataset):
-            out = self.model(self.transform_data_input(data))
+            force_outputs = torch.empty(len(self.model),*data['pos'].shape)
+            atom_energies = torch.empty(len(self.model),len(data['pos']))
+            for i, model in enumerate(self.model):
+                out = model(self.transform_data_input(data))
+                force_outputs[i] = out['forces']
+                atom_energies[i] = out['atomic_energy']
 
             force_norm = data['forces'].norm(dim=1).unsqueeze(dim=1)
             force_lim = torch.max(force_norm,torch.ones_like(force_norm))
-            perc_err = ((out['forces'].detach()-data['forces'])).abs()/force_lim
+            perc_err = ((force_outputs.detach().mean(dim=0)-data['forces'])).abs()/force_lim
             
             if perc_err.max() < error_threshold:
                 self.UQ_train_indices = torch.cat([self.UQ_train_indices, self.ML_train_indices[i].unsqueeze(dim=0)])
@@ -1609,7 +1614,7 @@ class Nequip_ensemble(uncertainty_base):
                     NN_inputs = torch.hstack([out['node_features'][mask].detach(), atom_one_hot])
                     
                     train_embeddings[key] = torch.cat([train_embeddings[key],NN_inputs])
-                    train_energies[key] = torch.cat([train_energies[key], out['atomic_energy'][mask].detach()])
+                    train_energies[key] = torch.cat([train_energies[key], atom_energies.mean(dim=0)[mask].detach()])
                     train_forces[key] = torch.cat([train_forces[key], data['forces'][mask].detach().norm(dim=1).unsqueeze(1)])
 
                     # npoints = torch.tensor([train_indices[key][-1]+sum(mask) if i>0 else sum(mask)]).to(self.device)
@@ -1623,7 +1628,7 @@ class Nequip_ensemble(uncertainty_base):
                     NN_inputs = torch.hstack([out['node_features'][mask].detach(), atom_one_hot])
                     
                     test_embeddings[key] = torch.cat([test_embeddings[key],NN_inputs])
-                    test_energies[key] = torch.cat([test_energies[key], out['atomic_energy'][mask].detach()])
+                    test_energies[key] = torch.cat([test_energies[key], atom_energies.mean(dim=0)[mask].detach()])
                     test_forces[key] = torch.cat([test_forces[key], data['forces'][mask].detach().norm(dim=1).unsqueeze(1)])
 
                     # npoints = torch.tensor([test_indices[key][-1]+sum(mask) if i>0 else sum(mask)]).to(self.device)
@@ -1635,11 +1640,16 @@ class Nequip_ensemble(uncertainty_base):
         self.train_indices = train_indices
 
         for i, data in enumerate(self.validation_dataset):
-            out = self.model(self.transform_data_input(data))
+            force_outputs = torch.empty(len(self.model),*data['pos'].shape)
+            atom_energies = torch.empty(len(self.model),len(data['pos']))
+            for i, model in enumerate(self.model):
+                out = model(self.transform_data_input(data))
+                force_outputs[i] = out['forces']
+                atom_energies[i] = out['atomic_energy']
 
             force_norm = data['forces'].norm(dim=1).unsqueeze(dim=1)
             force_lim = torch.max(force_norm,torch.ones_like(force_norm))
-            perc_err = ((out['forces'].detach()-data['forces'])).abs()/force_lim
+            perc_err = ((force_outputs.detach().mean(dim=0)-data['forces'])).abs()/force_lim
             
             if perc_err.max() < error_threshold:
                 self.UQ_validation_indices = torch.cat([self.UQ_validation_indices, self.ML_validation_indices[i].unsqueeze(dim=0)])
@@ -1650,7 +1660,7 @@ class Nequip_ensemble(uncertainty_base):
                     NN_inputs = torch.hstack([out['node_features'][mask].detach(), atom_one_hot])
 
                     validation_embeddings[key] = torch.cat([validation_embeddings[key],NN_inputs])
-                    validation_energies[key] = torch.cat([validation_energies[key], out['atomic_energy'][mask].detach()])
+                    validation_energies[key] = torch.cat([validation_energies[key], atom_energies.mean(dim=0)[mask].detach()])
                     validation_forces[key] = torch.cat([validation_forces[key], data['forces'][mask].detach().norm(dim=1).unsqueeze(1)])
                     
                     # npoints = torch.tensor([validation_indices[key][-1]+sum(mask) if i>0 else sum(mask)]).to(self.device)
@@ -1664,7 +1674,7 @@ class Nequip_ensemble(uncertainty_base):
                     NN_inputs = torch.hstack([out['node_features'][mask].detach(), atom_one_hot])
 
                     test_embeddings[key] = torch.cat([test_embeddings[key],NN_inputs])
-                    test_energies[key] = torch.cat([test_energies[key], out['atomic_energy'][mask].detach()])
+                    test_energies[key] = torch.cat([test_energies[key], atom_energies.mean(dim=0)[mask].detach()])
                     test_forces[key] = torch.cat([test_forces[key], data['forces'][mask].detach().norm(dim=1).unsqueeze(1)])
                     
                     # npoints = torch.tensor([test_indices[key][-1]+sum(mask) if i>0 else sum(mask)]).to(self.device)
@@ -1684,7 +1694,6 @@ class Nequip_ensemble(uncertainty_base):
 
         data = self.transform_data_input(data)
 
-        
         self.uncertainties = self.predict_uncertainty(data, distances=distances).to(self.device)
         
         adv_loss = 0
