@@ -1550,7 +1550,7 @@ class Nequip_ensemble(uncertainty_base):
             calibration_coeffs[key] = torch.zeros(self.calibration_polyorder+1,device=self.device)
             if self.calibration_polyorder>0:
                 calibration_coeffs[key][-2] = 1
-
+        self.calibration_coeffs = calibration_coeffs
 
     def calibrate(self, debug = False):
         self.parse_data()
