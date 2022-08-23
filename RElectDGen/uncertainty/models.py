@@ -1729,8 +1729,7 @@ class Nequip_ensemble(uncertainty_base):
             mask = (atom_types==self.chemical_symbol_to_type[key]).flatten()
             # print(self.calibration_coeffs[key])
             for i, coeff in enumerate(self.calibration_coeffs[key][::-1]):
-                print(i, coeff)
-                calibrated[mask] = float(coeff)*raw[mask].pow(i)
+                calibrated[mask] += float(coeff)*raw[mask].pow(i)
 
         return calibrated
 
@@ -1780,8 +1779,8 @@ class Nequip_ensemble(uncertainty_base):
 
         uncertainty = torch.vstack([uncertainties_mean,uncertainties_std]).T
 
-        uncertainty_calibrated = self.apply_calibration(out['atom_types'],uncertainty)
-        return uncertainty_calibrated
+        uncertainty[:,1] = self.apply_calibration(out['atom_types'],uncertainty[:,1])
+        return uncertainty
 
     def predict_from_traj(self, traj, max=True, batch_size=1):
         uncertainty = []
