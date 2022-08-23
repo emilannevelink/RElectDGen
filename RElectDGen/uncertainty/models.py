@@ -30,6 +30,7 @@ class uncertainty_base():
         self.self_interaction = self.MLP_config.get('dataset_extra_fixed_fields',{}).get('self_interaction',False)
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
+        self.natoms = len(MLP_config['type_names'])
         self.kb = 8.6173e-5 #eV/K
         self.n_ensemble = config.get('n_uncertainty_ensembles',4)
 
