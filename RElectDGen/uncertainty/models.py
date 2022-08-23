@@ -1560,8 +1560,8 @@ class Nequip_ensemble(uncertainty_base):
         #Calibration curves
         calibration_coeffs = {}
         for key in self.MLP_config.get('chemical_symbol_to_type'):   
-            print(self.validation_err_pred[key].shape) 
-            print(self.validation_err_real[key].shape)
+            # print(self.validation_err_pred[key].shape) 
+            # print(self.validation_err_real[key].shape)
             calibration_coeffs[key] = np.polyfit(self.validation_err_pred[key],self.validation_err_real[key],self.calibration_polyorder)
 
         self.calibration_coeffs = calibration_coeffs
@@ -1727,7 +1727,7 @@ class Nequip_ensemble(uncertainty_base):
         calibrated = torch.zeros_like(raw,device=self.device)
         for key in self.chemical_symbol_to_type:
             mask = (atom_types==self.chemical_symbol_to_type[key]).flatten()
-            print(self.calibration_coeffs[key])
+            # print(self.calibration_coeffs[key])
             for i, coeff in enumerate(self.calibration_coeffs[key][::-1]):
                 print(i, coeff)
                 calibrated[mask] = float(coeff)*raw[mask].pow(i)
@@ -1993,7 +1993,7 @@ class Nequip_ensemble(uncertainty_base):
         ax[2,4].errorbar(val_max_force_real.norm(dim=1),val_max_force_pred.norm(dim=1), alpha=alpha, yerr=val_max_force_err+val_max_force_std, xerr=val_max_force_max_err+val_max_force_max_std, fmt='o')
 
         # ax[3,4].scatter((val_max_force_real-val_max_force_pred).norm(dim=1),val_max_force_err, alpha=alpha)
-        ax[3,4].scatter((val_max_force_real-val_max_force_pred).norm(dim=1), val_max_force_err+val_max_force_std, alpha=alpha)
+        # ax[3,4].scatter((val_max_force_real-val_max_force_pred).norm(dim=1), val_max_force_err+val_max_force_std, alpha=alpha)
         
         min_error = 0
         max_error = 0
@@ -2086,7 +2086,8 @@ class Nequip_ensemble(uncertainty_base):
             c_t = np.polyfit(err_pred,err_real,1)
             c_val.append(c_t)
             
-            ax[3,4].scatter(err_real, np.poly1d(c_t)(err_pred), alpha=alpha, color=colors[i], label=key)
+            # ax[3,4].scatter(err_real, np.poly1d(c_t)(err_pred), alpha=alpha, color=colors[i], label=key)
+            ax[3,4].scatter(err_real, err_pred, alpha=alpha, color=colors[i], label=key)
             
             min_error = min(min_error, err_real.min(), err_pred.min())
             max_error = max(max_error, err_real.max(), err_pred.max())
