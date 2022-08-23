@@ -78,7 +78,7 @@ def main(args=None):
                     MLP_config.append(conf)
             if plot:
 
-                UQ_func = getattr(uncertainty_models,)
+                UQ_func = getattr(uncertainty_models,uncertainty_function)
 
                 UQ = UQ_func(model, config, MLP_config)
                 UQ.calibrate()
@@ -107,7 +107,7 @@ def main(args=None):
                     try:
                         calc_nn, model, MLP_config = nn_from_results(train_directory)
 
-                        UQ_func = getattr(uncertainty_models,)
+                        UQ_func = getattr(uncertainty_models,uncertainty_function)
 
                         UQ = UQ_func(model, config, MLP_config)
                         UQ.calibrate()
