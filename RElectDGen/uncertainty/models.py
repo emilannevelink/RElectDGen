@@ -2042,7 +2042,8 @@ class Nequip_ensemble(uncertainty_base):
             c_t = np.polyfit(err_pred,err_real,1)
             c_train.append(c_t)
             
-            ax[1,4].scatter(err_real, np.poly1d(c_t)(err_pred), alpha=alpha, color=colors[i], label=key)
+            # ax[1,4].scatter(err_real, np.poly1d(c_t)(err_pred), alpha=alpha, color=colors[i], label=key)
+            ax[1,4].scatter(err_real, err_pred, alpha=alpha, color=colors[i], label=key)
             min_error = min(min_error, err_real.min(), err_pred.min())
             max_error = max(max_error, err_real.max(), err_pred.max())
             
@@ -2101,10 +2102,10 @@ class Nequip_ensemble(uncertainty_base):
         ax[2,4].plot([min_force,max_force],[min_force,max_force],color='k',linestyle='--')
         ax[3,4].plot([min_error,max_error],[min_error,max_error],color='k',linestyle='--')
         yplot = np.linspace(min_error,max_error)
-        for i, c in enumerate(c_train):
-            xplot = np.poly1d(c)(yplot)
-            ax[1,4].plot(xplot,yplot,color=colors[i],linestyle='--')
-            ax[1,4].text(0.1,0.9-0.1*i,f'I: {str(np.round(c[1],4))}; S: {str(np.round(c[0],4))}',va="center", ha="left",transform=ax[1,4].transAxes)
+        # for i, c in enumerate(c_train):
+        #     xplot = np.poly1d(c)(yplot)
+        #     ax[1,4].plot(xplot,yplot,color=colors[i],linestyle='--')
+        #     ax[1,4].text(0.1,0.9-0.1*i,f'I: {str(np.round(c[1],4))}; S: {str(np.round(c[0],4))}',va="center", ha="left",transform=ax[1,4].transAxes)
         for i, c in enumerate(c_val):
             xplot = np.poly1d(c)(yplot)
             ax[3,4].plot(xplot,yplot,color=colors[i],linestyle='--')
