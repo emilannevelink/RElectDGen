@@ -52,6 +52,8 @@ def main(args=None):
             model = []
             MLP_config = []
             plot = True
+            print(td)
+            print(td[j])
             for j in range(n_ensemble):
                 root_dir = train_root + f'_{j}'
                 train_directory = os.path.join(
