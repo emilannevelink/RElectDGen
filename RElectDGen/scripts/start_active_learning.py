@@ -108,7 +108,7 @@ def main(args=None):
                     job_ids.append(int(process.stdout.split(b' ')[-1]))
                     job_types.append(shell_file)
 
-                if 'train_prep' in shell_file:
+                elif 'train_prep' in shell_file:
 
                     shell_file = 'submits/train_prep.sh'
                     if len(job_ids)>0:
