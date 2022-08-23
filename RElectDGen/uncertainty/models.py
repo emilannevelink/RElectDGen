@@ -1710,7 +1710,7 @@ class Nequip_ensemble(uncertainty_base):
             Q = torch.exp(-(energies-emean)/estd/kT).sum()
 
             mask = data['atom_types'] == self.chemical_symbol_to_type[key]
-            probability = 1/Q * torch.exp(-(self.atom_energies[mask]-emean)/estd/kT)
+            probability = 1/Q * torch.exp(-(self.atom_energies[mask.squeeze()]-emean)/estd/kT)
             
             adv_loss += (probability * self.uncertainties[mask.flatten()].sum(dim=-1)).sum()
 
