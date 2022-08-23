@@ -40,25 +40,30 @@ def uncertainty_downselect(traj, embeddings, UQ, min_uncertainty=0.04, max_uncer
     uncertainties = []
     # embedding_distances = {}
     keep_embeddings = {}
-    if hasattr(UQ,'test_embeddings'):
-        if isinstance(UQ.test_embeddings, dict):
+    if hasattr(UQ,'train_embeddings'):
+        if isinstance(UQ.train_embeddings, dict):
             for key in UQ.MLP_config.get('chemical_symbol_to_type'): 
-                keep_embeddings[key] = torch.empty((0,UQ.test_embeddings[key].shape[-1])).to(UQ.device)
+                keep_embeddings[key] = torch.empty((0,UQ.train_embeddings[key].shape[-1])).to(UQ.device)
     for i, (embedding_i, atoms) in enumerate(zip(embeddings,traj)):
         
         active_uncertainty = UQ.predict_uncertainty(atoms, embedding_i, extra_embeddings=keep_embeddings, type='std').detach().cpu().numpy()
         active_uncertainty = active_uncertainty.sum(axis=-1)
         # data = UQ.transform(AtomicData.from_ase(atoms=atoms,r_max=UQ.r_max, self_interaction=UQ.self_interaction))
         # active_uncertainty = UQ.predict_uncertainty(data['atom_types'], embedding_i, extra_embeddings=keep_embeddings, type='std').detach().cpu().numpy()
+        data = UQ.transform_data_input(atoms)
+        atom_one_hot = torch.nn.functional.one_hot(data['atom_types'].squeeze(),num_classes=UQ.natoms).to(UQ.device)
 
         if np.any(active_uncertainty>min_uncertainty) and np.all(active_uncertainty<max_uncertainty):
             calc_inds.append(i)
             uncertainties.append(float(active_uncertainty.max()))
-            if hasattr(UQ,'test_embeddings'):
-                if isinstance(UQ.test_embeddings, dict):
+            
+            if hasattr(UQ,'train_embeddings'):
+                if isinstance(UQ.train_embeddings, dict):
                     for key in UQ.MLP_config.get('chemical_symbol_to_type'): 
                         mask = np.array(atoms.get_chemical_symbols()) == key
-                        keep_embeddings[key] = torch.cat([keep_embeddings[key],embedding_i[mask].to(UQ.device)])
+                        # keep_embeddings[key] = torch.cat([keep_embeddings[key],embedding_i[mask].to(UQ.device)])
+                        NN_inputs = torch.hstack([embedding_i[mask], atom_one_hot[mask]])
+                        keep_embeddings[key] = torch.cat([keep_embeddings[key],NN_inputs])
 
     return uncertainties, calc_inds
 
