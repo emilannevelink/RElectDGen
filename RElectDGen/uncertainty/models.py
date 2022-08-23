@@ -2098,13 +2098,13 @@ class Nequip_ensemble(uncertainty_base):
         ax[1,4].plot([min_error,max_error],[min_error,max_error],color='k',linestyle='--')
         ax[2,4].plot([min_force,max_force],[min_force,max_force],color='k',linestyle='--')
         ax[3,4].plot([min_error,max_error],[min_error,max_error],color='k',linestyle='--')
-        xplot = np.linspace(min_error,max_error)
+        yplot = np.linspace(min_error,max_error)
         for i, c in enumerate(c_train):
-            yplot = np.poly1d(c)(xplot)
+            xplot = np.poly1d(c)(yplot)
             ax[1,4].plot(xplot,yplot,color=colors[i],linestyle='--')
             ax[1,4].text(0.1,0.9-0.1*i,f'I: {str(np.round(c[1],4))}; S: {str(np.round(c[0],4))}',va="center", ha="left",transform=ax[1,4].transAxes)
         for i, c in enumerate(c_val):
-            yplot = np.poly1d(c)(xplot)
+            xplot = np.poly1d(c)(yplot)
             ax[3,4].plot(xplot,yplot,color=colors[i],linestyle='--')
             ax[3,4].text(0.1,0.9-0.1*i,f'I: {str(np.round(c[1],4))}; S: {str(np.round(c[0],4))}',va="center", ha="left",transform=ax[3,4].transAxes)
             # ax[3,4].text(0.1,0.9,'Intercept: ' + str(np.round(c[1],4)),va="center", ha="left",transform=ax[3,4].transAxes)
