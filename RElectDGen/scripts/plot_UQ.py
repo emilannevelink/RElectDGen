@@ -35,13 +35,17 @@ def main(args=None):
         config.get('train_directory')
     )
 
+    train_root = config['train_directory']
+    if train_root[-1] == '/':
+        train_root = train_root[:-1]
+
     uncertainty_function = config.get('uncertainty_function', 'Nequip_latent_distance')
 
     if uncertainty_function in ['Nequip_ensemble']:
         n_ensemble = config.get('n_uncertainty_ensembles',4)
         train_dirs = []
         for i in range(n_ensemble):
-            root = train_directory + f'_{i}'
+            root_dir = train_root + f'_{i}'
             train_dirs.append(os.listdir(root_dir))
         
         for i, td in enumerate(zip(train_dirs)):
@@ -49,7 +53,7 @@ def main(args=None):
             MLP_config = []
             plot = True
             for j in range(n_ensemble):
-                root_dir = train_directory + f'_{j}'
+                root_dir = train_root + f'_{j}'
                 train_directory = os.path.join(
                     root_dir,
                     td[j]
@@ -74,7 +78,7 @@ def main(args=None):
                     train_directory,
                     config.get('UQ_plot_filename','UQ_fit.png')
                 )
-                root_dir = train_directory + f'_{0}'
+                root_dir = train_root + f'_{0}'
                 train_directory = os.path.join(
                     root_dir,
                     td[0]
