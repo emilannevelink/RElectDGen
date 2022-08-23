@@ -1730,7 +1730,7 @@ class Nequip_ensemble(uncertainty_base):
         self.atom_energies = atom_energies.mean(dim=0)
         self.atom_embedding = out['node_features']
         
-        uncertainties_std = force_outputs.std(axis=0)
+        uncertainties_std = force_outputs.std(axis=0).norm(dim=-1)
         uncertainties_mean = torch.zeros_like(uncertainties_std)
 
         uncertainty = torch.vstack([uncertainties_mean,uncertainties_std]).T
