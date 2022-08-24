@@ -1,4 +1,5 @@
 import argparse, subprocess
+from genericpath import isdir
 from ase.io.trajectory import Trajectory
 import numpy as np
 import os
@@ -200,13 +201,14 @@ def main(args=None):
             if load:
                 MLP_config_new['workdir_load'] = conf['workdir']
 
-            for dir in os.listdir(MLP_config_new['root']):
-                if 'processed_dataset' in dir:
-                    delete_directory = os.path.join(
-                        MLP_config_new['root'],
-                        dir
-                    )
-                    shutil.rmtree(delete_directory)
+            if os.path.isdir(MLP_config_new['root']):
+                for dir in os.listdir(MLP_config_new['root']):
+                    if 'processed_dataset' in dir:
+                        delete_directory = os.path.join(
+                            MLP_config_new['root'],
+                            dir
+                        )
+                        shutil.rmtree(delete_directory)
 
             tmp_MLP_filename = f'tmp_MLP_{i}.yaml'
             with open(tmp_MLP_filename, "w+") as fp:
