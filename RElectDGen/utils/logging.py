@@ -25,7 +25,7 @@ def get_mae_from_results(root='results', index = None):
     results_metrics = os.path.join(results_dir,'metrics_epoch.csv')
     data = pd.read_csv(results_metrics)
 
-    best_ind = np.argmin(data[' validation_loss'])
+    best_ind = np.argmin(data['validation_loss'])
 
     if index is None:
         mae_dict = {
