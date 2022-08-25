@@ -108,11 +108,11 @@ def shell_from_config(config):
                 ]
 
         else:
-            # commands = [f'spack load {spack_environment}']
-            commands = [
-                f'spack env activate {spack_environment}',
-                'spack -L load py-gpaw'
-            ]
+            commands = [f'spack -L load {spack_environment}']
+            # commands = [
+            #     f'spack env activate {spack_environment}',
+            #     'spack -L load py-gpaw'
+            # ]
             
             if 'MD' in file:
                 file = os.path.join(config.get('scripts_path'),'gpaw_MD.py')
