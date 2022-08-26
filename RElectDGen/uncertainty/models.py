@@ -1624,7 +1624,7 @@ class Nequip_ensemble(uncertainty_base):
                 atom_energies[i] = out['atomic_energy'].squeeze()
 
             force_norm = data['forces'].norm(dim=1).unsqueeze(dim=1)
-            force_lim = torch.max(force_norm,torch.ones_like(force_norm))
+            force_lim = torch.max(force_norm,torch.ones_like(force_norm,device=self.device))
             perc_err = ((force_outputs.detach().mean(dim=0)-data['forces'])).abs()/force_lim
             
             if perc_err.max() < error_threshold:
@@ -1670,7 +1670,7 @@ class Nequip_ensemble(uncertainty_base):
                 atom_energies[i] = out['atomic_energy'].squeeze()
 
             force_norm = data['forces'].norm(dim=1).unsqueeze(dim=1)
-            force_lim = torch.max(force_norm,torch.ones_like(force_norm))
+            force_lim = torch.max(force_norm,torch.ones_like(force_norm,device=self.device))
             perc_err = ((force_outputs.detach().mean(dim=0)-data['forces'])).abs()/force_lim
             force_error = ((force_outputs.detach().mean(dim=0)-data['forces'])).norm(dim=1)
             pred_uncertainty = self.predict_uncertainty(data).sum(dim=-1).detach()
