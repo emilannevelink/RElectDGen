@@ -1616,8 +1616,8 @@ class Nequip_ensemble(uncertainty_base):
         
         error_threshold=self.config.get('UQ_dataset_error', np.inf)
         for i, data in enumerate(self.train_dataset):
-            force_outputs = torch.empty(len(self.model),*data['pos'].shape)
-            atom_energies = torch.empty(len(self.model),len(data['pos']))
+            force_outputs = torch.empty(len(self.model),*data['pos'].shape,device=self.device)
+            atom_energies = torch.empty(len(self.model),len(data['pos']),device=self.device)
             for i, model in enumerate(self.model):
                 out = model(self.transform_data_input(data))
                 force_outputs[i] = out['forces']
@@ -1625,7 +1625,7 @@ class Nequip_ensemble(uncertainty_base):
 
             force_norm = data['forces'].norm(dim=1).unsqueeze(dim=1)
             force_lim = torch.max(force_norm,torch.ones_like(force_norm,device=self.device))
-            perc_err = ((force_outputs.detach().mean(dim=0).cpu()-data['forces'])).abs()/force_lim.cpu()
+            perc_err = ((force_outputs.detach().mean(dim=0)-data['forces'])).abs().cpu()/force_lim.cpu()
             
             if perc_err.max() < error_threshold:
                 self.UQ_train_indices = torch.cat([self.UQ_train_indices, self.ML_train_indices[i].unsqueeze(dim=0)])
@@ -1662,8 +1662,8 @@ class Nequip_ensemble(uncertainty_base):
         self.train_indices = train_indices
 
         for i, data in enumerate(self.validation_dataset):
-            force_outputs = torch.empty(len(self.model),*data['pos'].shape)
-            atom_energies = torch.empty(len(self.model),len(data['pos']))
+            force_outputs = torch.empty(len(self.model),*data['pos'].shape,device=self.device)
+            atom_energies = torch.empty(len(self.model),len(data['pos']),device=self.device)
             for i, model in enumerate(self.model):
                 out = model(self.transform_data_input(data))
                 force_outputs[i] = out['forces']
@@ -1671,7 +1671,7 @@ class Nequip_ensemble(uncertainty_base):
 
             force_norm = data['forces'].norm(dim=1).unsqueeze(dim=1)
             force_lim = torch.max(force_norm,torch.ones_like(force_norm,device=self.device))
-            perc_err = ((force_outputs.detach().mean(dim=0).cpu()-data['forces'])).abs()/force_lim.cpu()
+            perc_err = ((force_outputs.detach().mean(dim=0)-data['forces'])).abs().cpu()/force_lim.cpu()
             force_error = ((force_outputs.detach().mean(dim=0)-data['forces'])).norm(dim=1)
             pred_uncertainty = self.predict_uncertainty(data).sum(dim=-1).detach()
 
