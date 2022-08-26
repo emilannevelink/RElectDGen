@@ -1562,9 +1562,9 @@ class Nequip_ensemble(uncertainty_base):
         for key in self.MLP_config.get('chemical_symbol_to_type'):   
             # print(self.validation_err_pred[key].shape) 
             # print(self.validation_err_real[key].shape)
-            print(self.validation_err_pred[key].cpu())
-            print(self.validation_err_real[key].cpu())
-            calibration_coeffs[key] = np.polynomial.polynomial.Polynomial.fit(self.validation_err_pred[key].cpu(),self.validation_err_real[key].cpu(),self.calibration_polyorder)
+            # print(self.validation_err_pred[key].cpu())
+            # print(self.validation_err_real[key].cpu())
+            calibration_coeffs[key] = np.polyfit(self.validation_err_pred[key].cpu(),self.validation_err_real[key].cpu(),self.calibration_polyorder)
 
         self.calibration_coeffs = calibration_coeffs
 
