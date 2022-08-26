@@ -126,16 +126,17 @@ def nn_from_results(root='results',train_directory=None):
     return calc_nn, model, MLP_config
 
 def nns_from_results(root='results',n_ensemble=4):
-    import torch
+    from RElectDGen.utils.save import check_nan_parameters
     model = []
     MLP_config = []
     for i in range(n_ensemble):
         rooti = root + f'_{i}'
         calc_tmp, mod, conf = nn_from_results(root=rooti)
-        training_success = torch.any(torch.tensor([torch.any(torch.isnan(mod.state_dict()[key])) for key in mod.state_dict().keys()]))
+        training_success = check_nan_parameters(mod)
         if training_success:
             model.append(mod)
             MLP_config.append(conf)
             calc_nn = calc_tmp
     
+    print(f'Kept {len(model)} of {n_ensemble} models', flush=True)
     return calc_nn, model, MLP_config

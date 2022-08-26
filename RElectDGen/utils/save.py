@@ -53,6 +53,12 @@ def check_NN_parameters(MLP_config_new, MLP_config_old):
 
     return value
 
+def check_nan_parameters(model):
+    import torch
+    training_success = not torch.any(torch.tensor([torch.any(torch.isnan(model.state_dict()[key])) for key in model.state_dict().keys()]))
+
+    return training_success
+
 def get_results_dir(root='results'):
     max_time = 0
     for tmp in os.listdir(root):

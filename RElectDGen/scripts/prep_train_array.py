@@ -17,7 +17,7 @@ from nequip.data import dataset_from_config
 from ..uncertainty import models as uncertainty_models
 
 from RElectDGen.calculate.calculator import nn_from_results
-from RElectDGen.utils.save import check_NN_parameters
+from RElectDGen.utils.save import check_NN_parameters, check_nan_parameters
 from RElectDGen.utils.logging import get_mae_from_results, write_to_tmp_dict, get_dataset_sizes
 
 from memory_profiler import profile
@@ -51,6 +51,7 @@ def use_previous_model(MLP_config_new, nmodels):
         root = f'results_{i}'
         try:
             calc_nn, model_load, MLP_config = nn_from_results(root=root)
+            train = not check_nan_parameters(model_load) #check to make sure no parameters are nan
         except (FileNotFoundError, OSError, ValueError, UnboundLocalError):
             print('No previous results',flush=True)
             train = True
