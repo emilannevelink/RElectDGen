@@ -27,7 +27,7 @@ from nequip.data import AtomicData, AtomicDataDict
 
 from RElectDGen.scripts.gpaw_MD import get_initial_MD_steps
 
-from ..calculate.calculator import nn_from_results
+from ..calculate.calculator import nn_from_results, nns_from_results
 from ..structure.segment import clusters_from_traj
 from ..utils.logging import write_to_tmp_dict, add_checks_to_config
 from ..structure.build import get_initial_structure
@@ -78,14 +78,8 @@ def main(args=None):
     ### Setup NN ASE calculator
     if uncertainty_function in ['Nequip_ensemble']:
         n_ensemble = config.get('n_uncertainty_ensembles',4)
-        model = []
-        MLP_config = []
-        for i in range(n_ensemble):
-            root = train_directory + f'_{i}'
-            calc_nn, mod, conf = nn_from_results(root=root)
-            model.append(mod)
-            MLP_config.append(conf)
-            r_max = conf.get('r_max')
+        calc_nn, model, MLP_config = nns_from_results(train_directory,n_ensemble)
+        r_max = MLP_config[0].get('r_max')
     else:
         calc_nn, model, MLP_config = nn_from_results()
         r_max = MLP_config.get('r_max')

@@ -124,3 +124,18 @@ def nn_from_results(root='results',train_directory=None):
     calc_nn = NequIPCalculator(model=model, r_max=MLP_config.r_max,device=device, transform=transform)
 
     return calc_nn, model, MLP_config
+
+def nns_from_results(root='results',n_ensemble=4):
+    import torch
+    model = []
+    MLP_config = []
+    for i in range(n_ensemble):
+        root = root + f'_{i}'
+        calc_tmp, mod, conf = nn_from_results(root=root)
+        training_success = torch.any(torch.tensor([torch.any(torch.isnan(mod.state_dict()[key])) for key in mod.state_dict().keys()]))
+        if training_success:
+            model.append(mod)
+            MLP_config.append(conf)
+            calc_nn = calc_tmp
+    
+    return calc_nn, model, MLP_config
