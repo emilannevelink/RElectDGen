@@ -130,8 +130,8 @@ def nns_from_results(root='results',n_ensemble=4):
     model = []
     MLP_config = []
     for i in range(n_ensemble):
-        root = root + f'_{i}'
-        calc_tmp, mod, conf = nn_from_results(root=root)
+        rooti = root + f'_{i}'
+        calc_tmp, mod, conf = nn_from_results(root=rooti)
         training_success = torch.any(torch.tensor([torch.any(torch.isnan(mod.state_dict()[key])) for key in mod.state_dict().keys()]))
         if training_success:
             model.append(mod)
