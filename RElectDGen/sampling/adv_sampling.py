@@ -83,7 +83,7 @@ def adv_sampling(config, traj_initial=[], loop_learning_count=1):
     start = time.time()
     adv_dict = {}
     
-    train_directory = config['train_directory']
+    train_directory = config.get('train_directory','results')
     if train_directory[-1] == '/':
         train_directory = train_directory[:-1]
 

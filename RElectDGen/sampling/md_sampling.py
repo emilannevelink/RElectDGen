@@ -46,7 +46,7 @@ def MD_sampling(config, loop_learning_count=1):
     supercell.constraints = [constraint for constraint in supercell.constraints if type(constraint)!=ase.constraints.FixBondLengths]
     
 
-    train_directory = config['train_directory']
+    train_directory = config.get('train_directory','results')
     if train_directory[-1] == '/':
         train_directory = train_directory[:-1]
 
@@ -217,9 +217,12 @@ def MD_sampling(config, loop_learning_count=1):
         traj, undertainty_df, embeddings = clusters_from_traj(traj, uncertainty_sum, embeddings, **config)
         print('Number of Clusters: ', len(traj))
         uncertainty, embeddings = UQ.predict_from_traj(traj,max=True)
+        unc_sorted = uncertainty.sum(dim=-1).sort()
+    else:
+        unc_sorted = uncertainty.sum(dim=-1).max(dim=-1).values.sort()
 
     ### Sort trajectory from high to low
-    unc_sorted = uncertainty.sum(dim=-1).max(dim=-1).values.sort()
+    
     traj = [traj[i] for i in unc_sorted.indices.flipud()]
     uncertainty = uncertainty[unc_sorted.indices.flipud()]
     print('Uncertainties sorted', unc_sorted.values.flipud())

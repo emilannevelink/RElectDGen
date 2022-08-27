@@ -70,7 +70,7 @@ def main(args=None):
     uncertain = MD_uncertain + adv_uncertain
     embeddings = MD_embedding_uncertain + adv_embedding_uncertain
 
-    train_directory = config['train_directory']
+    train_directory = config.get('train_directory','results')
     if train_directory[-1] == '/':
         train_directory = train_directory[:-1]
     
