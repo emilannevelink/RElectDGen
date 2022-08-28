@@ -197,6 +197,7 @@ def adv_sampling(config, traj_initial=[], loop_learning_count=1):
         sorted_indices = np.argsort(uncertainties.sum(axis=-1))[::-1]
         traj_adv = [traj_adv[i] for i in sorted_indices]
         uncertainties = uncertainties[sorted_indices]
+        embeddings = [embeddings[i] for i in sorted_indices]
         print('Uncertainties sorted', uncertainties.sum(axis=-1))
         print('Indices sorted', sorted_indices)
     else:

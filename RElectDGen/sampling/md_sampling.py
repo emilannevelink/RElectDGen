@@ -225,6 +225,7 @@ def MD_sampling(config, loop_learning_count=1):
     
     traj = [traj[i] for i in unc_sorted.indices.flipud()]
     uncertainty = uncertainty[unc_sorted.indices.flipud()]
+    embeddings = [embeddings[i] for i in unc_sorted.indices.flipud()]
     print('Uncertainties sorted', unc_sorted.values.flipud())
     print('Indices sorted', unc_sorted.indices.flipud())
 
