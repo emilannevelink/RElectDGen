@@ -5,6 +5,7 @@ from ..calculate.calculator import nn_from_results
 import time
 
 from ..uncertainty import models as uncertainty_models
+from RElectDGen.utils.save import check_nan_parameters
 
 def parse_command_line(argsin):
     parser = argparse.ArgumentParser()
@@ -74,8 +75,12 @@ def main(args=None):
                     plot = False
                 else:
                     calc_nn, mod, conf = nn_from_results(train_directory=train_directory)
-                    model.append(mod)
-                    MLP_config.append(conf)
+                    training_success = check_nan_parameters(mod)
+                    if training_success:
+                        model.append(mod)
+                        MLP_config.append(conf)
+            if len(model)<2:
+                plot = False
             if plot:
 
                 UQ_func = getattr(uncertainty_models,uncertainty_function)
