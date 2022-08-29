@@ -365,11 +365,42 @@ class segment_atoms():
         
         return slab_indices, mixture_indices
             
+    def get_z_shift(self,atoms):
+        cell_size = atoms.get_cell().diagonal()
+        dx = dy = 0
+        z_array = np.arange(0,cell_size[2],0.5)
+        best_atoms = copy.deepcopy(atoms)
+        best_atoms.center(vacuum=0)
+        min_volume = best_atoms.get_volume()
+        best_shift = np.zeros(3)
+        for dz in z_array:
+            atoms_tmp = copy.deepcopy(atoms)
+            shift = np.array([dx,dy,dz])
+            atoms_tmp.set_positions(atoms.get_positions() + shift)
+            atoms_tmp.wrap()
+            atoms_tmp.center(vacuum=0)
+            vol = atoms_tmp.get_volume()
+            if vol < min_volume:
+                min_volume = vol
+                best_atoms = atoms_tmp
+                best_shift = np.array([dx,dy,dz])
+        return best_atoms, best_shift
+
     
     def segment_slab(self, cluster_indices, slab_indices):
+        total_indices = cluster_indices + slab_indices
 
-        cluster = self.atoms[cluster_indices]
+        test_atoms = self.atoms[total_indices]
+
+        _, positions_shift = self.get_z_shift(test_atoms)
+        
+        atoms_local = copy.deepcopy(self.atoms)
+        atoms_local.positions += positions_shift
+        atoms_local.wrap()
+
+        cluster = atoms_local[cluster_indices]
         cluster_reduce = self.reduce_mixture_size(cluster)
+        
 
         if np.any(cluster_reduce.cell<cluster.cell):
             reduce_centerofmass = cluster_reduce.get_positions().mean(axis=0)
@@ -380,9 +411,10 @@ class segment_atoms():
         
         xy_centerofmass = np.concatenate([centerofmass[:2],[0]])
         total_indices = cluster_indices + slab_indices
-        slab_cluster = self.atoms[total_indices]
+        
+        slab_cluster = atoms_local[total_indices]
         slab_cluster.center(about=xy_centerofmass)
-        slab = self.atoms[slab_indices]
+        slab = atoms_local[slab_indices]
 
         slab_seed = np.argmin(np.linalg.norm(slab.positions-centerofmass,axis=1))
 
@@ -413,7 +445,7 @@ class segment_atoms():
         
         slab_keep = slab[keep_indices]
         
-        reduced_slab_cluster = slab_keep + self.atoms[cluster_indices]
+        reduced_slab_cluster = slab_keep + atoms_local[cluster_indices]
 
         cell_new = pure_slab.get_cell()
         reduced_slab_cluster.set_cell(cell_new)
