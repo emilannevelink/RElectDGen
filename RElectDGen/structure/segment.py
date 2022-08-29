@@ -184,7 +184,11 @@ class segment_atoms():
                 else:
                     cluster = self.atoms[cluster_indices]
                     cluster = self.reduce_mixture_size(cluster)
-                    cluster.pbc = False
+                    bools = self.axis_crossing_boundary(cluster)
+                    if np.any(bools):
+                        cluster.pbc = True
+                    else:
+                        cluster.pbc = False
 
                 lithium_ind = np.argwhere(cluster.get_atomic_numbers()==3).flatten()
                 if (len(cluster)>1 and 

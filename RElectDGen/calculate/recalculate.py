@@ -27,9 +27,10 @@ def recalculate_traj_energies(traj,calc=None,config=None,writer=None,rewrite_pbc
 			if world.rank == 0:
 				print(atoms)
 				print(atoms.info)
-		except gpaw.grid_descriptor.GridBoundsError:
+		except gpaw.grid_descriptor.GridBoundsError as e:
 			if world.rank == 0:
 				print(f'GridBounds box error for {i}th active learning')
+				print(e)
 			if recalculate:
 				atoms_re = deepcopy(atoms)
 				atoms.positions += np.array([0.1,0.1,0.])
