@@ -62,38 +62,72 @@ def reassign_cluster_charges(atoms, clusters, FragmentDB, run_dir = ''):
 
     return atoms
 
-def extend_z(atoms, config):
-    if atoms.get_pbc()[2] or sum(atoms.get_pbc())!=2:
+def extend_cell(atoms, config):
+    if atoms.get_pbc()[2]:
         return atoms
+    elif sum(atoms.get_pbc())==0: 
+        pass
+        atoms_copy = copy.deepcopy(atoms)
+        vacuum = config.get('vacuum')
+        atoms_copy.center(vacuum = vacuum)
 
-    atoms_copy = copy.deepcopy(atoms)
-    vacuum = config.get('vacuum')
-    atoms_copy.center(vacuum = vacuum,axis=2)
+        cell_tolerance = config.get('cell_tolerance',0)
 
-    z_tolerance = config.get('z_tolerance',0)
+        initial_structure = get_initial_structure(config)
 
-    initial_structure = get_initial_structure(config)
-
-    z_difference_0 = atoms_copy.get_cell()[2,2] - initial_structure.get_cell()[2,2]
-    z_difference_rel = atoms_copy.get_cell()[2,2] - atoms.get_cell()[2,2]
-    if world.rank == 0:
-        print(z_difference_0,flush=True)
-    if z_difference_0 > 0 and z_difference_0 < z_tolerance:
+        cell_difference_0 = atoms_copy.get_cell().diagonal() - initial_structure.get_cell().diagonal()
+        cell_difference_rel = atoms_copy.get_cell().diagonal() - atoms.get_cell().diagonal()
         if world.rank == 0:
-            print(f'Changed supercell z dimension by {z_difference_rel}', flush=True)
-        return atoms_copy
-    elif z_difference_0 < 0:
-        atoms_copy.set_cell(initial_structure.get_cell())
+            print(cell_difference_0,flush=True)
+        if np.any(cell_difference_0 > 0) and np.all(cell_difference_0 < cell_tolerance):
+            if world.rank == 0:
+                print(f'Changed supercell z dimension by {cell_difference_rel}', flush=True)
+            return atoms_copy
+        elif np.all(cell_difference_0 < 0):
+            atoms_copy.set_cell(initial_structure.get_cell())
+            if world.rank == 0:
+                print('Reset cell to initial cell')
+            return atoms_copy
+        elif np.any(cell_difference_0 > cell_tolerance):
+            cell = initial_structure.get_cell()
+            cell += np.eye(3)*cell_tolerance
+            atoms_copy.set_cell(cell)
+            if world.rank == 0:
+                print('Set cell to max')
+            return atoms_copy
+        else:
+            return atoms
+    elif sum(atoms.get_pbc())==2:
+        atoms_copy = copy.deepcopy(atoms)
+        vacuum = config.get('vacuum')
+        atoms_copy.center(vacuum = vacuum,axis=2)
+
+        z_tolerance = config.get('z_tolerance',0)
+
+        initial_structure = get_initial_structure(config)
+
+        z_difference_0 = atoms_copy.get_cell()[2,2] - initial_structure.get_cell()[2,2]
+        z_difference_rel = atoms_copy.get_cell()[2,2] - atoms.get_cell()[2,2]
         if world.rank == 0:
-            print('Reset cell to initial cell')
-        return atoms_copy
-    elif z_difference_0 > z_tolerance:
-        cell = initial_structure.get_cell()
-        cell[2,2] += z_tolerance
-        atoms_copy.set_cell(cell)
-        if world.rank == 0:
-            print('Set cell to max')
-        return atoms_copy
+            print(z_difference_0,flush=True)
+        if z_difference_0 > 0 and z_difference_0 < z_tolerance:
+            if world.rank == 0:
+                print(f'Changed supercell z dimension by {z_difference_rel}', flush=True)
+            return atoms_copy
+        elif z_difference_0 < 0:
+            atoms_copy.set_cell(initial_structure.get_cell())
+            if world.rank == 0:
+                print('Reset cell to initial cell')
+            return atoms_copy
+        elif z_difference_0 > z_tolerance:
+            cell = initial_structure.get_cell()
+            cell[2,2] += z_tolerance
+            atoms_copy.set_cell(cell)
+            if world.rank == 0:
+                print('Set cell to max')
+            return atoms_copy
+        else:
+            return atoms
     else:
         return atoms
     
