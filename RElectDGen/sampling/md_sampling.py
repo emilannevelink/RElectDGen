@@ -194,7 +194,8 @@ def MD_sampling(config, loop_learning_count=1):
             max_index = int(config.get('MLP_MD_steps')+1)
         print(f'max index not high enough resetting to {max_index}', flush=True)
         sorted = False
-        uncertainty_thresholds[0] *= 2 
+        # uncertainty_thresholds[0] *= 2 
+        uncertainty_thresholds[0] = max(uncertainty.sum(dim=-1)[:max_index].max()/2.,uncertainty_thresholds[0]*2.)
         print(f'reset uncertainty thresholds now max: {uncertainty_thresholds[0]}, min: {uncertainty_thresholds[1]}')
         # print('max index not high enough, adding 5 and 10')
         # traj_indices = [5,10]
@@ -242,8 +243,7 @@ def MD_sampling(config, loop_learning_count=1):
     else:
         
         # choose most uncertain
-        min_uncertainty = config.get('UQ_min_uncertainty')
-        max_uncertainty = config.get('UQ_max_uncertainty')
+        max_uncertainty, min_uncertainty = uncertainty_thresholds
         traj_uncertain, embeddings_uncertain, calc_inds_uncertain = sort_by_uncertainty(traj, embeddings, UQ, max_samples, min_uncertainty, max_uncertainty)
 
         MLP_dict['number_MD_samples'] = len(traj_uncertain)
