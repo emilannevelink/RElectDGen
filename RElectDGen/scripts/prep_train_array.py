@@ -52,6 +52,8 @@ def use_previous_model(MLP_config_new, nmodels):
         try:
             calc_nn, model_load, MLP_config = nn_from_results(root=root)
             train = not check_nan_parameters(model_load) #check to make sure no parameters are nan
+            if not train:
+                print(f'Loaded {i} model successfully')
         except (FileNotFoundError, OSError, ValueError, UnboundLocalError):
             print('No previous results',flush=True)
             train = True
