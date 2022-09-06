@@ -22,8 +22,8 @@ def parse_command_line(argsin):
 def main(args=None):
 
     config, filename_MLP_config = parse_command_line(args)
-    trajectory_file = os.path.join(config.get('data_directory'),config.get('trajectory_file'))
-    adversarial_trajectory = os.path.join(config.get('data_directory'),config.get('adv_trajectory_file'))
+    trajectory_file = os.path.join(config.get('data_directory'),config.get('trajectory_file',''))
+    adversarial_trajectory = os.path.join(config.get('data_directory'),config.get('adv_trajectory_file',''))
     combined_trajectory = os.path.join(config.get('data_directory'),config.get('combined_trajectory'))
 
     
