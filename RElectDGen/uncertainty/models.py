@@ -1546,7 +1546,11 @@ class Nequip_ensemble(uncertainty_base):
         super().__init__(model, config, MLP_config[0])
 
         self.config = config
-        self.calibration_polyorder = self.config.get('calibration_polyorder',1)
+        self.calibration_type = self.config.get('UQ_calibration_type','linear')
+        if self.calibration_type == 'power':
+            self.calibration_polyorder = 1
+        else:
+            self.calibration_polyorder = self.config.get('calibration_polyorder',1)
         calibration_coeffs = {}
         for key in self.MLP_config.get('chemical_symbol_to_type'):    
             calibration_coeffs[key] = np.zeros(self.calibration_polyorder+1)
@@ -1564,7 +1568,10 @@ class Nequip_ensemble(uncertainty_base):
             # print(self.validation_err_real[key].shape)
             # print(self.validation_err_pred[key].cpu())
             # print(self.validation_err_real[key].cpu())
-            calibration_coeffs[key] = np.polyfit(self.validation_err_pred[key].cpu(),self.validation_err_real[key].cpu(),self.calibration_polyorder)
+            if self.calibration_type == 'power':
+                calibration_coeffs[key] = np.polyfit(np.log(self.validation_err_pred[key].cpu()),np.log(self.validation_err_real[key].cpu(),self.calibration_polyorder))
+            else:
+                calibration_coeffs[key] = np.polyfit(self.validation_err_pred[key].cpu(),self.validation_err_real[key].cpu(),self.calibration_polyorder)
 
         self.calibration_coeffs = calibration_coeffs
 
@@ -1730,9 +1737,13 @@ class Nequip_ensemble(uncertainty_base):
         for key in self.chemical_symbol_to_type:
             mask = (atom_types==self.chemical_symbol_to_type[key]).flatten()
             # print(self.calibration_coeffs[key])
-            for i, coeff in enumerate(self.calibration_coeffs[key][::-1]):
-                coeffs = torch.tensor(coeff,device=self.device)
-                calibrated[mask] += coeffs*raw[mask].pow(i)
+            if self.calibration_type == 'power':
+                coeffs = torch.tensor(self.calibration_coeffs[key],device=self.device)
+                calibrated[mask] = torch.exp(coeffs[1]*raw[mask].pow(coeffs[0]))
+            else:
+                for i, coeff in enumerate(self.calibration_coeffs[key][::-1]):
+                    coeffs = torch.tensor(coeff,device=self.device)
+                    calibrated[mask] += coeffs*raw[mask].pow(i)
 
         return calibrated
 
