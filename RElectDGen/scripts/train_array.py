@@ -67,6 +67,7 @@ def main(args=None):
 
     if logging_dict.get('train',True):
         print('Training NN ... ', flush=True)
+        print(commands, flush=True)
             
         process = subprocess.run(commands,capture_output=True)
         # print(process)
