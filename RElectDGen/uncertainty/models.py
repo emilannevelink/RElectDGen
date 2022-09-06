@@ -1569,7 +1569,7 @@ class Nequip_ensemble(uncertainty_base):
             # print(self.validation_err_pred[key].cpu())
             # print(self.validation_err_real[key].cpu())
             if self.calibration_type == 'power':
-                calibration_coeffs[key] = np.polyfit(np.log(self.validation_err_pred[key].cpu()),np.log(self.validation_err_real[key].cpu(),self.calibration_polyorder))
+                calibration_coeffs[key] = np.polyfit(np.log(self.validation_err_pred[key].cpu()),np.log(self.validation_err_real[key].cpu()),self.calibration_polyorder)
             else:
                 calibration_coeffs[key] = np.polyfit(self.validation_err_pred[key].cpu(),self.validation_err_real[key].cpu(),self.calibration_polyorder)
 
@@ -1739,7 +1739,7 @@ class Nequip_ensemble(uncertainty_base):
             # print(self.calibration_coeffs[key])
             if self.calibration_type == 'power':
                 coeffs = torch.tensor(self.calibration_coeffs[key],device=self.device)
-                calibrated[mask] = torch.exp(coeffs[1]*raw[mask].pow(coeffs[0]))
+                calibrated[mask] = torch.exp(coeffs[1]+torch.log(raw[mask])*coeffs[0])
             else:
                 for i, coeff in enumerate(self.calibration_coeffs[key][::-1]):
                     coeffs = torch.tensor(coeff,device=self.device)
