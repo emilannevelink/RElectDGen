@@ -195,7 +195,7 @@ def MD_sampling(config, loop_learning_count=1):
         print(f'max index not high enough resetting to {max_index}', flush=True)
         sorted = False
         # uncertainty_thresholds[0] *= 2 
-        uncertainty_thresholds[0] = max(uncertainty.sum(dim=-1)[:max_index].max()/2.,uncertainty_thresholds[0]*2.)
+        uncertainty_thresholds[0] = float(max(uncertainty.sum(dim=-1)[:max_index].max()/2.,uncertainty_thresholds[0]*2.))
         print(f'reset uncertainty thresholds now max: {uncertainty_thresholds[0]}, min: {uncertainty_thresholds[1]}')
         # print('max index not high enough, adding 5 and 10')
         # traj_indices = [5,10]
