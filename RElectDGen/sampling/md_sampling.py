@@ -193,6 +193,8 @@ def MD_sampling(config, loop_learning_count=1):
         except IndexError:
             max_index = int(config.get('MLP_MD_steps')+1)
         print(f'max index not high enough resetting to {max_index}', flush=True)
+        max_index = int(max_index/reduction_factor)
+        print(f'Rescaled max index by reduction factor, new max index {max_index}', flush=True)
         sorted = False
         # uncertainty_thresholds[0] *= 2 
         uncertainty_thresholds[0] = float(max(uncertainty.sum(dim=-1)[:max_index].max()/2.,uncertainty_thresholds[0]*2.))
