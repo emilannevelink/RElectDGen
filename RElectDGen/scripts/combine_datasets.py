@@ -55,16 +55,22 @@ def main(args=None):
         print('Adversarial trajectory file couldnt be appended', flush=True)
         print(adversarial_trajectory, flush=True)
 
+    reduce_traj_type = config.get('reduce_traj_type','finite_isolated')
     combined_size = len(traj)
-    traj_reduced = reduce_traj_finite(traj)
-    print('Reduce finite ', len(traj), len(traj_reduced),flush=True)
+    if 'finite' in reduce_traj_type:
+        traj_reduced = reduce_traj_finite(traj)
+        print('Reduce finite ', len(traj), len(traj_reduced),flush=True)
+    else:
+        traj_reduced = traj
+
     with open(filename_MLP_config,'r') as fl:
         MLP_config = yaml.load(fl,yaml.FullLoader)
-    _, traj_reduced = reduce_traj_isolated(traj_reduced,MLP_config.get('r_max'))
-
-    print('Reduce isolated ', len(traj), len(traj_reduced),flush=True)
     
-    reduced_size = len(traj)
+    if 'isolated' in reduce_traj_type:
+        _, traj_reduced = reduce_traj_isolated(traj_reduced,MLP_config.get('r_max'))
+        print('Reduce isolated ', len(traj), len(traj_reduced),flush=True)
+    
+    reduced_size = len(traj_reduced)
 
     print(combined_trajectory,flush=True)
     writer = Trajectory(combined_trajectory,'w')
