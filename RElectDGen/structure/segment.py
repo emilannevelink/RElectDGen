@@ -154,8 +154,11 @@ class segment_atoms():
                                 cluster_indices += list(mixture_add)
 
                             elif atom_ind in slab_add:
-                                add_slab = True
-                                slab_indices += list(slab_add)
+                                if (len(cluster_indices) < self.max_cluster_size / 2 or
+                                    self.atoms[cluster_indices].get_atomic_numbers().sum() < self.max_electrons/ 2):
+                                    add_slab = True
+                                if add_slab:
+                                    slab_indices += list(slab_add)
 
                         else:
                             build = False
