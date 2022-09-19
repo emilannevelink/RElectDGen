@@ -58,8 +58,8 @@ def main(args=None):
     ### Set global attributes
     config['max_electrons'] = int(
         config.get('electrons_per_core', 2.75)*
-        config.get('gpaw_cores',config.get('cores',1))*
-        config.get('gpaw_nodes',config.get('nodes',1)))
+        config.get('gpaw_cores',config.get('cores',1)))
+    # config.get('gpaw_nodes',config.get('nodes',1)))
 
 
     shell_file = 'submits/gpaw_MD.sh'
