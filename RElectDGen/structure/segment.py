@@ -157,6 +157,8 @@ class segment_atoms():
                                 if (len(cluster_indices) < self.max_cluster_size / 2 or
                                     self.atoms[cluster_indices].get_atomic_numbers().sum() < self.max_electrons/ 2):
                                     add_slab = True
+                                else:
+                                    build = False
                                 if add_slab:
                                     slab_indices += list(slab_add)
 
