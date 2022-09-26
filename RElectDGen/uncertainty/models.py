@@ -1559,7 +1559,7 @@ class Nequip_ensemble(uncertainty_base):
         self.calibration_coeffs = calibration_coeffs
 
     def calibrate(self, debug = False):
-        self.parse_data()
+        self.parse_validation_data()
 
         #Calibration curves
         calibration_coeffs = {}
@@ -1730,6 +1730,76 @@ class Nequip_ensemble(uncertainty_base):
         self.test_energies = test_energies
         self.test_forces = test_forces
         self.test_indices = test_indices
+
+    def parse_validation_data(self):
+        dataset = dataset_from_config(self.MLP_config)
+
+        self.ML_validation_indices = torch.tensor(self.MLP_config.val_idcs, dtype=int,device=self.device)
+        self.UQ_validation_indices = torch.empty((0),dtype= int,device=self.device)
+
+        self.validation_dataset = dataset[self.MLP_config.val_idcs]
+
+        validation_embeddings = {}
+        validation_energies = {}
+        validation_forces = {}
+        validation_indices = {}
+        validation_err_pred = {}
+        validation_err_real = {}
+
+        for key in self.chemical_symbol_to_type:
+
+            validation_embeddings[key] = torch.empty((0,self.latent_size+self.natoms),device=self.device)
+            validation_energies[key] = torch.empty((0),device=self.device)
+            validation_forces[key] = torch.empty((0),device=self.device)
+            validation_indices[key] = torch.empty(0,dtype=int).to(self.device)
+
+            validation_err_pred[key] = torch.empty(0).to(self.device)
+            validation_err_real[key] = torch.empty(0).to(self.device)
+        
+        error_threshold=self.config.get('UQ_dataset_error', np.inf)
+
+        for i, data in enumerate(self.validation_dataset):
+            force_outputs = torch.empty(len(self.model),*data['pos'].shape,device=self.device)
+            atom_energies = torch.empty(len(self.model),len(data['pos']),device=self.device)
+            for i, model in enumerate(self.model):
+                out = model(self.transform_data_input(data))
+                force_outputs[i] = out['forces']
+                atom_energies[i] = out['atomic_energy'].squeeze()
+
+            force_norm = data['forces'].norm(dim=1).unsqueeze(dim=1)
+            force_lim = torch.max(force_norm,torch.ones_like(force_norm,device=self.device))
+            perc_err = ((force_outputs.detach().mean(dim=0)-data['forces'])).abs().cpu()/force_lim.cpu()
+            force_error = ((force_outputs.detach().mean(dim=0)-data['forces'])).norm(dim=1)
+            pred_uncertainty = self.predict_uncertainty(data).sum(dim=-1).detach()
+            # print(force_error,flush=True)
+            for key in self.MLP_config.get('chemical_symbol_to_type'):
+                mask = (data['atom_types']==self.MLP_config.get('chemical_symbol_to_type')[key]).flatten()
+                validation_err_real[key] = torch.cat([validation_err_real[key],force_error[mask]])
+                validation_err_pred[key] = torch.cat([validation_err_pred[key],pred_uncertainty[mask]])
+            
+            # if perc_err.max() < error_threshold:
+            self.UQ_validation_indices = torch.cat([self.UQ_validation_indices, self.ML_validation_indices[i].unsqueeze(dim=0)])
+            for key in self.MLP_config.get('chemical_symbol_to_type'):
+                mask = (data['atom_types']==self.MLP_config.get('chemical_symbol_to_type')[key]).flatten()
+
+                atom_one_hot = torch.nn.functional.one_hot(data['atom_types'].squeeze()[mask],num_classes=self.natoms).to(self.device)
+                NN_inputs = torch.hstack([out['node_features'][mask].detach(), atom_one_hot])
+
+                validation_embeddings[key] = torch.cat([validation_embeddings[key],NN_inputs])
+                validation_energies[key] = torch.cat([validation_energies[key], atom_energies.mean(dim=0)[mask].detach()])
+                validation_forces[key] = torch.cat([validation_forces[key], data['forces'][mask].detach().norm(dim=1).unsqueeze(1)])
+                
+                # npoints = torch.tensor([validation_indices[key][-1]+sum(mask) if i>0 else sum(mask)]).to(self.device)
+                # validation_indices[key] = torch.cat([validation_indices[key],npoints]).to(self.device)
+            
+        
+        self.validation_err_real = validation_err_real
+        self.validation_err_pred = validation_err_pred
+        
+        self.validation_embeddings = validation_embeddings
+        self.validation_energies = validation_energies
+        self.validation_forces = validation_forces
+        self.validation_indices = validation_indices
     
     def apply_calibration(self, atom_types, raw):
 
