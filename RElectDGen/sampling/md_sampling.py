@@ -151,6 +151,7 @@ def MD_sampling(config, loop_learning_count=1):
         print(f'reduced length of trajectory by {reduction_factor}, new length {len(traj)}, new max_index {expected_max_index}', flush=True)
 
     _, traj = reduce_traj_isolated(traj,r_max)
+    print(f'Reduced traj isolated, new length {len(traj)}')
     uncertainty, embeddings = UQ.predict_from_traj(traj,max=False)
 
     max_val_ind = uncertainty.sum(dim=-1).max(axis=1)

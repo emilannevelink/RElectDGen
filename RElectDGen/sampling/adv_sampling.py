@@ -106,6 +106,7 @@ def adv_sampling(config, traj_initial=[], loop_learning_count=1):
 
     UQ = UQ_func(model, config, MLP_config)
     UQ.calibrate()
+    UQ.get_train_energies()
             
     tmp1 = time.time()
     print('Time to calibrate UQ ', tmp1-tmp0, 'Elapsed time ', tmp1-start, flush=True)

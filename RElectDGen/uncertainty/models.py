@@ -1801,6 +1801,29 @@ class Nequip_ensemble(uncertainty_base):
         self.validation_forces = validation_forces
         self.validation_indices = validation_indices
     
+    def get_train_energies(self):
+        dataset = dataset_from_config(self.MLP_config)
+
+        self.train_dataset = dataset[self.MLP_config.train_idcs]
+
+        train_energies = {}
+        test_energies = {}
+        
+        for key in self.chemical_symbol_to_type:
+            train_energies[key] = torch.empty((0),device=self.device)
+            test_energies[key] = torch.empty((0),device=self.device)
+        for i, data in enumerate(self.train_dataset):
+            out = self.model[0](self.transform_data_input(data))
+            atom_energies = out['atomic_energy'].squeeze()
+
+            for key in self.MLP_config.get('chemical_symbol_to_type'):
+                mask = (data['atom_types']==self.MLP_config.get('chemical_symbol_to_type')[key]).flatten()
+        
+                train_energies[key] = torch.cat([train_energies[key], atom_energies[mask].detach()])
+                  
+        self.train_energies = train_energies
+        self.test_energies = test_energies
+
     def apply_calibration(self, atom_types, raw):
 
         calibrated = torch.zeros_like(raw,device=self.device)
