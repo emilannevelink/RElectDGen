@@ -215,7 +215,7 @@ def MD_sampling(config, loop_learning_count=1):
     # print('isolating uncertain clusters', flush=True)
     # clusters, cluster_uncertainties = clusters_from_traj(traj, uncertainty, **config)
     # Cluster atoms objects that are too large
-    if len(supercell) > config.get('max_atoms_to_segment',np.inf):
+    if len(supercell) > config.get('max_cluster_size',np.inf):
         print('isolating uncertain clusters', flush=True)
         uncertainty_sum = uncertainty.sum(axis=-1) #reduce err and std to single value
         traj, undertainty_df, embeddings = clusters_from_traj(traj, uncertainty_sum, embeddings, **config)
