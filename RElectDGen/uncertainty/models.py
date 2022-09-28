@@ -1586,7 +1586,7 @@ class Nequip_ensemble(uncertainty_base):
                     calibration_coeffs[key] = np.polyfit(self.validation_err_pred[key].cpu(),self.validation_err_real[key].cpu(),self.calibration_polyorder)
 
             self.calibration_coeffs = calibration_coeffs
-            data['calibration_coeffs'] = list(calibration_coeffs)
+            data = {'calibration_coeffs': list(calibration_coeffs)}
             with open(self.calibration_coeffs_filename,'w') as fl:
                 json.dump(data,fl)
 
