@@ -1,3 +1,5 @@
+from genericpath import isfile
+import json
 import sys
 import os
 import pickle
@@ -1558,22 +1560,35 @@ class Nequip_ensemble(uncertainty_base):
                 calibration_coeffs[key][-2] = 1
         self.calibration_coeffs = calibration_coeffs
 
+        uncertainty_dir = os.path.join(self.MLP_config['workdir'],self.config.get('uncertainty_dir', 'uncertainty'))
+        os.makedirs(uncertainty_dir,exist_ok=True)
+        self.calibration_coeffs_filename =  os.path.join(uncertainty_dir, f'uncertainty_calibration_coeffs.json')
+
     def calibrate(self, debug = False):
-        self.parse_validation_data()
+        
+        if os.path.isfile(self.calibration_coeffs_filename):
+            with open(self.calibration_coeffs_filename,'r') as fl:
+                data = json.load(fl)
+            self.calibration_coeffs = np.array(data['calibration_coeffs'])
+        else:
+            self.parse_validation_data()
 
-        #Calibration curves
-        calibration_coeffs = {}
-        for key in self.MLP_config.get('chemical_symbol_to_type'):   
-            # print(self.validation_err_pred[key].shape) 
-            # print(self.validation_err_real[key].shape)
-            # print(self.validation_err_pred[key].cpu())
-            # print(self.validation_err_real[key].cpu())
-            if self.calibration_type == 'power':
-                calibration_coeffs[key] = np.polyfit(np.log(self.validation_err_pred[key].cpu()),np.log(self.validation_err_real[key].cpu()),self.calibration_polyorder)
-            else:
-                calibration_coeffs[key] = np.polyfit(self.validation_err_pred[key].cpu(),self.validation_err_real[key].cpu(),self.calibration_polyorder)
+            #Calibration curves
+            calibration_coeffs = {}
+            for key in self.MLP_config.get('chemical_symbol_to_type'):   
+                # print(self.validation_err_pred[key].shape) 
+                # print(self.validation_err_real[key].shape)
+                # print(self.validation_err_pred[key].cpu())
+                # print(self.validation_err_real[key].cpu())
+                if self.calibration_type == 'power':
+                    calibration_coeffs[key] = np.polyfit(np.log(self.validation_err_pred[key].cpu()),np.log(self.validation_err_real[key].cpu()),self.calibration_polyorder)
+                else:
+                    calibration_coeffs[key] = np.polyfit(self.validation_err_pred[key].cpu(),self.validation_err_real[key].cpu(),self.calibration_polyorder)
 
-        self.calibration_coeffs = calibration_coeffs
+            self.calibration_coeffs = calibration_coeffs
+            data['calibration_coeffs'] = list(calibration_coeffs)
+            with open(self.calibration_coeffs_filename,'w') as fl:
+                json.dump(data,fl)
 
     def fine_tune(self, embeddings, energies_or_forces):
         pass
