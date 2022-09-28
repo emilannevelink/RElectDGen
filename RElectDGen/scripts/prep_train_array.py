@@ -148,17 +148,28 @@ def main(args=None):
             UQ = UQ_func(models, config, MLP_configs)
             UQ.calibrate()
             
-            uncertainty, embedding = UQ.predict_from_traj(traj)
+            maximum_uncertain_datapoints = config.get('retrain_uncertainty_percent',0.01)*len(traj)
+            nuncertain_data = 0
+            batch_size = 100
+            nbatches = int(len(traj)/batch_size+1)
+            indices = np.random.permutation(np.arange(len(traj)))
+            uncertainty_sum = torch.zeros(len(traj))
+            for i in range(nbatches):
+                uncertainty, embedding = UQ.predict_from_traj(traj[indices[batch_size*i:batch_size*(i+1)]])
 
-            uncertainty_sum = uncertainty.sum(dim=1)
-            # print(uncertainty)
-            # print(uncertainty_sum, flush = True)
-            uncertainty_dict['dataset_uncertainty_mean'] = float(uncertainty_sum.mean())
-            uncertainty_dict['dataset_uncertainty_std'] = float(uncertainty_sum.std())
+                uncertainty_sum[indices[batch_size*i:batch_size*(i+1)]] = uncertainty.sum(dim=1)
+                nuncertain_data += len(np.argwhere(uncertainty_sum.numpy()>config.get('UQ_min_uncertainty')).flatten())
+                if nuncertain_data>maximum_uncertain_datapoints:
+                    break
+
+            mask = uncertainty_sum>0
+            uncertainty_dict['dataset_uncertainty_mean'] = float(uncertainty_sum[mask].mean())
+            uncertainty_dict['dataset_uncertainty_std'] = float(uncertainty_sum[mask].std())
             
             uncertain_data = np.argwhere(uncertainty_sum.numpy()>config.get('UQ_min_uncertainty')).flatten()
 
-            if len(uncertain_data)>config.get('retrain_uncertainty_percent',0.01)*len(traj):
+            if nuncertain_data>maximum_uncertain_datapoints:
+                print(f'Sampled {sum(mask)} datapoints.')
                 print(f'First uncertain datapoint {uncertain_data.min()}, of {len(uncertain_data)} uncertain point from {len(traj)} data points',flush=True)
                 train = True
 
