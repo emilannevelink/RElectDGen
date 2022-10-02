@@ -1569,7 +1569,9 @@ class Nequip_ensemble(uncertainty_base):
         if os.path.isfile(self.calibration_coeffs_filename):
             with open(self.calibration_coeffs_filename,'r') as fl:
                 data = json.load(fl)
-            self.calibration_coeffs = np.array(data['calibration_coeffs'])
+            calibration_coeffs = {}
+            for key in self.MLP_config.get('chemical_symbol_to_type'):   
+                calibration_coeffs[key] = np.array(data[key])
         else:
             self.parse_validation_data()
 
@@ -1584,9 +1586,10 @@ class Nequip_ensemble(uncertainty_base):
                     calibration_coeffs[key] = np.polyfit(np.log(self.validation_err_pred[key].cpu()),np.log(self.validation_err_real[key].cpu()),self.calibration_polyorder)
                 else:
                     calibration_coeffs[key] = np.polyfit(self.validation_err_pred[key].cpu(),self.validation_err_real[key].cpu(),self.calibration_polyorder)
+            data = {}
+            for key in self.MLP_config.get('chemical_symbol_to_type'):
+                data[key] = list(calibration_coeffs[key])
 
-            self.calibration_coeffs = calibration_coeffs
-            data = {'calibration_coeffs': list(calibration_coeffs)}
             with open(self.calibration_coeffs_filename,'w') as fl:
                 json.dump(data,fl)
 
