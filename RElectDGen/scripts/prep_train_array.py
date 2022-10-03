@@ -152,7 +152,7 @@ def main(args=None):
             nuncertain_data = 0
             batch_size = 100
             nbatches = int(len(traj)/batch_size+1)
-            indices = np.random.permutation(np.arange(len(traj)))
+            indices = np.random.permutation(np.arange(len(traj),dtype=int))
             uncertainty_sum = torch.zeros(len(traj))
             for i in range(nbatches):
                 uncertainty, embedding = UQ.predict_from_traj(traj[indices[batch_size*i:batch_size*(i+1)]])
