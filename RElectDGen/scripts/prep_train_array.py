@@ -51,12 +51,12 @@ def use_previous_model(MLP_config_new, nmodels):
         root = f'results_{i}'
         try:
             calc_nn, model_load, MLP_config = nn_from_results(root=root)
-            train = not check_nan_parameters(model_load) #check to make sure no parameters are nan
-            if not train:
+            traini = not check_nan_parameters(model_load) #check to make sure no parameters are nan
+            if not traini:
                 print(f'Loaded {i} model successfully')
         except (FileNotFoundError, OSError, ValueError, UnboundLocalError):
             print('No previous results',flush=True)
-            train = True
+            traini = True
             MLP_config = {}
             model_load = 0
 
@@ -83,10 +83,11 @@ def use_previous_model(MLP_config_new, nmodels):
         except Exception as e:
             print(e)
             print('previous model is not the same as state dict', flush=True)
-            train = True
+            traini = True
             model = 0
             MLP_config = {}
         
+        train = traini or train
         models.append(model)
         MLP_configs.append(MLP_config)
 
