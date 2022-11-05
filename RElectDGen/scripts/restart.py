@@ -101,10 +101,11 @@ def main(args = None):
         n_extrema+=1
     
     n_extrema_lower_uncertainty = config.get('n_extrema_lower_uncertainty', 0)
+    count_check = config.get('which_count_check','sampling_count') # can be MD_count / adv_count / sampling_count
     if (
         n_extrema >= n_extrema_lower_uncertainty and 
-        np.all(checks.get('MD_count',[True])) and np.all(checks.get('adv_count',[True])) and np.all(checks.get('sampling_count',[True]))
-        ):
+        np.all(checks.get(count_check,[True]))
+    ):
         config['UQ_min_uncertainty']/=2
 
     
