@@ -62,9 +62,11 @@ def uncertainty_downselect(traj, embeddings, UQ, min_uncertainty=0.04, max_uncer
                 if isinstance(UQ.train_embeddings, dict):
                     for key in UQ.MLP_config.get('chemical_symbol_to_type'): 
                         mask = np.array(atoms.get_chemical_symbols()) == key
-                        # keep_embeddings[key] = torch.cat([keep_embeddings[key],embedding_i[mask].to(UQ.device)])
-                        NN_inputs = torch.hstack([embedding_i[mask].to(UQ.device), atom_one_hot[mask]])
-                        keep_embeddings[key] = torch.cat([keep_embeddings[key],NN_inputs])
+                        if embedding_i.shape[1] == keep_embeddings[key].shape[1]:
+                            keep_embeddings[key] = torch.cat([keep_embeddings[key],embedding_i[mask].to(UQ.device)])
+                        else:
+                            NN_inputs = torch.hstack([embedding_i[mask].to(UQ.device), atom_one_hot[mask]])
+                            keep_embeddings[key] = torch.cat([keep_embeddings[key],NN_inputs])
 
     return uncertainties, calc_inds
 

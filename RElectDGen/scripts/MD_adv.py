@@ -70,36 +70,44 @@ def main(args=None):
     uncertain = MD_uncertain + adv_uncertain
     embeddings = MD_embedding_uncertain + adv_embedding_uncertain
 
-    train_directory = config.get('train_directory','results')
-    if train_directory[-1] == '/':
-        train_directory = train_directory[:-1]
-    
-    uncertainty_function = config.get('uncertainty_function', 'Nequip_latent_distance')
-    ### Setup NN ASE calculator
-    if uncertainty_function in ['Nequip_ensemble']:
-        n_ensemble = config.get('n_uncertainty_ensembles',4)
-        calc_nn, model, MLP_config = nns_from_results(train_directory,n_ensemble)
-        r_max = MLP_config[0].get('r_max')
+    sort_by_type = config.get('mdadv_sort_type', 'sort_by_uncertainty')
+    if sort_by_type == 'sort_by_uncertainty':
+        train_directory = config.get('train_directory','results')
+        if train_directory[-1] == '/':
+            train_directory = train_directory[:-1]
+        
+        uncertainty_function = config.get('uncertainty_function', 'Nequip_latent_distance')
+        ### Setup NN ASE calculator
+        if uncertainty_function in ['Nequip_ensemble']:
+            n_ensemble = config.get('n_uncertainty_ensembles',4)
+            calc_nn, model, MLP_config = nns_from_results(train_directory,n_ensemble)
+            r_max = MLP_config[0].get('r_max')
+        else:
+            calc_nn, model, MLP_config = nn_from_results()
+            r_max = MLP_config.get('r_max')
+        
+
+        UQ_func = getattr(uncertainty_models,uncertainty_function)
+
+        UQ = UQ_func(model, config, MLP_config)
+        UQ.calibrate()
+
+        max_samples = int(config.get('max_samples'))
+        min_uncertainty = config.get('UQ_min_uncertainty')
+        max_uncertainty = np.inf # don't remove any previous samples config.get('UQ_max_uncertainty')*config.get('adversarial_max_UQ_factor', 1)  # to not remove the adversarial samples
+        traj_uncertain, traj_embedding, calc_inds_uncertain = sort_by_uncertainty(uncertain, embeddings, UQ, max_samples, min_uncertainty, max_uncertainty)
+
+        config['calc_inds_uncertain'] = calc_inds_uncertain
     else:
-        calc_nn, model, MLP_config = nn_from_results()
-        r_max = MLP_config.get('r_max')
+        max_samples = int(config.get('max_samples'))
+        traj_uncertain = uncertain[:max_samples]
+        traj_embedding = embeddings[:max_samples]
+        
+        calc_inds_uncertain = np.arange(len(traj_uncertain),dtype=int).tolist()
     
-
-    UQ_func = getattr(uncertainty_models,uncertainty_function)
-
-    UQ = UQ_func(model, config, MLP_config)
-    UQ.calibrate()
-
-    max_samples = int(config.get('max_samples'))
-    min_uncertainty = config.get('UQ_min_uncertainty')
-    max_uncertainty = np.inf # don't remove any previous samples config.get('UQ_max_uncertainty')*config.get('adversarial_max_UQ_factor', 1)  # to not remove the adversarial samples
-    traj_uncertain, traj_embedding, calc_inds_uncertain = sort_by_uncertainty(uncertain, embeddings, UQ, max_samples, min_uncertainty, max_uncertainty)
-
-    config['calc_inds_uncertain'] = calc_inds_uncertain
     config['n_MD_uncertain'] = len(MD_uncertain)
 
-    if len(traj_uncertain)>0:
-        
+    if len(traj_uncertain)>0:   
         active_learning_configs = os.path.join(config.get('data_directory'),config.get('active_learning_configs'))
         traj_write = Trajectory(active_learning_configs,mode='w')
         [traj_write.write(atoms) for atoms in traj_uncertain]
