@@ -101,6 +101,7 @@ def main(args = None):
         n_extrema+=1
     
     n_extrema_lower_uncertainty = config.get('n_extrema_lower_uncertainty', 0)
+    print(n_extrema,n_extrema_lower_uncertainty)
     count_check = config.get('which_count_check','sampling_count') # can be MD_count / adv_count / sampling_count
     if (
         n_extrema >= n_extrema_lower_uncertainty and 

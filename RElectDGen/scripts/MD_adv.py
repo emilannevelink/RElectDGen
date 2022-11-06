@@ -104,6 +104,9 @@ def main(args=None):
         traj_embedding = embeddings[:max_samples]
         
         calc_inds_uncertain = np.arange(len(traj_uncertain),dtype=int).tolist()
+        
+        print(calc_inds_uncertain)
+        print(len(traj_uncertain),traj_uncertain)
     
     config['n_MD_uncertain'] = len(MD_uncertain)
 
