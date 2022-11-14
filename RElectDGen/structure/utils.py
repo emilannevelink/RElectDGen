@@ -114,10 +114,10 @@ def extend_cell(atoms, config):
             if world.rank == 0:
                 print(f'Changed supercell z dimension by {z_difference_rel}', flush=True)
             return atoms_copy
-        elif z_difference_0 < 0:
+        elif z_difference_0 < 0 and len(atoms_copy)==len(initial_structure):
             atoms_copy.set_cell(initial_structure.get_cell())
             if world.rank == 0:
-                print('Reset cell to initial cell')
+                print('Reset cell to initial cell',flush=True)
             return atoms_copy
         elif z_difference_0 > z_tolerance:
             cell = initial_structure.get_cell()
