@@ -51,9 +51,11 @@ def main(args=None):
             writer = Trajectory(calc_file,'w')
 
             atoms = traj_calc[array_index]
-
+            if world.rank == 0:
+                print(atoms,flush=True)
             atoms = extend_cell(atoms,config)
-            print(atoms,flush=True)
+            if world.rank == 0:
+                print(atoms,flush=True)
             recalculate_traj_energies([atoms], config=config, writer=writer)#,rewrite_pbc=True)
             traj = Trajectory(calc_file)
             if world.rank == 0:
