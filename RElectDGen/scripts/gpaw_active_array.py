@@ -53,7 +53,7 @@ def main(args=None):
             atoms = traj_calc[array_index]
 
             atoms = extend_cell(atoms,config)
-
+            print(atoms,flush=True)
             recalculate_traj_energies([atoms], config=config, writer=writer)#,rewrite_pbc=True)
             traj = Trajectory(calc_file)
             if world.rank == 0:
