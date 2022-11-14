@@ -97,7 +97,6 @@ def main(args=None):
         max_uncertainty = np.inf # don't remove any previous samples config.get('UQ_max_uncertainty')*config.get('adversarial_max_UQ_factor', 1)  # to not remove the adversarial samples
         traj_uncertain, traj_embedding, calc_inds_uncertain = sort_by_uncertainty(uncertain, embeddings, UQ, max_samples, min_uncertainty, max_uncertainty)
 
-        config['calc_inds_uncertain'] = calc_inds_uncertain
     else:
         max_samples = int(config.get('max_samples'))
         traj_uncertain = uncertain[:max_samples]
@@ -108,6 +107,7 @@ def main(args=None):
         print(calc_inds_uncertain)
         print(len(traj_uncertain),traj_uncertain)
     
+    config['calc_inds_uncertain'] = calc_inds_uncertain
     config['n_MD_uncertain'] = len(MD_uncertain)
 
     if len(traj_uncertain)>0:   

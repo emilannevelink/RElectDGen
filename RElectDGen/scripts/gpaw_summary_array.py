@@ -73,7 +73,7 @@ def main(args=None):
             print(e)
             print('error')
 
-        if len(traj_active)>0:
+        if len(traj_active)>0 and len(calc_inds_uncertain)>0:
             traj_writer = Trajectory(trajectory_file,mode='a')
             [traj_writer.write(atoms) for (ind, atoms) in zip(calc_ind,traj_active) if calc_inds_uncertain[ind]<n_MD_uncertain]
 
