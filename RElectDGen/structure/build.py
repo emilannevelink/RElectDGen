@@ -1,6 +1,7 @@
 import os
 
 import ase
+from ase import Atoms
 from ase.io import read, write
 from ase.build import bulk, add_adsorbate, stack
 import pandas as pd
@@ -19,6 +20,9 @@ def structure_from_config(config):
     if os.path.isfile(structure_file):
         return read(structure_file)
         
+    if config.get('build_filename') is not None:
+        return build_from_file(config)
+
     if config.get('slab_direction') is not None and config.get('mixture') is not None:
         ### Generate Slab
         vacuum = config.get('vacuum')
@@ -58,16 +62,20 @@ def structure_from_config(config):
 
     
     if config.get('crystal_a0') is not None:
+        crystal_structure = config.get('crystal_structure')
         if config.get('slab_direction') is not None:
 
             supercell = create_slab(config)
 
-        elif config.get('crystal_structure') is not None: #Generate Bulk cell
-            a0 = config.get('crystal_a0')
-            if isinstance(a0, float):
-                a = b = c = a0
-            supercell = bulk(config.get('element'), config.get('crystal_structure'), a=a, b=b, c=c, orthorhombic=True)
-            supercell = supercell.repeat(config.get('supercell_size',[1,1,1]))
+        elif crystal_structure is not None: #Generate Bulk cell
+            if crystal_structure is 'triclinic':
+                supercell = create_triclinic(config)
+            else:
+                a0 = config.get('crystal_a0')
+                if isinstance(a0, float):
+                    a = b = c = a0
+                supercell = bulk(config.get('element'), config.get('crystal_structure'), a=a, b=b, c=c, orthorhombic=True)
+                supercell = supercell.repeat(config.get('supercell_size',[1,1,1]))
 
         return supercell
 
@@ -221,6 +229,28 @@ def create_slab(config):
     if config.get('zperiodic', False):
         supercell.cell[2] *= config.get('supercell_size')[2]/(config.get('supercell_size')[2]-1)
 
+    return supercell
+
+def build_from_file(config):
+    filename = os.path.join(
+        config.get('data_directory',''),
+        config.get('build_filename')
+    )
+    atoms = read(filename)
+    repeats = config.get('supercell_size',[1,1,1])
+    supercell = atoms.repeat(repeats)
+    return supercell
+
+def create_triclinic(config):
+    cell = config.get('lattice_vectors')
+    pos = config.get('basis_vectors')
+    symbols = config.get('chemical_symbols')
+    numbers = config.get('atomic_numbers')
+
+    atoms = Atoms(symbols=symbols,pos=pos,numbers=numbers,cell=cell)
+
+    repeats = config.get('cell_repeats',[1,1,1])
+    supercell = atoms.repeat(repeats)
     return supercell
 
 filenames = {
