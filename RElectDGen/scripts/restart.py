@@ -53,7 +53,7 @@ def main(args = None):
     max_MLP_MD_dT = config.get('max_MLP_MD_dT',100)
     max_MLP_MD_steps = config.get('max_MLP_MD_steps',4000)
     max_adv_temperature = config.get('max_adv_temperature',100000)
-    max_MLP_adv_dT = config.get('max_MLP_adv_dT',50000)
+    max_MLP_adv_dT = config.get('max_MLP_adv_dT',config.get('max_adv_temperature',100000)/2.)
     min_UQ_min_uncertainty = config.get('UQ_terminal_accuracy',0.04)
 
     termination_conditions = [
