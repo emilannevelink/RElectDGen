@@ -64,13 +64,24 @@ def main(args=None):
     
 
     MD_uncertain, MD_embedding_uncertain, config = MD_sampling(config, loop_learning_count)
-
-    adv_uncertain, adv_embedding_uncertain, config = adv_sampling(config, MD_uncertain, loop_learning_count)
+    sort_by_type = config.get('mdadv_sort_type', 'sort_by_uncertainty')
+    max_samples = int(config.get('max_samples'))
+    if len(MD_uncertain)>=max_samples:
+        adv_uncertain = []
+        checks = {
+            'adv_mean_uncertainty': False,
+            'adv_std_uncertainty': False,
+            'adv_position_difference': False,
+            'adv_count': False
+        }
+        config = add_checks_to_config(config, checks)
+    else:
+        adv_uncertain, adv_embedding_uncertain, config = adv_sampling(config, MD_uncertain, loop_learning_count)
 
     uncertain = MD_uncertain + adv_uncertain
     embeddings = MD_embedding_uncertain + adv_embedding_uncertain
 
-    sort_by_type = config.get('mdadv_sort_type', 'sort_by_uncertainty')
+    
     if sort_by_type == 'sort_by_uncertainty':
         train_directory = config.get('train_directory','results')
         if train_directory[-1] == '/':
@@ -92,13 +103,13 @@ def main(args=None):
         UQ = UQ_func(model, config, MLP_config)
         UQ.calibrate()
 
-        max_samples = int(config.get('max_samples'))
+        
         min_uncertainty = config.get('UQ_min_uncertainty')
         max_uncertainty = np.inf # don't remove any previous samples config.get('UQ_max_uncertainty')*config.get('adversarial_max_UQ_factor', 1)  # to not remove the adversarial samples
         traj_uncertain, traj_embedding, calc_inds_uncertain = sort_by_uncertainty(uncertain, embeddings, UQ, max_samples, min_uncertainty, max_uncertainty)
 
     else:
-        max_samples = int(config.get('max_samples'))
+        
         traj_uncertain = uncertain[:max_samples]
         traj_embedding = embeddings[:max_samples]
         
