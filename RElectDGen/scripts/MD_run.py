@@ -8,7 +8,7 @@ from ase.md import MDLogger
 
 
 from RElectDGen.utils.md_utils import md_func_from_config
-from ..calculate.calculator import nn_from_results
+from ..calculate.calculator import nn_from_results, nns_from_results
 from ..structure.build import get_initial_structure
 import time
 
@@ -43,10 +43,20 @@ def main(args=None):
     #Delete Bondlength constraints
     supercell.constraints = [constraint for constraint in supercell.constraints if type(constraint)!=ase.constraints.FixBondLengths]
     
-    train_directory = config.get('train_directory')
     
+    train_directory = config.get('train_directory','results')
+    if train_directory[-1] == '/':
+        train_directory = train_directory[:-1]
+
+    uncertainty_function = config.get('uncertainty_function', 'Nequip_latent_distance')
     ### Setup NN ASE calculator
-    calc_nn, model, MLP_config = nn_from_results(train_directory)
+    if uncertainty_function in ['Nequip_ensemble']:
+        n_ensemble = config.get('n_uncertainty_ensembles',4)
+        calc_nn, model, MLP_config = nns_from_results(train_directory,n_ensemble)
+        r_max = MLP_config[0].get('r_max')
+    else:
+        calc_nn, model, MLP_config = nn_from_results()
+        r_max = MLP_config.get('r_max')
     supercell.calc = calc_nn
 
     tmp0 = time.time()
@@ -54,11 +64,14 @@ def main(args=None):
 
 
     ### Run MLP MD
-    MaxwellBoltzmannDistribution(supercell, temperature_K=config.get('MLP_MD_temperature'))
+    MLP_MD_temperature = config.get('MLP_MD_temperature')
+
+    MaxwellBoltzmannDistribution(supercell, temperature_K=MLP_MD_temperature)
     ZeroRotation(supercell)
     Stationary(supercell)
 
-    md_func, md_kwargs = md_func_from_config(config)
+
+    md_func, md_kwargs = md_func_from_config(config,MLP_MD_temperature)
 
     dyn = md_func(supercell, **md_kwargs)
     MLP_MD_dump_file = os.path.join(config.get('data_directory'),config.get('MLP_MD_dump_file'))
