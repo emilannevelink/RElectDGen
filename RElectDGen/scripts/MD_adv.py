@@ -68,6 +68,7 @@ def main(args=None):
     max_samples = int(config.get('max_samples'))
     if len(MD_uncertain)>=max_samples:
         adv_uncertain = []
+        adv_embedding_uncertain = []
         checks = {
             'adv_mean_uncertainty': False,
             'adv_std_uncertainty': False,

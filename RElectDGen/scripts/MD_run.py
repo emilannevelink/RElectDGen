@@ -75,13 +75,14 @@ def main(args=None):
 
     dyn = md_func(supercell, **md_kwargs)
     MLP_MD_dump_file = os.path.join(config.get('data_directory'),config.get('MLP_MD_dump_file'))
-    
+    print(MLP_MD_dump_file, flush=True)
     #MDLogger only has append, delete log file
     if os.path.isfile(MLP_MD_dump_file):
         os.remove(MLP_MD_dump_file)
     dyn.attach(MDLogger(dyn,supercell,MLP_MD_dump_file,mode='w'),interval=1)
     
     trajectory_file = os.path.join(config.get('data_directory'),config.get('MLP_trajectory_file'))
+    print(trajectory_file, flush=True)
     traj = Trajectory(trajectory_file, 'w', supercell)
     dyn.attach(traj.write, interval=int(config.get('MLP_MD_dump_interval',1)))
     try:
