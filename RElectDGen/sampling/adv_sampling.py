@@ -46,7 +46,7 @@ def adv_loss(atoms, UQ, T):
     out = UQ.adversarial_loss(data, T)
     return out
 
-def d_min_func(positions, UQ, atoms, T, UQ_max_uncertainty):
+def d_min_func(positions, UQ, atoms, T, UQ_max_uncertainty, adv_max_force):
             
         atoms.set_positions(
             positions.reshape(atoms.positions.shape)
@@ -60,12 +60,16 @@ def d_min_func(positions, UQ, atoms, T, UQ_max_uncertainty):
         grads = grads[0].flatten().cpu().numpy()
         
         max_uncertainty = UQ.uncertainties.detach().sum(axis=-1).max()
-        if max_uncertainty > UQ_max_uncertainty:
+        max_force = torch.linalg.norm(UQ.atom_forces.detach(),axis=-1).max()
+        if (
+            max_uncertainty > UQ_max_uncertainty or
+            max_force > adv_max_force
+            ):
             grads = np.ones_like(grads)*np.nan
 
         return grads
 
-def min_func(positions, UQ, atoms, T, UQ_max_uncertainty):
+def min_func(positions, UQ, atoms, T, UQ_max_uncertainty, adv_max_force):
     atoms.set_positions(
         positions.reshape(atoms.positions.shape)
     )
@@ -73,7 +77,11 @@ def min_func(positions, UQ, atoms, T, UQ_max_uncertainty):
     neg_loss = -adv_loss(atoms, UQ, T)
     out = neg_loss.detach().cpu().numpy()
     max_uncertainty = UQ.uncertainties.detach().sum(axis=-1).max()
-    if max_uncertainty > UQ_max_uncertainty:
+    max_force = torch.linalg.norm(UQ.atom_forces.detach(),axis=-1).max()
+    if (
+            max_uncertainty > UQ_max_uncertainty or
+            max_force > adv_max_force
+            ):
         out = np.ones_like(out)*np.nan
 
     return out
@@ -147,7 +155,7 @@ def adv_sampling(config, traj_initial=[], loop_learning_count=1):
         positions += 0.01*(np.random.rand(*positions.shape)-0.5)
 
         try:
-            res = minimize(min_func,positions,args=(UQ, atoms, T, config.get('UQ_max_uncertainty')), jac=d_min_func, method='CG')
+            res = minimize(min_func,positions,args=(UQ, atoms, T, config.get('UQ_max_uncertainty'), config.get('adv_max_force',50)), jac=d_min_func, method='CG')
 
             print(res.message, flush=True)
             print(res.nfev, flush=True)
