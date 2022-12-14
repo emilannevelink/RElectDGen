@@ -214,10 +214,20 @@ def load_molecule(name, directory=None):
 
 def create_slab(config):
     constraints = []
-    if config.get('slab_direction') == '110':
-        supercell = ase.build.bcc110(config.get('element'), (config.get('supercell_size')), config.get('crystal_a0'),orthogonal=True,vacuum=config.get('vacuum'))
-    elif config.get('slab_direction') == '100':
-        supercell = ase.build.bcc100(config.get('element'), (config.get('supercell_size')), config.get('crystal_a0'),vacuum=config.get('vacuum'))
+    lattice = config.get('lattice','bcc')
+    direction = config.get('slab_direction')
+    if lattice.lower() == 'bcc':
+        if direction == '110':
+            supercell = ase.build.bcc110(config.get('element'), (config.get('supercell_size')), config.get('crystal_a0'),orthogonal=True,vacuum=config.get('vacuum'))
+        elif direction == '100':
+            supercell = ase.build.bcc100(config.get('element'), (config.get('supercell_size')), config.get('crystal_a0'),vacuum=config.get('vacuum'))
+    elif lattice.lower() == 'fcc':
+        if direction == '111':
+            supercell = ase.build.fcc111(config.get('element'), (config.get('supercell_size')), config.get('crystal_a0'),orthogonal=True,vacuum=config.get('vacuum'))
+        elif direction == '110':
+            supercell = ase.build.fcc110(config.get('element'), (config.get('supercell_size')), config.get('crystal_a0'),orthogonal=True,vacuum=config.get('vacuum'))
+        elif direction == '100':
+            supercell = ase.build.fcc100(config.get('element'), (config.get('supercell_size')), config.get('crystal_a0'),vacuum=config.get('vacuum'))
 
     #Constrain the bottom of the slab to be fixed
     if config.get('fix_slab_atoms', True):
@@ -225,6 +235,11 @@ def create_slab(config):
         constraints.append(FixAtoms(indices = indices))
 
         supercell.set_constraint(constraints)
+    elif config.get('fix_one_atom', False):
+        indices = [0]
+        constraints.append(FixAtoms(indices = indices))
+
+    supercell.set_constraint(constraints)
 
     if config.get('zperiodic', False):
         supercell.cell[2] *= config.get('supercell_size')[2]/(config.get('supercell_size')[2]-1)

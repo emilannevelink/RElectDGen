@@ -2,7 +2,7 @@ import argparse
 import yaml, os
 from ase.io import read, Trajectory
 from ..utils.save import update_config_trainval
-from ..utils.data import reduce_traj_finite, reduce_traj_isolated
+from ..utils.data import reduce_traj_finite, reduce_traj_isolated, reduce_traj_free_H
 
 from RElectDGen.utils.logging import write_to_tmp_dict
 
@@ -70,6 +70,9 @@ def main(args=None):
         _, traj_reduced = reduce_traj_isolated(traj_reduced,MLP_config.get('r_max'))
         print('Reduce isolated ', len(traj), len(traj_reduced),flush=True)
     
+    if 'free_H' in reduce_traj_type:
+        _, traj_reduced = reduce_traj_free_H(traj_reduced)
+        print('Reduce free Hydrogen ', len(traj), len(traj_reduced),flush=True)
     reduced_size = len(traj_reduced)
 
     print(combined_trajectory,flush=True)
