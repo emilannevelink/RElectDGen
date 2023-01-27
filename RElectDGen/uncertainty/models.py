@@ -1910,6 +1910,7 @@ class Nequip_ensemble(uncertainty_base):
     def predict_from_traj(self, traj, max=True, batch_size=1):
         uncertainty = []
         atom_embeddings = []
+        self.pred_forces = []
         # data = [self.transform(atoms) for atoms in traj]
         # dataset = DataLoader(data, batch_size=batch_size)
         # for i, batch in enumerate(dataset):
@@ -1918,7 +1919,7 @@ class Nequip_ensemble(uncertainty_base):
         for atoms in traj:
             uncertainty.append(self.predict_uncertainty(atoms).detach())
             atom_embeddings.append(self.atom_embedding.detach())
-        
+            self.pred_forces.append(self.atom_forces)
         
         uncertainty = torch.cat(uncertainty).cpu()
         atom_embeddings = torch.cat(atom_embeddings).cpu()
