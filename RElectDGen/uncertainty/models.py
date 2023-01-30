@@ -1934,7 +1934,7 @@ class Nequip_ensemble(uncertainty_base):
             
             return torch.vstack([unc[torch.argmax(unc.sum(dim=1))] for unc in uncertainty_partition]), embeddings
         else:
-            self.pred_forces = torch.cat(self.atom_forces.cpu())
+            self.pred_forces = torch.cat(self.pred_forces).cpu()
             self.pred_forces = self.pred_forces.reshape(len(traj),-1,3)
             uncertainty = uncertainty.reshape(len(traj),-1, 2)
             return uncertainty, atom_embeddings.reshape(len(traj),-1,atom_embeddings.shape[-1])
