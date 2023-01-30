@@ -7,6 +7,22 @@ from torch.utils.data import Dataset, DataLoader
 from nequip.data import AtomicData
 import copy
 
+def find_NLL_params(errors,raw_uncertainties,polyorder=1):
+
+    def loss(coeffs):
+        uncertainties = np.poly1d(coeffs)(raw_uncertainties)
+        return NLL(errors,uncertainties)
+
+    coeffs0 = np.ones(polyorder+1)
+    res = minimize(loss,coeffs0,method='Nelder-Mead')
+    print(res,flush=True)
+    coeffs = res.x
+
+    return coeffs
+
+def NLL(errors,uncertainties):
+    return np.power(errors/uncertainties,2).mean()
+
 def optimize2params(test_errors, min_vectors):
 
     min_distances = np.linalg.norm(min_vectors,axis=1).reshape(-1,1)

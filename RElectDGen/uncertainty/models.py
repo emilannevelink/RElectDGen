@@ -2,6 +2,7 @@ from genericpath import isfile
 import json
 import sys
 import os
+import time
 import pickle
 from ase import Atoms
 import torch
@@ -16,7 +17,7 @@ from nequip.data import AtomicData, dataset_from_config, DataLoader
 from nequip.data.transforms import TypeMapper
 
 from . import optimization_functions
-from .optimization_functions import uncertainty_NN, uncertaintydistance_NN, uncertainty_ensemble_NN, train_NN
+from .optimization_functions import uncertainty_NN, uncertaintydistance_NN, uncertainty_ensemble_NN, train_NN, find_NLL_params
 
 class uncertainty_base():
     def __init__(self, model, config, MLP_config):
@@ -1562,7 +1563,7 @@ class Nequip_ensemble(uncertainty_base):
 
         uncertainty_dir = os.path.join(self.MLP_config['workdir'],self.config.get('uncertainty_dir', 'uncertainty'))
         os.makedirs(uncertainty_dir,exist_ok=True)
-        self.calibration_coeffs_filename =  os.path.join(uncertainty_dir, f'uncertainty_calibration_coeffs.json')
+        self.calibration_coeffs_filename =  os.path.join(uncertainty_dir, self.config.get('uncertainty_calibration_filename', f'uncertainty_calibration_coeffs.json'))
 
     def calibrate(self, debug = False):
         
@@ -1584,6 +1585,8 @@ class Nequip_ensemble(uncertainty_base):
                 # print(self.validation_err_real[key].cpu())
                 if self.calibration_type == 'power':
                     calibration_coeffs[key] = np.polyfit(np.log(self.validation_err_pred[key].cpu()),np.log(self.validation_err_real[key].cpu()),self.calibration_polyorder)
+                elif self.calibration_type == 'NLL':
+                    calibration_coeffs[key] = find_NLL_params(self.validation_err_real[key].cpu(),self.validation_err_pred[key].cpu(),self.calibration_polyorder)
                 else:
                     calibration_coeffs[key] = np.polyfit(self.validation_err_pred[key].cpu(),self.validation_err_real[key].cpu(),self.calibration_polyorder)
             data = {}
@@ -1916,10 +1919,17 @@ class Nequip_ensemble(uncertainty_base):
         # for i, batch in enumerate(dataset):
         #     uncertainty.append(self.predict_uncertainty(batch))
         #     atom_embeddings.append(self.atom_embedding)
-        for atoms in traj:
+        ti = time.time()
+        times = np.empty(len(traj))
+        for i, atoms in enumerate(traj):
             uncertainty.append(self.predict_uncertainty(atoms).detach())
             atom_embeddings.append(self.atom_embedding.detach())
             self.pred_forces.append(self.atom_forces.detach())
+            tf = time.time()
+            times[i] = tf-ti
+            ti = tf
+
+        print(f'Dataset Prediction Times:\nAverage Time: {times.mean()}, Max Time: {times.max()}, Min Time: {times.min()}')
         
         uncertainty = torch.cat(uncertainty).cpu()
         atom_embeddings = torch.cat(atom_embeddings).cpu()
