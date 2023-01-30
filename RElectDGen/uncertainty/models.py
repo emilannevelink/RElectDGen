@@ -1595,6 +1595,7 @@ class Nequip_ensemble(uncertainty_base):
 
             with open(self.calibration_coeffs_filename,'w') as fl:
                 json.dump(data,fl)
+        self.calibration_coeffs = calibration_coeffs
 
     def fine_tune(self, embeddings, energies_or_forces):
         pass

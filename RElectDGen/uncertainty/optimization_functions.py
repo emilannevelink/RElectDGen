@@ -14,14 +14,15 @@ def find_NLL_params(errors,raw_uncertainties,polyorder=1):
         return NLL(errors,uncertainties)
 
     coeffs0 = np.ones(polyorder+1)
-    res = minimize(loss,coeffs0,method='Nelder-Mead')
+    bounds = [(0,None)]*len(coeffs)
+    res = minimize(loss,coeffs0,bounds=bounds,method='Nelder-Mead')
     print(res,flush=True)
     coeffs = res.x
 
     return coeffs
 
 def NLL(errors,uncertainties):
-    return np.power(errors/uncertainties,2).mean()
+    return (np.power(errors/uncertainties,2) + np.log(uncertainties)).mean()
 
 def optimize2params(test_errors, min_vectors):
 
