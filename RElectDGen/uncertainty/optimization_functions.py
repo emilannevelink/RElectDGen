@@ -14,7 +14,7 @@ def find_NLL_params(errors,raw_uncertainties,polyorder=1):
         return NLL(errors,uncertainties)
 
     coeffs0 = np.ones(polyorder+1)
-    bounds = [(0,None)]*len(coeffs)
+    bounds = [(0,None)]*len(coeffs0)
     res = minimize(loss,coeffs0,bounds=bounds,method='Nelder-Mead')
     print(res,flush=True)
     coeffs = res.x
