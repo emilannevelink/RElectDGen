@@ -122,7 +122,7 @@ class Nequip_latent_distance(uncertainty_base):
                 inds = torch.argmin(latent_distances[key],axis=0)
                 min_distances[key] = torch.tensor([latent_distances[key][ind,i] for i, ind in enumerate(inds)]).detach().cpu().numpy()
 
-                min_vectors[key] = torch.abs(torch.vstack([self.train_embeddings[key][ind]-self.test_embeddings[key][i] for i, ind in enumerate(inds)]).detach().cpu())
+                min_vectors[key] = np.abs(torch.vstack([self.train_embeddings[key][ind]-self.test_embeddings[key][i] for i, ind in enumerate(inds)]).detach().cpu().numpy())
 
                 params[key] = []
                 for _ in range(self.n_ensemble):
