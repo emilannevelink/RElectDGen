@@ -326,7 +326,7 @@ class uncertaintydistance_NN():
         
         self.model = torch.nn.Sequential(*layers).to(self.device)
         # self.model = Network(input_dim, hidden_dimensions, act)
-        print('Trainable parameters:', sum(p.numel() for p in self.model.parameters() if p.requires_grad))
+        print('Trainable parameters:', sum(p.numel() for p in self.model.parameters() if p.requires_grad), flush=True)
         self.epochs = epochs
         self.prob = lambda value, std: torch.max(torch.hstack([torch.exp(-value.pow(2)/2/std.pow(2))/std/(2*np.pi)**0.5,1e-10*torch.ones_like(value)]),dim=-1).values
         self.loss = lambda error, pred_std: -torch.sum( torch.log( self.prob(error, pred_std)) )
@@ -336,8 +336,10 @@ class uncertaintydistance_NN():
         
 
     def train(self, x, y):
-        x = torch.tensor(x).to(self.device) #Break computational graph for training
-        y = torch.tensor(y).to(self.device)
+        # x = torch.tensor(x).to(self.device) #Break computational graph for training
+        x = x.clone().detach()
+        # y = torch.tensor(y).to(self.device)
+        y = y.clone().detach()
 
         # y = torch.log(y)
 

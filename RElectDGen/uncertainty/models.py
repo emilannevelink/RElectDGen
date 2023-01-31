@@ -201,6 +201,7 @@ class Nequip_latent_distance(uncertainty_base):
             out = self.model(data)
             atom_embedding = out['node_features']
             self.atom_embedding = atom_embedding
+            self.atom_forces = out['forces']
         else:
             atom_embedding = atom_embedding.to(device=torch.device(self.device))
 
@@ -450,6 +451,7 @@ class Nequip_error_NN(uncertainty_base):
             out = self.model(data)
             atom_embedding = out['node_features']
             self.atom_embedding = atom_embedding
+            self.atom_forces = out['forces']
 
         uncertainty_raw = torch.zeros(self.n_ensemble,atom_embedding.shape[0])
         for i, NN in enumerate(self.NNs):
