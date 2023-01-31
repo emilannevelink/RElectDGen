@@ -240,7 +240,7 @@ class uncertainty_NN():
                 inputs, errors = data
                 self.model.train()
                 self.model.zero_grad()
-                unc = self.model(inputs)
+                unc = torch.abs(self.model(inputs))
 
                 loss = self.loss(errors.unsqueeze(1),unc)
 
@@ -255,7 +255,7 @@ class uncertainty_NN():
             for i, data in enumerate(validation_dataloader):
                 inputs, errors = data
                 self.model.eval()
-                unc = self.model(inputs)
+                unc = torch.abs(self.model(inputs))
 
                 loss = self.loss(errors.unsqueeze(1),unc)
 
@@ -278,9 +278,9 @@ class uncertainty_NN():
     def predict(self,x):
         self.model.eval()
         # pred = torch.exp(self.model(x))
-        pred = self.model(x)
+        unc = torch.abs(self.model(x))
 
-        return pred
+        return unc
 
     def get_state_dict(self):
         return self.model.state_dict()
