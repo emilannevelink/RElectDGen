@@ -484,8 +484,8 @@ class Nequip_error_NN(uncertainty_base):
         ti = time.time()
         times = np.empty(len(traj))
         for i, atoms in enumerate(traj):
-            uncertainty.append(self.predict_uncertainty(atoms))
-            atom_embeddings.append(self.atom_embedding)
+            uncertainty.append(self.predict_uncertainty(atoms).detach())
+            atom_embeddings.append(self.atom_embedding.detach())
             self.pred_forces.append(self.atom_forces.detach())
             tf = time.time()
             times[i] = tf-ti

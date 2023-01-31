@@ -209,8 +209,10 @@ class uncertainty_NN():
         self.lr_scheduler = LRScheduler(self.optim, patience, self.min_lr)
 
     def train(self, x, y):
-        x = torch.tensor(x) #Break computational graph for training
-        y = torch.tensor(y)
+        # x = torch.tensor(x).to(self.device) #Break computational graph for training
+        x = x.clone().detach()
+        # y = torch.tensor(y).to(self.device)
+        y = y.clone().detach()
 
         # y = torch.log(y)
 
