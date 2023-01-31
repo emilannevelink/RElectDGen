@@ -27,7 +27,7 @@ def NLL(errors,uncertainties):
 def optimize2params(test_errors, min_vectors):
 
     min_distances = torch.linalg.norm(min_vectors,axis=1).reshape(-1,1)
-    params0 = torch.random.rand(2)
+    params0 = torch.rand(2)
     bounds = [(0,None)]*len(params0)
     res = minimize(optimizeparams,params0,args=(test_errors,min_distances),bounds=bounds,method='Nelder-Mead')
     print(res,flush=True)
@@ -38,7 +38,7 @@ def optimize2params(test_errors, min_vectors):
 def optimizevecparams(test_errors, min_vectors):
 
     min_vectors = torch.abs(min_vectors)
-    params0 = torch.random.rand(min_vectors.shape[1]+1) # [0.01]*(min_vectors.shape[1]+1)
+    params0 = torch.rand(min_vectors.shape[1]+1) # [0.01]*(min_vectors.shape[1]+1)
     bounds = [(0,None)]*len(params0)
     res = minimize(optimizeparams,params0,args=(test_errors,min_vectors),bounds=bounds,method='Nelder-Mead', options={'maxiter':1000000})
     print(res,flush=True)
