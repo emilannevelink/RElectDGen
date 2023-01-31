@@ -28,7 +28,8 @@ def optimize2params(test_errors, min_vectors):
 
     min_distances = np.linalg.norm(min_vectors,axis=1).reshape(-1,1)
     params0 = np.random.rand(2)
-    res = minimize(optimizeparams,params0,args=(test_errors,min_distances),method='Nelder-Mead')
+    bounds = [(0,None)]*len(params0)
+    res = minimize(optimizeparams,params0,args=(test_errors,min_distances),bounds=bounds,method='Nelder-Mead')
     print(res,flush=True)
     params = np.abs(res.x)
 
@@ -38,18 +39,20 @@ def optimizevecparams(test_errors, min_vectors):
 
     min_vectors = np.abs(min_vectors)
     params0 = np.random.rand(min_vectors.shape[1]+1) # [0.01]*(min_vectors.shape[1]+1)
-    res = minimize(optimizeparams,params0,args=(test_errors,min_vectors),method='Nelder-Mead', options={'maxiter':1000000})
+    bounds = [(0,None)]*len(params0)
+    res = minimize(optimizeparams,params0,args=(test_errors,min_vectors),bounds=bounds,method='Nelder-Mead', options={'maxiter':1000000})
     print(res,flush=True)
     params = np.abs(res.x)
 
     return params
 
-def optimizeparams(params,eps_d,d):
+def optimizeparams(params,error_d,d):
     sig_1, sig_2 = params[0],params[1:]
     
     sd = np.abs(sig_1) + (d*np.abs(sig_2)).sum(axis=1)
     
-    negLL = -np.sum( stats.norm.logpdf(eps_d, loc=0, scale=sd) )
+    # negLL = -np.sum( stats.norm.logpdf(error_d, loc=0, scale=sd) )
+    negLL = NLL(error_d,sd)
     
     return negLL    
 
@@ -199,7 +202,9 @@ class uncertainty_NN():
         # self.model = Network(input_dim, hidden_dimensions, act)
         print('Trainable parameters:', sum(p.numel() for p in self.model.parameters() if p.requires_grad))
         self.epochs = epochs
-        self.loss = torch.nn.MSELoss()
+        # self.loss = torch.nn.MSELoss()
+        # self.loss = torch.nn.NLLLoss()
+        self.loss = NLL
         self.optim = torch.optim.Adam(self.model.parameters(), lr = lr)
         self.lr_scheduler = LRScheduler(self.optim, patience, self.min_lr)
 
@@ -207,7 +212,7 @@ class uncertainty_NN():
         x = torch.tensor(x) #Break computational graph for training
         y = torch.tensor(y)
 
-        y = torch.log(y)
+        # y = torch.log(y)
 
         if isinstance(self.model[0], rescale_input) or isinstance(self.model[0], embed_input) :
             self.model[0].rewrite(x)
@@ -230,12 +235,12 @@ class uncertainty_NN():
         for n in range(self.epochs):
             running_loss = 0
             for i, data in enumerate(train_dataloader):
-                inputs, outputs = data
+                inputs, errors = data
                 self.model.train()
                 self.model.zero_grad()
-                pred = self.model(inputs)
+                unc = self.model(inputs)
 
-                loss = self.loss(pred,outputs.unsqueeze(1))
+                loss = self.loss(errors.unsqueeze(1),unc)
 
                 # self.optim.zero_grad()
                 loss.backward()
@@ -246,11 +251,11 @@ class uncertainty_NN():
             train_loss = running_loss/n_train
             running_loss = 0
             for i, data in enumerate(validation_dataloader):
-                inputs, outputs = data
+                inputs, errors = data
                 self.model.eval()
-                pred = self.model(inputs)
+                unc = self.model(inputs)
 
-                loss = self.loss(pred,outputs.unsqueeze(1))
+                loss = self.loss(errors.unsqueeze(1),unc)
 
                 running_loss += loss.item()*len(inputs)
             validation_loss = running_loss/len(val_ind)
@@ -270,7 +275,8 @@ class uncertainty_NN():
 
     def predict(self,x):
         self.model.eval()
-        pred = torch.exp(self.model(x))
+        # pred = torch.exp(self.model(x))
+        pred = self.model(x)
 
         return pred
 
