@@ -22,7 +22,7 @@ def find_NLL_params(errors,raw_uncertainties,polyorder=1):
     return coeffs
 
 def NLL(errors,uncertainties):
-    return (np.power(errors/uncertainties,2) + np.log(uncertainties)).mean()
+    return (torch.pow(errors/uncertainties,2) + torch.log(uncertainties)).mean()
 
 def optimize2params(test_errors, min_vectors):
 
