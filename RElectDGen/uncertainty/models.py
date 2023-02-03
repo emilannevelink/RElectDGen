@@ -2419,13 +2419,14 @@ class Nequip_error_GPR(uncertainty_base):
         self.metrics_filename = os.path.join(uncertainty_dir, f'uncertainty_GPR_metrics.csv')
 
     def load_GPR(self):
-        load = True
+        load = False
         if os.path.isfile(self.state_dict_filename):
             self.GPR = uncertainty_GPR(self.latent_size,self.ninducing_points)
             try:
                 self.GPR.load_state_dict(torch.load(self.state_dict_filename))
+                load = True
             except:
-                load = False
+                pass
         
         return load
 

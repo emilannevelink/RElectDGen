@@ -355,8 +355,8 @@ class uncertainty_GPR():
         self.likelihood = gpytorch.likelihoods.GaussianLikelihood()
 
         if torch.cuda.is_available():
-            model = model.cuda()
-            likelihood = likelihood.cuda()
+            self.model = self.model.cuda()
+            self.likelihood = self.likelihood.cuda()
         
         print('Trainable parameters:', sum(p.numel() for p in self.model.parameters() if p.requires_grad))
         
@@ -377,11 +377,11 @@ class uncertainty_GPR():
             'validation_loss': [],
         }
 
-        mll = gpytorch.mlls.VariationalELBO(likelihood, model, num_data=n_train)
+        mll = gpytorch.mlls.VariationalELBO(self.likelihood, self.model, num_data=n_train)
 
         optimizer = torch.optim.Adam([
-            {'params': model.parameters()},
-            {'params': likelihood.parameters()},
+            {'params': self.model.parameters()},
+            {'params': self.likelihood.parameters()},
         ], lr=0.01)
         self.lr_scheduler = LRScheduler(optimizer, self.patience, self.min_lr)
         self.model.train()
