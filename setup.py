@@ -48,6 +48,7 @@ setup(
         "pyyaml",
         "packaging",
         "memory_profiler",
+        "gpytorch",
     ],
     zip_safe=True,
 )

@@ -17,7 +17,7 @@ from nequip.data import AtomicData, dataset_from_config, DataLoader
 from nequip.data.transforms import TypeMapper
 
 from . import optimization_functions
-from .optimization_functions import uncertainty_NN, uncertaintydistance_NN, uncertainty_ensemble_NN, train_NN, find_NLL_params
+from .optimization_functions import uncertainty_NN, uncertaintydistance_NN, uncertainty_ensemble_NN, train_NN, find_NLL_params, uncertainty_GPR
 
 class uncertainty_base():
     def __init__(self, model, config, MLP_config):
@@ -255,10 +255,13 @@ class Nequip_latent_distance(uncertainty_base):
                 uncertainty = torch.sum(distance*sig_2,axis=1)
 
             uncertainty_raw[i] = uncertainty
-        uncertainty_mean = torch.mean(uncertainty_raw,axis=0)
-        uncertainty_std = torch.std(uncertainty_raw,axis=0)
+        uncertainties_mean = torch.mean(uncertainty_raw,axis=0)
+        if uncertainty_raw.shape[0] == 1:
+            uncertainties_std = torch.zeros_like(uncertainties_mean)
+        else:
+            uncertainties_std = torch.std(uncertainty_raw,axis=0)
 
-        uncertainty = torch.vstack([uncertainty_mean,uncertainty_std]).T
+        uncertainty = torch.vstack([uncertainties_mean,uncertainties_std]).T
         # uncertainty_ens = uncertainty_mean + uncertainty_std
 
         return uncertainty
@@ -458,7 +461,10 @@ class Nequip_error_NN(uncertainty_base):
             uncertainty_raw[i] = NN.predict(atom_embedding).squeeze()
         
         uncertainties_mean = torch.mean(uncertainty_raw,axis=0)
-        uncertainties_std = torch.std(uncertainty_raw,axis=0)
+        if uncertainty_raw.shape[0] == 1:
+            uncertainties_std = torch.zeros_like(uncertainties_mean)
+        else:
+            uncertainties_std = torch.std(uncertainty_raw,axis=0)
 
         if type == 'full':
             # uncertainty_ens = uncertainty_mean + uncertainty_std
@@ -2399,6 +2405,196 @@ class Nequip_ensemble(uncertainty_base):
             os.makedirs(os.path.dirname(filename), exist_ok=True)
             plt.savefig(filename)
             plt.close()
+
+class Nequip_error_GPR(uncertainty_base):
+    def __init__(self, model, config, MLP_config):
+        super().__init__(model, config, MLP_config)
+
+        self.ninducing_points = self.config.get('GPR_ninducing_points', 100)
+        self.unc_epochs = self.config.get('uncertainty_epochs', 1000)
+
+        uncertainty_dir = os.path.join(self.MLP_config['workdir'],self.config.get('uncertainty_dir', 'uncertainty'))
+        os.makedirs(uncertainty_dir,exist_ok=True)
+        self.state_dict_filename = os.path.join(uncertainty_dir, f'uncertainty_GPR_state_dict.pth')
+        self.metrics_filename = os.path.join(uncertainty_dir, f'uncertainty_GPR_metrics.csv')
+
+    def load_GPR(self):
+        load = True
+        if os.path.isfile(self.state_dict_filename):
+            self.GPR = uncertainty_GPR(self.latent_size,self.ninducing_points)
+            try:
+                self.GPR.load_state_dict(torch.load(self.state_dict_filename))
+            except:
+                load = False
+        
+        return load
+
+    def calibrate(self, debug = False):
+        
+        load = self.load_GPR()
+        self.parse_data()
+
+        if not load:
+            self.GPR = uncertainty_GPR(self.latent_size,self.ninducing_points)
+            self.GPR.train(self.test_embeddings, self.test_errors)
+            torch.save(self.GPR.get_state_dict(),self.state_dict_filename)
+            pd.DataFrame(self.GPR.metrics).to_csv(self.metrics_filename)
+
+    def parse_data(self):
+
+        dataset = dataset_from_config(self.MLP_config)
+
+        train_embeddings = torch.empty((0,self.latent_size),device=self.device)
+        train_errors = torch.empty((0),device=self.device)
+        train_energies = torch.empty((0),device=self.device)
+        for data in dataset[self.MLP_config.train_idcs]:
+            out = self.model(self.transform_data_input(data))
+            train_energies = torch.cat([train_energies, out['atomic_energy'].mean().detach().unsqueeze(0)])
+            train_embeddings = torch.cat([train_embeddings,out['node_features'].detach()])
+            
+            error = torch.absolute(out['forces'] - data.forces)
+            train_errors = torch.cat([train_errors,error.mean(dim=1)])
+
+        self.train_energies = train_energies
+        self.train_embeddings = train_embeddings
+        self.train_errors = train_errors
+
+        test_embeddings = torch.empty((0,self.latent_size),device=self.device)
+        test_errors = torch.empty((0),device=self.device)
+        test_energies = torch.empty((0),device=self.device)
+        for data in dataset[self.MLP_config.val_idcs]:
+            out = self.model(self.transform_data_input(data))
+            test_energies = torch.cat([test_energies, out['atomic_energy'].mean().detach().unsqueeze(0)])
+
+            error = torch.absolute(out['forces'] - data.forces)
+
+            test_embeddings = torch.cat([test_embeddings,out['node_features'].detach()])
+            test_errors = torch.cat([test_errors,error.mean(dim=1).detach()])
+        
+        self.test_embeddings = test_embeddings
+        self.test_errors = test_errors
+        self.test_energies = test_energies
+
+    def adversarial_loss(self, data, T, distances='train_val'):
+
+        out = self.model(self.transform_data_input(data))
+        self.atom_embedding = out['node_features']
+
+        if distances == 'train_val':
+            energies = torch.cat([self.train_energies, self.test_energies])
+        else:
+            energies = self.train_energies
+
+        emean = energies.mean()
+        estd = max([energies.std(),1]) # Only allow contraction
+
+        kT = self.kb * T
+        Q = torch.exp(-(energies-emean)/estd/kT).sum()
+
+        probability = 1/Q * torch.exp(-(out['atomic_energy'].mean()-emean)/estd/kT)
+        
+        uncertainties = self.predict_uncertainty(data['atom_types'], self.atom_embedding).to(self.device).sum(axis=-1)
+
+        adv_loss = (probability * uncertainties).sum()
+
+        return adv_loss
+
+    def predict_uncertainty(self, data, atom_embedding=None, distances='train_val', extra_embeddings=None,type='full'):
+
+        if atom_embedding is None:
+            data = self.transform_data_input(data)
+        
+            out = self.model(data)
+            atom_embedding = out['node_features']
+            self.atom_embedding = atom_embedding
+            self.atom_forces = out['forces']
+
+        mean, upper_confidence = self.GPR.predict(atom_embedding)
+        
+        if type == 'full':
+            # uncertainty_ens = uncertainty_mean + uncertainty_std
+            uncertainty = torch.vstack([mean,upper_confidence-mean]).T.to(self.device)
+        elif type == 'mean':
+            # uncertainty_ens = uncertainty_mean
+            uncertainty = torch.vstack([torch.zeros_like(mean),upper_confidence-mean]).T.to(self.device)
+        elif type == 'std':
+            # uncertainty_ens = uncertainty_std
+            uncertainty = torch.vstack([mean,torch.zeros_like(mean)]).T.to(self.device)
+
+        return uncertainty
+
+    def predict_from_traj(self, traj, max=True, batch_size=1):
+        uncertainty = []
+        atom_embeddings = []
+        self.pred_forces = []
+        # data = [self.transform(atoms) for atoms in traj]
+        # dataset = DataLoader(data, batch_size=batch_size)
+        # for i, batch in enumerate(dataset):
+        #     uncertainty.append(self.predict_uncertainty(batch))
+        #     atom_embeddings.append(self.atom_embedding)
+        ti = time.time()
+        times = np.empty(len(traj))
+        for i, atoms in enumerate(traj):
+            uncertainty.append(self.predict_uncertainty(atoms).detach())
+            atom_embeddings.append(self.atom_embedding.detach())
+            self.pred_forces.append(self.atom_forces.detach())
+            tf = time.time()
+            times[i] = tf-ti
+            ti = tf
+
+        print(f'Dataset Prediction Times:\nAverage Time: {times.mean()}, Max Time: {times.max()}, Min Time: {times.min()}')
+        
+        uncertainty = torch.cat(uncertainty).detach().cpu()
+        atom_embeddings = torch.cat(atom_embeddings).detach().cpu()
+
+        if max:
+            atom_lengths = [len(atoms) for atoms in traj]
+            start_inds = [0] + np.cumsum(atom_lengths[:-1]).tolist()
+            end_inds = np.cumsum(atom_lengths).tolist()
+
+            uncertainty_partition = [uncertainty[si:ei] for si, ei in zip(start_inds,end_inds)]
+            embeddings = [atom_embeddings[si:ei] for si, ei in zip(start_inds,end_inds)]
+            return torch.tensor([unc.max() for unc in uncertainty_partition]), embeddings
+        else:
+            self.pred_forces = torch.cat(self.pred_forces).cpu()
+            self.pred_forces = self.pred_forces.reshape(len(traj),-1,3)
+            uncertainty = uncertainty.reshape(len(traj),-1,2)
+            return uncertainty, atom_embeddings.reshape(len(traj),-1,atom_embeddings.shape[-1])
+
+    def plot_fit(self, filename=None):
+            
+        fig, ax = plt.subplots(1,3,figsize=(15,5))
+
+        pred_errors = self.predict_uncertainty(0,self.train_embeddings,type='mean').detach()
+        min_err = min([self.train_errors.min()])#,pred_errors.min()])
+        max_err = max([self.train_errors.max()])#,pred_errors.max()])
+        ax[0].scatter(self.train_errors,pred_errors,alpha=0.5)
+        ax[0].plot([min_err,max_err], [min_err,max_err],'k',linestyle='--')
+        ax[0].set_xlabel('True Error')
+        ax[0].set_ylabel('Predicted Error')
+        ax[0].axis('square')
+
+        print((pred_errors-self.train_errors).mean())
+        print((pred_errors-self.train_errors).std())
+
+        pred_errors = self.predict_uncertainty(0,self.test_embeddings,type='mean').detach()
+        min_err = min([self.test_errors.min()])#,pred_errors.min()])
+        max_err = max([self.test_errors.max()])#,pred_errors.max()])
+        ax[1].scatter(self.test_errors,pred_errors,alpha=0.5)
+        ax[1].plot([min_err,max_err], [min_err,max_err],'k',linestyle='--')
+        ax[1].set_xlabel('True Error')
+        ax[1].set_ylabel('Predicted Error')
+        ax[1].axis('square')
+
+        ax[2].axhline(0,color='k',linestyle='--')
+        ax[2].scatter(np.arange(len(self.test_errors)),pred_errors-self.test_errors,alpha=0.5)
+        ax[2].set_ylabel('Residual')
+
+        print((pred_errors-self.test_errors).mean())
+        print((pred_errors-self.test_errors).std())
+
+        if filename is not None:
+            plt.savefig(filename)
 
 
 def f(x):

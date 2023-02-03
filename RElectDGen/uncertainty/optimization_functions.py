@@ -200,6 +200,7 @@ class uncertainty_NN():
             layers.append(torch.nn.Linear(hidden_dimensions[-1], 1))
         
         self.model = torch.nn.Sequential(*layers)
+        self.best_model = copy.deepcopy(self.model)
         # self.model = Network(input_dim, hidden_dimensions, act)
         print('Trainable parameters:', sum(p.numel() for p in self.model.parameters() if p.requires_grad))
         self.epochs = epochs
@@ -241,7 +242,7 @@ class uncertainty_NN():
                 inputs, errors = data
                 self.model.train()
                 self.model.zero_grad()
-                unc = torch.abs(self.model(inputs))
+                unc = torch.exp(self.model(inputs))
 
                 loss = self.loss(errors.unsqueeze(1),unc)
 
@@ -256,7 +257,7 @@ class uncertainty_NN():
             for i, data in enumerate(validation_dataloader):
                 inputs, errors = data
                 self.model.eval()
-                unc = torch.abs(self.model(inputs))
+                unc = torch.exp(self.model(inputs))
 
                 loss = self.loss(errors.unsqueeze(1),unc)
 
@@ -269,6 +270,9 @@ class uncertainty_NN():
             metrics['train_loss'].append(train_loss)
             metrics['validation_loss'].append(validation_loss)
 
+            if np.argmin(metrics['validation_loss']) == n:
+                self.best_model = copy.deepcopy(self.model)
+
             if self.optim.param_groups[0]['lr'] == self.min_lr:
                 break
         
@@ -278,16 +282,179 @@ class uncertainty_NN():
 
     def predict(self,x):
         self.model.eval()
-        # pred = torch.exp(self.model(x))
-        unc = torch.abs(self.model(x))
+        unc = torch.exp(self.best_model(x)) ### this dramatically increases performance and ensures uncertainties are positive
+        # unc = torch.abs(self.model(x))
 
         return unc
 
     def get_state_dict(self):
-        return self.model.state_dict()
+        return self.best_model.state_dict()
 
     def load_state_dict(self, state_dict):
-        self.model.load_state_dict(state_dict)
+        self.best_model.load_state_dict(state_dict)
+
+import gpytorch
+from gpytorch.models import ApproximateGP
+from gpytorch.variational import CholeskyVariationalDistribution
+from gpytorch.variational import VariationalStrategy
+
+class GPModel(ApproximateGP):
+    def __init__(self, inducing_points):
+        variational_distribution = CholeskyVariationalDistribution(inducing_points.size(0))
+        variational_strategy = VariationalStrategy(self, inducing_points, variational_distribution, learn_inducing_locations=True)
+        super(GPModel, self).__init__(variational_strategy)
+        self.mean_module = gpytorch.means.ConstantMean()
+        self.covar_module = gpytorch.kernels.ScaleKernel(gpytorch.kernels.RBFKernel())
+        # self.covar_module = gpytorch.kernels.SpectralMixtureKernel(ard_num_dims=2,num_mixtures=4)
+        # self.covar_module.initialize_from_data(train_x, train_y)
+
+    def forward(self, x):
+        mean_x = self.mean_module(x)
+        covar_x = self.covar_module(x)
+        return gpytorch.distributions.MultivariateNormal(mean_x, covar_x)
+class uncertainty_GPR():
+    def __init__(self, 
+    input_dim, 
+    ninducing_points,
+    epochs=1000, 
+    train_percent = 0.8,
+    lr = 0.01, 
+    momentum=0.9,
+    patience= None,
+    min_lr = None) -> None:
+        
+        if patience is None:
+            patience = epochs/10
+        if min_lr is None:
+            min_lr = lr/100
+        
+        self.patience = patience
+        self.min_lr = min_lr
+        self.train_percent = train_percent
+        self.ninducing_points = ninducing_points
+        self.epochs = epochs
+        self.input_dim = input_dim
+
+        inducing_points = torch.rand((self.ninducing_points,input_dim))#*(xmax-xmin)-xmean)*1.5
+        self.model = GPModel(inducing_points)
+        self.likelihood = gpytorch.likelihoods.GaussianLikelihood()
+        
+
+    def train(self, x, y):
+        # x = torch.tensor(x).to(self.device) #Break computational graph for training
+        x = x.clone().detach()
+        # y = torch.tensor(y).to(self.device)
+        y = y.clone().detach()
+
+        xmax = x.max(axis=0).values
+        xmin = x.min(axis=0).values
+        xmean = x.mean(axis=0)
+
+        inducing_points = (torch.rand((self.ninducing_points,self.input_dim))*(xmax-xmin)-xmean)*1.5
+        self.model = GPModel(inducing_points)
+        self.likelihood = gpytorch.likelihoods.GaussianLikelihood()
+
+        if torch.cuda.is_available():
+            model = model.cuda()
+            likelihood = likelihood.cuda()
+        
+        print('Trainable parameters:', sum(p.numel() for p in self.model.parameters() if p.requires_grad))
+        
+
+        n_train = int(len(x)*self.train_percent)
+        rand_ind = torch.randperm(len(x))
+        train_ind = rand_ind[:n_train]
+        training_data = unc_Dataset(x[train_ind],y[train_ind])
+        val_ind = rand_ind[n_train:]
+        validation_data = unc_Dataset(x[val_ind],y[val_ind])
+
+        train_dataloader = DataLoader(training_data, batch_size=1000, shuffle=True)
+        validation_dataloader = DataLoader(validation_data, batch_size=1000, shuffle=False)
+
+        metrics = {
+            'lr': [],
+            'train_loss': [],
+            'validation_loss': [],
+        }
+
+        mll = gpytorch.mlls.VariationalELBO(likelihood, model, num_data=n_train)
+
+        optimizer = torch.optim.Adam([
+            {'params': model.parameters()},
+            {'params': likelihood.parameters()},
+        ], lr=0.01)
+        self.lr_scheduler = LRScheduler(optimizer, self.patience, self.min_lr)
+        self.model.train()
+        self.likelihood.train()
+        for n in range(self.epochs):
+            running_loss = 0
+            for i, data in enumerate(train_dataloader):
+                inputs, errors = data
+                self.model.train()
+                self.likelihood.train()
+                
+                optimizer.zero_grad()
+                
+                unc = torch.exp(self.model(inputs))
+
+                loss = -mll(unc, errors)
+
+                # self.optim.zero_grad()
+                loss.backward()
+
+                optimizer.step()
+                running_loss += loss*len(inputs)
+            
+            train_loss = running_loss/n_train
+            running_loss = 0
+            for i, data in enumerate(validation_dataloader):
+                inputs, errors = data
+                self.model.eval()
+                self.likelihood.eval()
+                unc = torch.exp(self.model(inputs))
+
+                loss = -mll(unc, errors)
+
+                running_loss += loss*len(inputs)
+            validation_loss = running_loss/len(val_ind)
+            
+            self.lr_scheduler(validation_loss)
+            
+            metrics['lr'].append(optimizer.param_groups[0]['lr'])
+            metrics['train_loss'].append(train_loss)
+            metrics['validation_loss'].append(validation_loss)
+
+            if np.argmin(metrics['validation_loss']) == n:
+                self.best_model = copy.deepcopy(self.model)
+                self.best_likelihood = copy.deepcopy(self.likelihood)
+
+            if optimizer.param_groups[0]['lr'] == self.min_lr:
+                break
+        
+        self.metrics = metrics
+        self.train_loss = train_loss
+        self.validation_loss = validation_loss
+
+    def predict(self,x):
+        self.model.eval()
+        # unc = torch.exp(self.best_model(x)) ### this dramatically increases performance and ensures uncertainties are positive
+        # unc = torch.abs(self.model(x))
+        unc = self.best_model(x)
+        observed_pred = self.best_likelihood(unc)
+        lower, upper = observed_pred.confidence_region()
+
+        return torch.exp(unc), torch.exp(upper)
+
+    def get_state_dict(self):
+        return {
+            'model_dict': self.best_model.state_dict(),
+            'likelihood_dict': self.best_likelihood.state_dict()
+        }
+
+    def load_state_dict(self, state_dict):
+        self.best_model.load_state_dict(state_dict['model_dict'])
+        self.best_likelihood.load_state_dict(state_dict['likelihood_dict'])
+
 
 class uncertaintydistance_NN():
     def __init__(self, 
