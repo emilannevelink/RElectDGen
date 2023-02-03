@@ -344,7 +344,7 @@ class uncertainty_GPR():
         # x = torch.tensor(x).to(self.device) #Break computational graph for training
         x = x.clone().detach()
         # y = torch.tensor(y).to(self.device)
-        y = y.clone().detach()
+        y = torch.log(y.clone().detach())
 
         xmax = x.max(axis=0).values
         xmin = x.min(axis=0).values
@@ -395,7 +395,7 @@ class uncertainty_GPR():
                 
                 optimizer.zero_grad()
                 
-                unc = torch.exp(self.model(inputs))
+                unc = self.model(inputs)
 
                 loss = -mll(unc, errors)
 
@@ -411,7 +411,7 @@ class uncertainty_GPR():
                 inputs, errors = data
                 self.model.eval()
                 self.likelihood.eval()
-                unc = torch.exp(self.model(inputs))
+                unc = self.model(inputs)
 
                 loss = -mll(unc, errors)
 
@@ -436,14 +436,13 @@ class uncertainty_GPR():
         self.validation_loss = validation_loss
 
     def predict(self,x):
-        self.model.eval()
+        self.best_model.eval()
         # unc = torch.exp(self.best_model(x)) ### this dramatically increases performance and ensures uncertainties are positive
         # unc = torch.abs(self.model(x))
-        unc = self.best_model(x)
-        observed_pred = self.best_likelihood(unc)
+        observed_pred = self.best_likelihood(self.best_model(x))
         lower, upper = observed_pred.confidence_region()
 
-        return torch.exp(unc), torch.exp(upper)
+        return torch.exp(observed_pred.mean()), torch.exp(upper)
 
     def get_state_dict(self):
         return {
