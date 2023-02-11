@@ -8,10 +8,11 @@ from nequip.data import AtomicData
 import copy
 
 def find_NLL_params(errors,raw_uncertainties,polyorder=1):
-
+    errors = np.array(errors)
+    raw_uncertainties = np.array(raw_uncertainties)
     def loss(coeffs):
         uncertainties = np.poly1d(coeffs)(raw_uncertainties)
-        return NLL(errors,uncertainties)
+        return npNLL(errors,uncertainties)
 
     coeffs0 = np.ones(polyorder+1)
     bounds = [(0,None)]*len(coeffs0)
@@ -23,6 +24,9 @@ def find_NLL_params(errors,raw_uncertainties,polyorder=1):
 
 def NLL(errors,uncertainties):
     return (torch.pow(errors/uncertainties,2) + torch.log(uncertainties)).mean()
+
+def npNLL(errors,uncertainties):
+    return (np.power(errors/uncertainties,2) + np.power(uncertainties)).mean()
 
 def optimize2params(test_errors, min_vectors):
 
@@ -338,6 +342,8 @@ class uncertainty_GPR():
         inducing_points = torch.rand((self.ninducing_points,input_dim))#*(xmax-xmin)-xmean)*1.5
         self.model = GPModel(inducing_points)
         self.likelihood = gpytorch.likelihoods.GaussianLikelihood()
+        self.best_model = copy.deepcopy(self.model)
+        self.best_likelihood = copy.deepcopy(self.likelihood)
         
 
     def train(self, x, y):
@@ -421,12 +427,12 @@ class uncertainty_GPR():
             self.lr_scheduler(validation_loss)
             
             metrics['lr'].append(optimizer.param_groups[0]['lr'])
-            metrics['train_loss'].append(train_loss)
-            metrics['validation_loss'].append(validation_loss)
+            metrics['train_loss'].append(train_loss.detach())
+            metrics['validation_loss'].append(validation_loss.detach())
 
             if np.argmin(metrics['validation_loss']) == n:
-                self.best_model = copy.deepcopy(self.model)
-                self.best_likelihood = copy.deepcopy(self.likelihood)
+                self.best_model.load_state_dict(self.model.state_dict())
+                self.best_likelihood.load_state_dict(self.likelihood.state_dict())
 
             if optimizer.param_groups[0]['lr'] == self.min_lr:
                 break
@@ -442,7 +448,7 @@ class uncertainty_GPR():
         observed_pred = self.best_likelihood(self.best_model(x))
         lower, upper = observed_pred.confidence_region()
 
-        return torch.exp(observed_pred.mean()), torch.exp(upper)
+        return torch.exp(observed_pred.mean), torch.exp(upper)
 
     def get_state_dict(self):
         return {
