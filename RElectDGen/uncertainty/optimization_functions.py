@@ -26,7 +26,7 @@ def NLL(errors,uncertainties):
     return (torch.pow(errors/uncertainties,2) + torch.log(uncertainties)).mean()
 
 def npNLL(errors,uncertainties):
-    return (np.power(errors/uncertainties,2) + np.power(uncertainties)).mean()
+    return (np.power(errors/uncertainties,2) + np.log(uncertainties)).mean()
 
 def optimize2params(test_errors, min_vectors):
 
