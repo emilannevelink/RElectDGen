@@ -67,7 +67,7 @@ def oracle_from_config(config,atoms=None):
 
     return calculator
 
-def nn_from_results(root='results',train_directory=None):
+def nn_from_results(root='results',train_directory=None,template=''):
     # spack cannot load nequip due to older ase version
     import torch
     from nequip.utils import Config
@@ -77,8 +77,8 @@ def nn_from_results(root='results',train_directory=None):
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     if train_directory is None:
-        train_directory = get_results_dir(root)
-    
+        train_directory = get_results_dir(root,template)
+    print(train_directory,flush=True)
     # file_config = train_directory + "/config_final.yaml"
     # MLP_config = Config.from_file(file_config)
 
@@ -125,13 +125,13 @@ def nn_from_results(root='results',train_directory=None):
 
     return calc_nn, model, MLP_config
 
-def nns_from_results(root='results',n_ensemble=4):
+def nns_from_results(root='results',n_ensemble=4,template=''):
     from RElectDGen.utils.save import check_nan_parameters
     model = []
     MLP_config = []
     for i in range(n_ensemble):
         rooti = root + f'_{i}'
-        calc_tmp, mod, conf = nn_from_results(root=rooti)
+        calc_tmp, mod, conf = nn_from_results(root=rooti,template=template)
         training_success = check_nan_parameters(mod)
         if training_success:
             model.append(mod)

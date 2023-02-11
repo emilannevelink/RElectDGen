@@ -59,10 +59,10 @@ def check_nan_parameters(model):
 
     return training_success
 
-def get_results_dir(root='results'):
+def get_results_dir(root='results',template=''):
     max_time = 0
     for tmp in os.listdir(root):
-        if not tmp.startswith('processed'):
+        if not tmp.startswith('processed') and template in tmp:
             time_tmp = os.stat(os.path.join(root,tmp)).st_mtime
             if time_tmp>max_time:
                 max_time = time_tmp
