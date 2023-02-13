@@ -1296,7 +1296,7 @@ from nequip.nn import (
     ConvNetLayer,
 )
 from nequip.data import AtomicDataDict
-from nequip.data.dataloader import Nequip_DataLoader
+from nequip.data.dataloader import DataLoader as Nequip_DataLoader
 from nequip.data.transforms import TypeMapper
 class uncertainty_pos_NN():
     def __init__(
