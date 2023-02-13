@@ -2619,7 +2619,10 @@ class Nequip_error_pos_NN(uncertainty_base):
             state_dict_name = self.state_dict_func(n)
             if os.path.isfile(state_dict_name):
                 unc_func = getattr(optimization_functions,self.optimization_function)
-                NN = unc_func(self.uncertainty_config)
+                NN = unc_func(
+                    self.uncertainty_config,
+                    self.unc_epochs
+                )
                 try:
                     NN.load_state_dict(torch.load(state_dict_name, map_location=self.device))
                     self.NNs.append(NN)
@@ -2643,7 +2646,10 @@ class Nequip_error_pos_NN(uncertainty_base):
             
             for n in train_indices:
                 print('training ensemble network ', n, flush=True)  
-                NN = unc_func(self.uncertainty_config)
+                NN = unc_func(
+                    self.uncertainty_config,
+                    self.unc_epochs
+                )
                 NN = NN.train(self.UQ_dataset)
                 NNs_trained.append(NN)
             
