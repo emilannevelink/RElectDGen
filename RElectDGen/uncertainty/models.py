@@ -2666,7 +2666,7 @@ class Nequip_error_pos_NN(uncertainty_base):
 
     def parse_validation_data(self):
 
-        traj = Trajectory(self.MLP_config)
+        traj = Trajectory(self.MLP_config['dataset_file_name'])
         val_traj = []
 
         for ind in self.MLP_config.val_idcs:
