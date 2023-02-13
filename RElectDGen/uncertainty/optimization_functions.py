@@ -1406,8 +1406,9 @@ class UQ_equiv_NN(torch.nn.Module):
         super().__init__()
 
         layers = {}
+        num_types = len(config.get('chemical_symbol_to_type'))
         layers['one_hot'] = OneHotAtomEncoding(
-            num_types=config.get('num_types')
+            num_types=num_types
         )
         
         layers['spharm_edges'] = SphericalHarmonicEdgeAttrs(

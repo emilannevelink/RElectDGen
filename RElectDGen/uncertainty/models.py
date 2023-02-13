@@ -2603,6 +2603,9 @@ class Nequip_error_pos_NN(uncertainty_base):
         super().__init__(model, config, MLP_config)
 
         self.uncertainty_config = self.config.get('uncertainty_config',{})
+        self.uncertainty_config['r_max'] = MLP_config['r_max']
+        self.uncertainty_config['chemical_symbol_to_type'] = MLP_config['chemical_symbol_to_type']
+
         self.unc_epochs = self.config.get('uncertainty_epochs', 1000)
         
         self.optimization_function = config.get('optimization_function','uncertainty_pos_NN')
