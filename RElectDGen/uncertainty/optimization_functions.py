@@ -1296,7 +1296,7 @@ from nequip.nn import (
     ConvNetLayer,
 )
 from nequip.data import AtomicDataDict
-from nequip.data.dataloader import DataLoader
+from nequip.data.dataloader import Nequip_DataLoader
 from nequip.data.transforms import TypeMapper
 class uncertainty_pos_NN():
     def __init__(
@@ -1330,8 +1330,8 @@ class uncertainty_pos_NN():
         rand_ind = torch.randperm(len(dataset))
         train_ind = rand_ind[:n_train]
         val_ind = rand_ind[n_train:]
-        train_dataloader = DataLoader(dataset=[dataset[ti] for ti in train_ind])
-        val_dataloader = DataLoader([dataset[vi] for vi in val_ind])
+        train_dataloader = Nequip_DataLoader(dataset=[dataset[ti] for ti in train_ind])
+        val_dataloader = Nequip_DataLoader([dataset[vi] for vi in val_ind])
 
         metrics = {
             'lr': [],
