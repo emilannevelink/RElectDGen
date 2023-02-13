@@ -460,7 +460,6 @@ class uncertainty_GPR():
         self.best_model.load_state_dict(state_dict['model_dict'])
         self.best_likelihood.load_state_dict(state_dict['likelihood_dict'])
 
-
 class uncertaintydistance_NN():
     def __init__(self, 
     input_dim, 
@@ -1284,3 +1283,189 @@ def train_NN(args):
 # def train_NN(args):
 #     NN,uncertainty_training,train_embeddings,train_energy_forces,validation_embeddings,validation_energy_forces,other_embeddings,other_energy_forces = args
 #     print(NN)
+
+from nequip.nn.embedding import (
+    OneHotAtomEncoding,
+    RadialBasisEdgeEncoding,
+    SphericalHarmonicEdgeAttrs,
+)
+from nequip.nn import (
+    SequentialGraphNetwork,
+    AtomwiseLinear,
+    AtomwiseReduce,
+    ConvNetLayer,
+)
+from nequip.data import AtomicDataDict
+from nequip.data.dataloader import DataLoader
+from nequip.data.transforms import TypeMapper
+class uncertainty_pos_NN():
+    def __init__(
+        self,
+        config,
+        epochs,
+        lr = 0.001,
+        min_lr = None,
+        train_percent = 0.8,
+        patience = None,
+    ) -> None:
+
+        self.epochs = epochs
+        self.train_percent = train_percent
+        self.loss = NLL
+        self.transform = TypeMapper(chemical_symbol_to_type=config.get('chemical_symbol_to_type'))
+        if patience is None:
+            patience = epochs/10
+        if min_lr is None:
+            self.min_lr = lr/100
+        
+        self.model = UQ_equiv_NN(config)
+        self.best_model = UQ_equiv_NN(config)
+
+        self.optim = torch.optim.Adam(self.model.parameters(), lr = lr)
+        self.lr_scheduler = LRScheduler(self.optim, patience, self.min_lr)
+
+    def train(self,dataset):
+
+        n_train = int(len(dataset)*self.train_percent)
+        rand_ind = torch.randperm(len(dataset))
+        train_ind = rand_ind[:n_train]
+        val_ind = rand_ind[n_train:]
+        train_dataloader = DataLoader(dataset=[dataset[ti] for ti in train_ind])
+        val_dataloader = DataLoader([dataset[vi] for vi in val_ind])
+
+        metrics = {
+            'lr': [],
+            'train_loss': [],
+            'validation_loss': [],
+        }
+        self.best_loss = np.inf
+        for n in range(self.epochs):
+            running_loss = 0
+            for i, data in enumerate(train_dataloader):
+                self.model.train()
+                self.optim.zero_grad()
+                data = self.transform(data)
+                input = AtomicData.to_AtomicDataDict(data)
+                unc = torch.exp(self.model(input))
+
+                errors = data['errors']
+                loss = self.loss(errors.unsqueeze(1),unc)
+
+                # self.optim.zero_grad()
+                loss.backward()
+
+                self.optim.step()
+                running_loss += loss.item()*len(unc)
+            train_loss = running_loss/(i+1)
+            running_loss = 0
+            for i, data in enumerate(val_dataloader):
+                self.model.eval()
+                data = self.transform(data)
+                input = AtomicData.to_AtomicDataDict(data)
+                unc = torch.exp(self.model(input))
+
+                errors = data['errors']
+                loss = self.loss(errors.unsqueeze(1),unc)
+                running_loss += loss.item()*len(unc)
+            validation_loss = running_loss/(i+1)
+
+            self.lr_scheduler(validation_loss)
+            
+            metrics['lr'].append(self.optim.param_groups[0]['lr'])
+            metrics['train_loss'].append(train_loss)
+            metrics['validation_loss'].append(validation_loss)
+
+            if np.argmin(metrics['validation_loss']) == n:
+                best_train_loss = train_loss
+                best_validation_loss = validation_loss
+                self.best_model.load_state_dict(self.model.state_dict())
+
+            if self.optim.param_groups[0]['lr'] == self.min_lr:
+                break
+            
+        self.metrics = metrics
+        self.train_loss = best_train_loss
+        self.validation_loss = best_validation_loss
+        self.model = self.best_model
+    def predict(self,data):
+        unc = torch.exp(self.model(input))
+        return unc
+    
+    def get_state_dict(self):
+        return self.model.state_dict()
+
+    def load_state_dict(self,state_dict):
+        self.model.load_state_dict(state_dict)
+
+
+class UQ_equiv_NN(torch.nn.Module):
+    def __init__(
+        self,
+        config,
+    ) -> None:
+        super().__init__()
+
+        layers = {}
+        layers['one_hot'] = OneHotAtomEncoding(
+            num_types=config.get('num_types')
+        )
+        
+        layers['spharm_edges'] = SphericalHarmonicEdgeAttrs(
+            irreps_edge_sh=config.get('irreps_edge_sh'),
+            irreps_in = layers[list(layers.keys())[-1]].irreps_out
+        )
+        
+        basis_kwargs = {'r_max': config.get('r_max'), 'num_basis': config.get('num_basis')}
+        cutoff_kwargs = {'r_max': config.get('r_max')}
+        layers['radial_basis'] = RadialBasisEdgeEncoding(
+            basis_kwargs=basis_kwargs,
+            cutoff_kwargs=cutoff_kwargs,
+            irreps_in = layers[list(layers.keys())[-1]].irreps_out
+        )
+
+        layers['chemical_embedding'] = AtomwiseLinear(
+            irreps_in = layers[list(layers.keys())[-1]].irreps_out
+        )
+
+        equivariant_layers = config.get('equivariant_layers',1)
+        for layer_i in range(equivariant_layers):
+            # if layer_i == 0:
+            #     irreps_in = layers[-1]
+            # else:
+            #     irreps_in = 
+            if layer_i == equivariant_layers-1:
+                irreps_hidden = str(config.get('scalar_dim'))+'x0e'
+            else:
+                irreps_hidden = config.get('irreps_hidden')
+            
+            layers[f"layer{layer_i}_convnet"] = ConvNetLayer(
+                irreps_in=layers[list(layers.keys())[-1]].irreps_out,
+                feature_irreps_hidden=irreps_hidden,
+            )
+
+        scalar_layers = config.get('scalar_layers',1)
+        for layer_i in range(scalar_layers):
+            in_features = config.get('scalar_dim')
+            if layer_i == scalar_layers-1:
+                out_features = 1
+            else:
+                out_features = config.get('scalar_dim')
+            layers[f"layer{layer_i}_scalar"] = torch.nn.Linear(in_features,out_features)
+            if layer_i < scalar_layers-1:
+                layers[f"layer{layer_i}_nonlin"] = torch.nn.ReLU()
+
+        self.model = torch.nn.ModuleDict(layers)
+
+    def forward(self,data):
+        use_data = True
+        for layer in self.model:
+            if 'scalar' in layer:
+                use_data = False
+            if use_data:
+                data = self.model[layer](data)
+            else:
+                data['node_features'] = self.model[layer](data['node_features'])
+            # if 'node_features' in data:
+            #     print(data['node_features'].shape)
+        unc = data['node_features']
+        return torch.exp(unc)

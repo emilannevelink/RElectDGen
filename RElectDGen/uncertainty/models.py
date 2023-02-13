@@ -12,8 +12,9 @@ from scipy.optimize import minimize
 import scipy.stats as stats
 import matplotlib.pyplot as plt
 import multiprocessing as mp
+from ase.io import Trajectory
 
-from nequip.data import AtomicData, dataset_from_config, DataLoader
+from nequip.data import AtomicData, dataset_from_config, DataLoader, ASEDataset
 from nequip.data.transforms import TypeMapper
 
 from . import optimization_functions
@@ -2597,6 +2598,168 @@ class Nequip_error_GPR(uncertainty_base):
         if filename is not None:
             plt.savefig(filename)
 
+class Nequip_error_pos_NN(uncertainty_base):
+    def __init__(self, model, config, MLP_config):
+        super().__init__(model, config, MLP_config)
+
+        self.uncertainty_config = self.config.get('uncertainty_config',{})
+        self.unc_epochs = self.config.get('uncertainty_epochs', 1000)
+        
+        self.optimization_function = config.get('optimization_function','uncertainty_pos_NN')
+        uncertainty_dir = os.path.join(self.MLP_config['workdir'],self.config.get('uncertainty_dir', 'uncertainty'))
+        os.makedirs(uncertainty_dir,exist_ok=True)
+        
+        self.state_dict_func = lambda n: os.path.join(uncertainty_dir, f'uncertainty_pos_NN_state_dict_{n}.pth')
+        self.metrics_func = lambda n: os.path.join(uncertainty_dir, f'uncertainty_pos_NN_metrics_{n}.csv')
+
+    def load_NNs(self):
+        self.NNs = []
+        train_indices = []
+        for n in range(self.n_ensemble):
+            state_dict_name = self.state_dict_func(n)
+            if os.path.isfile(state_dict_name):
+                unc_func = getattr(optimization_functions,self.optimization_function)
+                NN = unc_func(self.uncertainty_config)
+                try:
+                    NN.load_state_dict(torch.load(state_dict_name, map_location=self.device))
+                    self.NNs.append(NN)
+                except Exception as e:
+                    print(e)
+                    print(f'Loading uncertainty {n} failed', flush=True)
+                    train_indices.append(n)
+            else:
+                train_indices.append(n)
+
+        return train_indices
+
+    def calibrate(self, debug = False):
+        
+        train_indices = self.load_NNs()
+        self.parse_validation_data()
+
+        if len(train_indices)>0:
+            NNs_trained = []
+            unc_func = getattr(optimization_functions,self.optimization_function)  
+            
+            for n in train_indices:
+                print('training ensemble network ', n, flush=True)  
+                NN = unc_func(self.uncertainty_config)
+                NN = NN.train(self.UQ_dataset)
+                NNs_trained.append(NN)
+            
+            print('done training')
+            print('Save NNs')
+            for n, NN in zip(train_indices,NNs_trained):
+                self.NNs.append(NN)
+                print('Best loss ', NN.best_loss, flush=True)
+                torch.save(NN.get_state_dict(), self.state_dict_func(n))
+                pd.DataFrame(NN.metrics).to_csv(self.metrics_func(n))
+
+    def parse_validation_data(self):
+
+        traj = Trajectory(self.MLP_config)
+        val_traj = []
+
+        for ind in self.MLP_config.val_idcs:
+            atoms = traj[ind]
+            out = self.model(self.transform_data_input(atoms))
+
+            errors = np.linalg.norm(out['forces'] - atoms.get_forces(),axis=1)
+
+            atoms.arrays['errors'] = errors
+            val_traj.append(atoms)
+        
+        self.UQ_dataset = ASEDataset.from_atoms_list(
+            val_traj,
+            extra_fixed_fields={'r_max':self.MLP_config['r_max']},
+            include_keys=['errors']
+        )
+
+    def adversarial_loss(self, data, T, distances='train_val'):
+
+        out = self.model(self.transform_data_input(data))
+        self.atom_embedding = out['node_features']
+
+        if distances == 'train_val':
+            energies = torch.cat([self.train_energies, self.test_energies])
+        else:
+            energies = self.train_energies
+
+        emean = energies.mean()
+        estd = max([energies.std(),1]) # Only allow contraction
+
+        kT = self.kb * T
+        Q = torch.exp(-(energies-emean)/estd/kT).sum()
+
+        probability = 1/Q * torch.exp(-(out['atomic_energy'].mean()-emean)/estd/kT)
+        
+        uncertainties = self.predict_uncertainty(data['atom_types'], self.atom_embedding).to(self.device).sum(axis=-1)
+
+        adv_loss = (probability * uncertainties).sum()
+
+        return adv_loss
+
+    def predict_uncertainty(self, data, atom_embedding=None, distances='train_val', extra_embeddings=None,type='full'):
+
+        if atom_embedding is None:
+            data = self.transform_data_input(data)
+        
+            out = self.model(data)
+            atom_embedding = out['node_features']
+            self.atom_embedding = atom_embedding
+            self.atom_forces = out['forces']
+
+        uncertainty_raw = torch.zeros(self.n_ensemble,len(data), device=self.device)
+        for i, NN in enumerate(self.NNs):
+            uncertainty_raw[i] = NN.predict(data).squeeze()
+        
+        uncertainty_mean = torch.mean(uncertainty_raw,axis=0)
+        uncertainty_std = torch.std(uncertainty_raw,axis=0)
+
+        uncertainty = torch.vstack([uncertainty_mean,uncertainty_std]).T
+
+        return uncertainty
+
+    def predict_from_traj(self, traj, max=True, batch_size=1):
+        uncertainty = []
+        atom_embeddings = []
+        self.pred_forces = []
+        # data = [self.transform(atoms) for atoms in traj]
+        # dataset = DataLoader(data, batch_size=batch_size)
+        # for i, batch in enumerate(dataset):
+        #     uncertainty.append(self.predict_uncertainty(batch))
+        #     atom_embeddings.append(self.atom_embedding)
+        ti = time.time()
+        times = np.empty(len(traj))
+        for i, atoms in enumerate(traj):
+            uncertainty.append(self.predict_uncertainty(atoms).detach())
+            atom_embeddings.append(self.atom_embedding.detach())
+            self.pred_forces.append(self.atom_forces.detach())
+            tf = time.time()
+            times[i] = tf-ti
+            ti = tf
+
+        print(f'Dataset Prediction Times:\nAverage Time: {times.mean()}, Max Time: {times.max()}, Min Time: {times.min()}')
+        
+        uncertainty = torch.cat(uncertainty).detach().cpu()
+        atom_embeddings = torch.cat(atom_embeddings).detach().cpu()
+
+        if max:
+            atom_lengths = [len(atoms) for atoms in traj]
+            start_inds = [0] + np.cumsum(atom_lengths[:-1]).tolist()
+            end_inds = np.cumsum(atom_lengths).tolist()
+
+            uncertainty_partition = [uncertainty[si:ei] for si, ei in zip(start_inds,end_inds)]
+            embeddings = [atom_embeddings[si:ei] for si, ei in zip(start_inds,end_inds)]
+            return torch.tensor([unc.max() for unc in uncertainty_partition]), embeddings
+        else:
+            self.pred_forces = torch.cat(self.pred_forces).cpu()
+            self.pred_forces = self.pred_forces.reshape(len(traj),-1,3)
+            uncertainty = uncertainty.reshape(len(traj),-1,2)
+            return uncertainty, atom_embeddings.reshape(len(traj),-1,atom_embeddings.shape[-1])
+
+    def plot_fit(self, filename=None):
+        pass
 
 def f(x):
     return x*x
