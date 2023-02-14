@@ -2673,7 +2673,7 @@ class Nequip_error_pos_NN(uncertainty_base):
             atoms = traj[ind]
             out = self.model(self.transform_data_input(atoms))
 
-            errors = np.linalg.norm(out['forces'] - atoms.get_forces(),axis=1)
+            errors = np.linalg.norm(out['forces'].detach() - atoms.get_forces(),axis=1)
 
             atoms.arrays['errors'] = errors
             val_traj.append(atoms)
