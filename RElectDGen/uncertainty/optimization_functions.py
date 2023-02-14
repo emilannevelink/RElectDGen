@@ -1427,9 +1427,10 @@ class UQ_equiv_NN(torch.nn.Module):
         #     irreps_in = layers[list(layers.keys())[-1]].irreps_out
         # )
 
-        layers['chemical_embedding'] = AtomwiseLinear#(
+        # layers['chemical_embedding'] = AtomwiseLinear#(
         #     irreps_in = layers[list(layers.keys())[-1]].irreps_out
         # )
+        layers['chemical_embedding'] = (AtomwiseLinear, dict(irreps_out=str(config.get("chemical_embedding_dim",8))+"x0e"))
 
         equivariant_layers = config.get('equivariant_layers',1)
         for layer_i in range(equivariant_layers):
@@ -1448,12 +1449,15 @@ class UQ_equiv_NN(torch.nn.Module):
             # )
             layers[f"layer{layer_i}_convnet"] = ConvNetLayer
 
+        layers['conv_to_scalar'] = (AtomwiseLinear, dict(irreps_out=str(config.get("scalar_dim"))+"x0e"))#(
+
         self.equiv_model = SequentialGraphNetwork.from_parameters(
             shared_params=config,
             layers=layers,
         )
         layers = {}
-        self.scalar_dim = int(config.get('feature_irreps_hidden').split('x0e')[0])
+        # self.scalar_dim = int(config.get('feature_irreps_hidden').split('x0e')[0])
+        self.scalar_dim = int(config.get("scalar_dim"))
         scalar_layers = config.get('scalar_layers',1)
         for layer_i in range(scalar_layers):
             in_features = config.get('scalar_dim')
