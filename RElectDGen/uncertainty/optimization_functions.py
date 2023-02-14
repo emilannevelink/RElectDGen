@@ -1345,8 +1345,8 @@ class uncertainty_pos_NN():
                 self.model.train()
                 self.optim.zero_grad()
                 data = self.transform(data)
-                input = AtomicData.to_AtomicDataDict(data)
-                unc = torch.exp(self.model(input))
+                data = AtomicData.to_AtomicDataDict(data)
+                unc = torch.exp(self.model(data))
 
                 errors = data['errors']
                 loss = self.loss(errors.unsqueeze(1),unc)
@@ -1361,8 +1361,8 @@ class uncertainty_pos_NN():
             for i, data in enumerate(val_dataloader):
                 self.model.eval()
                 data = self.transform(data)
-                input = AtomicData.to_AtomicDataDict(data)
-                unc = torch.exp(self.model(input))
+                data = AtomicData.to_AtomicDataDict(data)
+                unc = torch.exp(self.model(data))
 
                 errors = data['errors']
                 loss = self.loss(errors.unsqueeze(1),unc)
@@ -1388,6 +1388,8 @@ class uncertainty_pos_NN():
         self.validation_loss = best_validation_loss
         self.model = self.best_model
     def predict(self,data):
+        data = self.transform(data)
+        input = AtomicData.to_AtomicDataDict(data)
         unc = torch.exp(self.model(input))
         return unc
     
@@ -1397,7 +1399,7 @@ class uncertainty_pos_NN():
     def load_state_dict(self,state_dict):
         self.model.load_state_dict(state_dict)
 
-
+from collections import OrderedDict
 class UQ_equiv_NN(torch.nn.Module):
     def __init__(
         self,
@@ -1407,26 +1409,27 @@ class UQ_equiv_NN(torch.nn.Module):
 
         layers = {}
         num_types = len(config.get('chemical_symbol_to_type'))
-        layers['one_hot'] = OneHotAtomEncoding(
-            num_types=num_types
-        )
+        config['num_types'] = num_types
+        layers['one_hot'] = OneHotAtomEncoding#(
+        #     num_types=num_types
+        # )
         
-        layers['spharm_edges'] = SphericalHarmonicEdgeAttrs(
-            irreps_edge_sh=config.get('irreps_edge_sh'),
-            irreps_in = layers[list(layers.keys())[-1]].irreps_out
-        )
+        layers['spharm_edges'] = SphericalHarmonicEdgeAttrs#(
+        #     irreps_edge_sh=config.get('irreps_edge_sh'),
+        #     irreps_in = layers[list(layers.keys())[-1]].irreps_out
+        # )
         
-        basis_kwargs = {'r_max': config.get('r_max'), 'num_basis': config.get('num_basis')}
-        cutoff_kwargs = {'r_max': config.get('r_max')}
-        layers['radial_basis'] = RadialBasisEdgeEncoding(
-            basis_kwargs=basis_kwargs,
-            cutoff_kwargs=cutoff_kwargs,
-            irreps_in = layers[list(layers.keys())[-1]].irreps_out
-        )
+        # basis_kwargs = {'r_max': config.get('r_max'), 'num_basis': config.get('num_basis')}
+        # cutoff_kwargs = {'r_max': config.get('r_max')}
+        layers['radial_basis'] = RadialBasisEdgeEncoding#(
+        #     basis_kwargs=basis_kwargs,
+        #     cutoff_kwargs=cutoff_kwargs,
+        #     irreps_in = layers[list(layers.keys())[-1]].irreps_out
+        # )
 
-        layers['chemical_embedding'] = AtomwiseLinear(
-            irreps_in = layers[list(layers.keys())[-1]].irreps_out
-        )
+        layers['chemical_embedding'] = AtomwiseLinear#(
+        #     irreps_in = layers[list(layers.keys())[-1]].irreps_out
+        # )
 
         equivariant_layers = config.get('equivariant_layers',1)
         for layer_i in range(equivariant_layers):
@@ -1434,39 +1437,48 @@ class UQ_equiv_NN(torch.nn.Module):
             #     irreps_in = layers[-1]
             # else:
             #     irreps_in = 
-            if layer_i == equivariant_layers-1:
-                irreps_hidden = str(config.get('scalar_dim'))+'x0e'
-            else:
-                irreps_hidden = config.get('irreps_hidden')
+            # if layer_i == equivariant_layers-1:
+            #     irreps_hidden = str(config.get('scalar_dim'))+'x0e'
+            # else:
+            #     irreps_hidden = config.get('irreps_hidden')
             
-            layers[f"layer{layer_i}_convnet"] = ConvNetLayer(
-                irreps_in=layers[list(layers.keys())[-1]].irreps_out,
-                feature_irreps_hidden=irreps_hidden,
-            )
+            # layers[f"layer{layer_i}_convnet"] = ConvNetLayer(
+            #     irreps_in=layers[list(layers.keys())[-1]].irreps_out,
+            #     feature_irreps_hidden=irreps_hidden,
+            # )
+            layers[f"layer{layer_i}_convnet"] = ConvNetLayer
 
+        self.equiv_model = SequentialGraphNetwork.from_parameters(
+            shared_params=config,
+            layers=layers,
+        )
+        layers = {}
+        self.scalar_dim = int(config.get('feature_irreps_hidden').split('x0e')[0])
         scalar_layers = config.get('scalar_layers',1)
         for layer_i in range(scalar_layers):
             in_features = config.get('scalar_dim')
             if layer_i == scalar_layers-1:
                 out_features = 1
             else:
-                out_features = config.get('scalar_dim')
+                out_features = self.scalar_dim
             layers[f"layer{layer_i}_scalar"] = torch.nn.Linear(in_features,out_features)
             if layer_i < scalar_layers-1:
                 layers[f"layer{layer_i}_nonlin"] = torch.nn.ReLU()
 
-        self.model = torch.nn.ModuleDict(layers)
+        self.scalar_model = torch.nn.Sequential(OrderedDict(layers))
 
     def forward(self,data):
-        use_data = True
-        for layer in self.model:
-            if 'scalar' in layer:
-                use_data = False
-            if use_data:
-                data = self.model[layer](data)
-            else:
-                data['node_features'] = self.model[layer](data['node_features'])
-            # if 'node_features' in data:
-            #     print(data['node_features'].shape)
+        # use_data = True
+        # for layer in self.model:
+        #     if 'scalar' in layer:
+        #         use_data = False
+        #     if use_data:
+        #         data = self.model[layer](data)
+        #     else:
+        #         data['node_features'] = self.model[layer](data['node_features'])
+        # if 'node_features' in data:
+        #     print(data['node_features'].shape)
+        data = self.equiv_model(data)
+        data['node_features'] = self.scalar_model(data['node_features'][:,:self.scalar_dim])
         unc = data['node_features']
         return torch.exp(unc)
