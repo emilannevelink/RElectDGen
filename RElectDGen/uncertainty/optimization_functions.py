@@ -1341,12 +1341,13 @@ class uncertainty_pos_NN():
         self.best_loss = np.inf
         for n in range(self.epochs):
             running_loss = 0
+            total_length = 0
             for i, data in enumerate(train_dataloader):
                 self.model.train()
                 self.optim.zero_grad()
                 data = self.transform(data)
                 data = AtomicData.to_AtomicDataDict(data)
-                unc = torch.exp(self.model(data))
+                unc = self.model(data)
 
                 errors = data['errors']
                 loss = self.loss(errors.unsqueeze(1),unc)
@@ -1356,18 +1357,21 @@ class uncertainty_pos_NN():
 
                 self.optim.step()
                 running_loss += loss.item()*len(unc)
-            train_loss = running_loss/(i+1)
+                total_length += len(unc)
+            train_loss = running_loss/total_length
             running_loss = 0
+            total_length = 0
             for i, data in enumerate(val_dataloader):
                 self.model.eval()
                 data = self.transform(data)
                 data = AtomicData.to_AtomicDataDict(data)
-                unc = torch.exp(self.model(data))
+                unc = self.model(data)
 
                 errors = data['errors']
                 loss = self.loss(errors.unsqueeze(1),unc)
                 running_loss += loss.item()*len(unc)
-            validation_loss = running_loss/(i+1)
+                total_length += len(unc)
+            validation_loss = running_loss/total_length
 
             self.lr_scheduler(validation_loss)
             
@@ -1390,7 +1394,7 @@ class uncertainty_pos_NN():
     def predict(self,data):
         data = self.transform(data)
         input = AtomicData.to_AtomicDataDict(data)
-        unc = torch.exp(self.model(input))
+        unc = self.model(input)
         return unc
     
     def get_state_dict(self):

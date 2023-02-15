@@ -1610,7 +1610,7 @@ class Nequip_ensemble(uncertainty_base):
             self.parse_validation_data()
 
             #Calibration curves
-            calibration_coeffs = {}
+            calibration_coeffs = {'ave_var': {},'max_var': {}}
             for key in self.MLP_config.get('chemical_symbol_to_type'):   
                 # print(self.validation_err_pred[key].shape) 
                 # print(self.validation_err_real[key].shape)
@@ -1622,6 +1622,8 @@ class Nequip_ensemble(uncertainty_base):
                     calibration_coeffs[key] = find_NLL_params(self.validation_err_real[key].cpu(),self.validation_err_pred[key].cpu(),self.calibration_polyorder)
                 else:
                     calibration_coeffs[key] = np.polyfit(self.validation_err_pred[key].cpu(),self.validation_err_real[key].cpu(),self.calibration_polyorder)
+                calibration_coeffs['ave_var'][key] = np.mean(self.validation_err_pred[key].cpu())
+                calibration_coeffs['max_var'][key] = np.max(self.validation_err_pred[key].cpu())
             data = {}
             for key in self.MLP_config.get('chemical_symbol_to_type'):
                 data[key] = list(calibration_coeffs[key])
@@ -2641,9 +2643,9 @@ class Nequip_error_pos_NN(uncertainty_base):
     def calibrate(self, debug = False):
         
         train_indices = self.load_NNs()
-        self.parse_validation_data()
 
         if len(train_indices)>0:
+            self.parse_validation_data()
             NNs_trained = []
             unc_func = getattr(optimization_functions,self.optimization_function)  
             
@@ -2718,12 +2720,15 @@ class Nequip_error_pos_NN(uncertainty_base):
             self.atom_embedding = atom_embedding
             self.atom_forces = out['forces']
 
-        uncertainty_raw = torch.zeros(self.n_ensemble,len(data), device=self.device)
+        uncertainty_raw = torch.zeros(self.n_ensemble,len(data['pos']), device=self.device)
         for i, NN in enumerate(self.NNs):
             uncertainty_raw[i] = NN.predict(data).squeeze()
         
         uncertainty_mean = torch.mean(uncertainty_raw,axis=0)
-        uncertainty_std = torch.std(uncertainty_raw,axis=0)
+        if self.n_ensemble>1:
+            uncertainty_std = torch.std(uncertainty_raw,axis=0)
+        else:
+            uncertainty_std = torch.zeros_like(uncertainty_mean)
 
         uncertainty = torch.vstack([uncertainty_mean,uncertainty_std]).T
 
