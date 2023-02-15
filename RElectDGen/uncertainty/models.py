@@ -2653,14 +2653,14 @@ class Nequip_error_pos_NN(uncertainty_base):
                     self.uncertainty_config,
                     self.unc_epochs
                 )
-                NN = NN.train(self.UQ_dataset)
+                NN.train(self.UQ_dataset)
                 NNs_trained.append(NN)
             
             print('done training')
             print('Save NNs')
             for n, NN in zip(train_indices,NNs_trained):
                 self.NNs.append(NN)
-                print('Best loss ', NN.best_loss, flush=True)
+                print('Best loss ', NN.validation_loss, flush=True)
                 torch.save(NN.get_state_dict(), self.state_dict_func(n))
                 pd.DataFrame(NN.metrics).to_csv(self.metrics_func(n))
 

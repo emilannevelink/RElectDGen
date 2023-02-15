@@ -116,7 +116,7 @@ def nn_from_results(root='results',train_directory=None,template=''):
     model = e3nn.util.jit.compile(model)
     print('compiled model', flush=True)
     torch.jit._set_fusion_strategy([('DYNAMIC',MLP_config.get("_jit_bailout_depth",2))])
-    torch._C._jit_set_profiling_executor(False)
+    # torch._C._jit_set_profiling_executor(False)
     # model = torch.jit.script(model)
     # model = torch.jit.freeze(model)
     # model = torch.jit.optimize_for_inference(model)
