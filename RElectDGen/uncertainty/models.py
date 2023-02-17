@@ -2611,17 +2611,23 @@ class Nequip_error_pos_NN(uncertainty_base):
         self.unc_epochs = self.config.get('uncertainty_epochs', 1000)
         
         self.optimization_function = config.get('optimization_function','uncertainty_pos_NN')
-        uncertainty_dir = os.path.join(self.MLP_config['workdir'],self.config.get('uncertainty_dir', 'uncertainty'))
-        os.makedirs(uncertainty_dir,exist_ok=True)
+        self.uncertainty_dir = os.path.join(self.MLP_config['workdir'],self.config.get('uncertainty_dir', 'uncertainty'))
+        os.makedirs(self.uncertainty_dir,exist_ok=True)
         
-        self.state_dict_func = lambda n: os.path.join(uncertainty_dir, f'uncertainty_pos_NN_state_dict_{n}.pth')
-        self.metrics_func = lambda n: os.path.join(uncertainty_dir, f'uncertainty_pos_NN_metrics_{n}.csv')
+        default_state_dict_func = lambda n: f'uncertainty_pos_NN_state_dict_{n}.pth'
+        self.state_dict_func = self.uncertainty_config.get('state_dict_func',default_state_dict_func)
+        if isinstance(self.state_dict_func,str):
+            self.state_dict_func = eval(self.state_dict_func    )
+        self.metrics_func = lambda n: os.path.join(self.uncertainty_dir, f'uncertainty_pos_NN_metrics_{n}.csv')
 
     def load_NNs(self):
         self.NNs = []
         train_indices = []
         for n in range(self.n_ensemble):
-            state_dict_name = self.state_dict_func(n)
+            state_dict_name = os.path.join(
+                self.uncertainty_dir,
+                self.state_dict_func(n)
+            )
             if os.path.isfile(state_dict_name):
                 unc_func = getattr(optimization_functions,self.optimization_function)
                 NN = unc_func(
@@ -2663,7 +2669,11 @@ class Nequip_error_pos_NN(uncertainty_base):
             for n, NN in zip(train_indices,NNs_trained):
                 self.NNs.append(NN)
                 print('Best loss ', NN.validation_loss, flush=True)
-                torch.save(NN.get_state_dict(), self.state_dict_func(n))
+                state_dict_name = os.path.join(
+                    self.uncertainty_dir,
+                    self.state_dict_func(n)
+                )
+                torch.save(NN.get_state_dict(), state_dict_name)
                 pd.DataFrame(NN.metrics).to_csv(self.metrics_func(n))
 
     def parse_validation_data(self):

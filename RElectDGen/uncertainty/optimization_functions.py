@@ -25,6 +25,9 @@ def find_NLL_params(errors,raw_uncertainties,polyorder=1):
 def NLL(errors,uncertainties):
     return (torch.pow(errors/uncertainties,2) + torch.log(uncertainties)).mean()
 
+def NLL_raw(errors,uncertainties):
+    return (torch.pow(errors/uncertainties,2) + torch.log(uncertainties))
+
 def npNLL(errors,uncertainties):
     return (np.power(errors/uncertainties,2) + np.log(uncertainties)).mean()
 
@@ -1311,7 +1314,7 @@ class uncertainty_pos_NN():
 
         self.epochs = epochs
         self.train_percent = train_percent
-        self.loss = NLL
+        self.loss = NLL_raw
         self.transform = TypeMapper(chemical_symbol_to_type=config.get('chemical_symbol_to_type'))
         if patience is None:
             patience = epochs/10
@@ -1349,14 +1352,14 @@ class uncertainty_pos_NN():
                 data = AtomicData.to_AtomicDataDict(data)
                 unc = self.model(data)
 
-                errors = data['errors']
-                loss = self.loss(errors.unsqueeze(1),unc)
-
+                errors = data['errors'].unsqueeze(1)
+                loss = self.loss(errors,unc)
+                lossm = (loss*errors).mean()
                 # self.optim.zero_grad()
-                loss.backward()
+                lossm.backward()
 
                 self.optim.step()
-                running_loss += loss.item()*len(unc)
+                running_loss += loss.sum().item()#*len(unc)
                 total_length += len(unc)
             train_loss = running_loss/total_length
             running_loss = 0
@@ -1367,9 +1370,10 @@ class uncertainty_pos_NN():
                 data = AtomicData.to_AtomicDataDict(data)
                 unc = self.model(data)
 
-                errors = data['errors']
-                loss = self.loss(errors.unsqueeze(1),unc)
-                running_loss += loss.item()*len(unc)
+                errors = data['errors'].unsqueeze(1)
+                loss = self.loss(errors,unc)
+                
+                running_loss += loss.sum().item()#*len(unc)
                 total_length += len(unc)
             validation_loss = running_loss/total_length
 
@@ -1451,9 +1455,15 @@ class UQ_equiv_NN(torch.nn.Module):
             #     irreps_in=layers[list(layers.keys())[-1]].irreps_out,
             #     feature_irreps_hidden=irreps_hidden,
             # )
-            layers[f"layer{layer_i}_convnet"] = ConvNetLayer
+            if layer_i == equivariant_layers-1:
+                layers[f"layer{layer_i}_convnet"] = (
+                    ConvNetLayer,
+                    dict(irreps_out=str(config.get("scalar_dim"))+"x0e")
+                )
+            else:
+                layers[f"layer{layer_i}_convnet"] = ConvNetLayer
 
-        layers['conv_to_scalar'] = (AtomwiseLinear, dict(irreps_out=str(config.get("scalar_dim"))+"x0e"))#(
+        # layers['conv_to_scalar'] = (AtomwiseLinear, dict(irreps_out=str(config.get("scalar_dim"))+"x0e"))#(
 
         self.equiv_model = SequentialGraphNetwork.from_parameters(
             shared_params=config,
