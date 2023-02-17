@@ -2617,8 +2617,11 @@ class Nequip_error_pos_NN(uncertainty_base):
         default_state_dict_func = lambda n: f'uncertainty_pos_NN_state_dict_{n}.pth'
         self.state_dict_func = self.uncertainty_config.get('state_dict_func',default_state_dict_func)
         if isinstance(self.state_dict_func,str):
-            self.state_dict_func = eval(self.state_dict_func    )
-        self.metrics_func = lambda n: os.path.join(self.uncertainty_dir, f'uncertainty_pos_NN_metrics_{n}.csv')
+            self.state_dict_func = eval(self.state_dict_func)
+        default_metrics_func = lambda n: f'uncertainty_pos_NN_metrics_{n}.csv'
+        self.metrics_func = self.uncertainty_config.get('metrics_func',default_metrics_func)
+        if isinstance(self.metrics_func,str):
+            self.metrics_func = eval(self.metrics_func)
 
     def load_NNs(self):
         self.NNs = []
@@ -2674,7 +2677,11 @@ class Nequip_error_pos_NN(uncertainty_base):
                     self.state_dict_func(n)
                 )
                 torch.save(NN.get_state_dict(), state_dict_name)
-                pd.DataFrame(NN.metrics).to_csv(self.metrics_func(n))
+                metrics_name = os.path.join(
+                    self.uncertainty_dir,
+                    self.metrics_func(n)
+                )
+                pd.DataFrame(NN.metrics).to_csv(metrics_name)
 
     def parse_validation_data(self):
 
