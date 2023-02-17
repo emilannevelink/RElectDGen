@@ -1,3 +1,4 @@
+import sys
 import torch
 import numpy as np
 from scipy.optimize import minimize
@@ -30,6 +31,9 @@ def NLL_raw(errors,uncertainties):
 
 def npNLL(errors,uncertainties):
     return (np.power(errors/uncertainties,2) + np.log(uncertainties)).mean()
+
+def MSE(errors,uncertainties):
+    return torch.pow((errors-uncertainties),2)
 
 def optimize2params(test_errors, min_vectors):
 
@@ -1314,8 +1318,9 @@ class uncertainty_pos_NN():
 
         self.epochs = epochs
         self.train_percent = train_percent
-        self.loss = NLL_raw
+        self.loss = getattr(sys.modules[__name__],config.get('loss_fn','NLL_raw'))
         self.transform = TypeMapper(chemical_symbol_to_type=config.get('chemical_symbol_to_type'))
+        self.error_norm = config.get('error_norm',False)
         if patience is None:
             patience = epochs/10
         if min_lr is None:
@@ -1354,7 +1359,10 @@ class uncertainty_pos_NN():
 
                 errors = data['errors'].unsqueeze(1)
                 loss = self.loss(errors,unc)
-                lossm = (loss*errors).mean()
+                if self.error_norm:
+                    lossm = (loss*errors).mean()
+                else:
+                    lossm = (loss).mean()
                 # self.optim.zero_grad()
                 lossm.backward()
 
