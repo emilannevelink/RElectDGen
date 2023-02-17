@@ -63,7 +63,8 @@ class Nequip_latent_distance(uncertainty_base):
         func_name = config.get('params_func','optimize2params')
         self.params_func = getattr(optimization_functions,func_name)
         self.parameter_length = 2 if func_name=='optimize2params' else self.latent_size+1
-        self.params_file = os.path.join(self.MLP_config['workdir'],'uncertainty_params.pkl')
+        params_file = config.get('params_file','uncertainty_params.pkl')
+        self.params_file = os.path.join(self.MLP_config['workdir'],params_file)
 
     def parse_data(self):
         dataset = dataset_from_config(self.MLP_config)
