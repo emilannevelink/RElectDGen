@@ -1623,8 +1623,13 @@ class Nequip_ensemble(uncertainty_base):
                     calibration_coeffs[key] = find_NLL_params(self.validation_err_real[key].cpu(),self.validation_err_pred[key].cpu(),self.calibration_polyorder)
                 else:
                     calibration_coeffs[key] = np.polyfit(self.validation_err_pred[key].cpu(),self.validation_err_real[key].cpu(),self.calibration_polyorder)
-                calibration_coeffs['ave_var'][key] = np.mean(self.validation_err_pred[key].cpu())
-                calibration_coeffs['max_var'][key] = np.max(self.validation_err_pred[key].cpu())
+                try:
+                    calibration_coeffs['ave_var'][key] = float((self.validation_err_pred[key].cpu()).mean())
+                    calibration_coeffs['max_var'][key] = float((self.validation_err_pred[key].cpu()).max())
+                except Exception as e:
+                    print(self.validation_err_pred[key].cpu())
+                    print(self.validation_err_pred[key].cpu().shape)
+                    print(e)
             data = {}
             for key in self.MLP_config.get('chemical_symbol_to_type'):
                 data[key] = list(calibration_coeffs[key])
