@@ -1466,7 +1466,7 @@ class UQ_equiv_NN(torch.nn.Module):
             if layer_i == equivariant_layers-1:
                 layers[f"layer{layer_i}_convnet"] = (
                     ConvNetLayer,
-                    dict(irreps_out=str(config.get("scalar_dim"))+"x0e")
+                    dict(feature_irreps_hidden=str(config.get("scalar_dim"))+"x0e")
                 )
             else:
                 layers[f"layer{layer_i}_convnet"] = ConvNetLayer
@@ -1505,6 +1505,6 @@ class UQ_equiv_NN(torch.nn.Module):
         # if 'node_features' in data:
         #     print(data['node_features'].shape)
         data = self.equiv_model(data)
-        data['node_features'] = self.scalar_model(data['node_features'][:,:self.scalar_dim])
+        data['node_features'] = self.scalar_model(data['node_features'])
         unc = data['node_features']
         return torch.exp(unc)
