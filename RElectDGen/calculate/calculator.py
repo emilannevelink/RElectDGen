@@ -131,12 +131,16 @@ def nns_from_results(root='results',n_ensemble=4,template=''):
     MLP_config = []
     for i in range(n_ensemble):
         rooti = root + f'_{i}'
-        calc_tmp, mod, conf = nn_from_results(root=rooti,template=template)
-        training_success = check_nan_parameters(mod)
-        if training_success:
-            model.append(mod)
-            MLP_config.append(conf)
-            calc_nn = calc_tmp
+        try:
+            calc_tmp, mod, conf = nn_from_results(root=rooti,template=template)
+            training_success = check_nan_parameters(mod)
+            if training_success:
+                model.append(mod)
+                MLP_config.append(conf)
+                calc_nn = calc_tmp
+        except UnboundLocalError as e:
+            print(f'Failed to load model from {rooti}')
+            print(e,flush=True)
     
     print(f'Kept {len(model)} of {n_ensemble} models', flush=True)
     return calc_nn, model, MLP_config
