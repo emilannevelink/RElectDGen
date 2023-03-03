@@ -1,7 +1,7 @@
 import sys
 import torch
 import numpy as np
-from scipy.optimize import minimize
+from scipy.optimize import minimize, LinearConstraint
 from scipy import stats
 
 from torch.utils.data import Dataset, DataLoader
@@ -15,8 +15,10 @@ def find_NLL_params(errors,raw_uncertainties,polyorder=1):
         uncertainties = np.poly1d(coeffs)(raw_uncertainties)
         return npNLL(errors,uncertainties)
 
-    coeffs0 = np.ones(polyorder+1)
+    
+    coeffs0 = np.random.rand(polyorder+1)
     bounds = [(0,None)]*len(coeffs0)
+    # constraints = LinearConstraint()
     res = minimize(loss,coeffs0,bounds=bounds,method='Nelder-Mead')
     print(res,flush=True)
     coeffs = res.x

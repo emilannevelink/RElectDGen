@@ -1690,10 +1690,10 @@ class Nequip_ensemble(uncertainty_base):
         for i, data in enumerate(self.train_dataset):
             force_outputs = torch.empty(len(self.model),*data['pos'].shape,device=self.device)
             atom_energies = torch.empty(len(self.model),len(data['pos']),device=self.device)
-            for i, model in enumerate(self.model):
+            for ii, model in enumerate(self.model):
                 out = model(self.transform_data_input(data))
-                force_outputs[i] = out['forces']
-                atom_energies[i] = out['atomic_energy'].squeeze()
+                force_outputs[ii] = out['forces']
+                atom_energies[ii] = out['atomic_energy'].squeeze()
 
             force_norm = data['forces'].norm(dim=1).unsqueeze(dim=1)
             force_lim = torch.max(force_norm,torch.ones_like(force_norm,device=self.device))
@@ -1736,10 +1736,10 @@ class Nequip_ensemble(uncertainty_base):
         for i, data in enumerate(self.validation_dataset):
             force_outputs = torch.empty(len(self.model),*data['pos'].shape,device=self.device)
             atom_energies = torch.empty(len(self.model),len(data['pos']),device=self.device)
-            for i, model in enumerate(self.model):
+            for ii, model in enumerate(self.model):
                 out = model(self.transform_data_input(data))
-                force_outputs[i] = out['forces']
-                atom_energies[i] = out['atomic_energy'].squeeze()
+                force_outputs[ii] = out['forces']
+                atom_energies[ii] = out['atomic_energy'].squeeze()
 
             force_norm = data['forces'].norm(dim=1).unsqueeze(dim=1)
             force_lim = torch.max(force_norm,torch.ones_like(force_norm,device=self.device))
@@ -1824,10 +1824,10 @@ class Nequip_ensemble(uncertainty_base):
         for i, data in enumerate(self.validation_dataset):
             force_outputs = torch.empty(len(self.model),*data['pos'].shape,device=self.device)
             atom_energies = torch.empty(len(self.model),len(data['pos']),device=self.device)
-            for i, model in enumerate(self.model):
+            for ii, model in enumerate(self.model):
                 out = model(self.transform_data_input(data))
-                force_outputs[i] = out['forces']
-                atom_energies[i] = out['atomic_energy'].squeeze()
+                force_outputs[ii] = out['forces']
+                atom_energies[ii] = out['atomic_energy'].squeeze()
 
             force_norm = data['forces'].norm(dim=1).unsqueeze(dim=1)
             force_lim = torch.max(force_norm,torch.ones_like(force_norm,device=self.device))
@@ -1902,6 +1902,12 @@ class Nequip_ensemble(uncertainty_base):
                     calibrated[mask] += coeffs*raw[mask].pow(i)
 
         return calibrated
+
+    def get_base_uncertainty(self):
+        base_unc = 0.
+        for key in self.chemical_symbol_to_type:
+            base_unc = max([self.calibration_coeffs[key][-1],base_unc])
+        return base_unc
 
     def adversarial_loss(self, data, T, distances='train_val'):
 
