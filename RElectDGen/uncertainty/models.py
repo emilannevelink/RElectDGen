@@ -264,6 +264,7 @@ class Nequip_latent_distance(uncertainty_base):
             uncertainties_std = torch.std(uncertainty_raw,axis=0)
 
         uncertainty = torch.vstack([uncertainties_mean,uncertainties_std]).T
+        uncertainty *= self.config.get('uncertainty_factor',1) ### for NLL to choose confidence level
         # uncertainty_ens = uncertainty_mean + uncertainty_std
 
         return uncertainty
