@@ -67,7 +67,7 @@ class Nequip_unc_oracle(uncertainty_base):
 
     def predict_uncertainty(self, atoms, atom_embedding=None, distances='train', extra_embeddings=None, type='full'):
         assert isinstance(atoms,Atoms)
-        true_forces = atoms.get_forces()
+        true_forces = torch.tensor(atoms.get_forces())
         data = self.transform_data_input(atoms)
 
         if atom_embedding is None:
