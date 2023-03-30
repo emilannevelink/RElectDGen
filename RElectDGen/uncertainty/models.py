@@ -62,11 +62,11 @@ class Nequip_unc_oracle(uncertainty_base):
     def calibrate(self, debug=False):
         pass
 
-    def adversarial_loss(self, data, T, distances='train_val'):
+    def adversarial_loss(self, data, T, distances='train'):
         pass
 
-    def predict_uncertainty(self, atoms, atom_embedding=None, distances='train_val', extra_embeddings=None, type='full'):
-        assert isinstance(Atoms,atoms)
+    def predict_uncertainty(self, atoms, atom_embedding=None, distances='train', extra_embeddings=None, type='full'):
+        assert isinstance(atoms,Atoms)
         true_forces = atoms.get_forces()
         data = self.transform_data_input(atoms)
 
@@ -230,7 +230,7 @@ class Nequip_latent_distance(uncertainty_base):
                 pickle.dump(self.params, fl)
 
 
-    def adversarial_loss(self, data, T, distances='train_val'):
+    def adversarial_loss(self, data, T, distances='train'):
 
         data = self.transform_data_input(data)
         
@@ -260,7 +260,7 @@ class Nequip_latent_distance(uncertainty_base):
 
         return adv_loss
 
-    def predict_uncertainty(self, data_in, atom_embedding=None, distances='train_val', extra_embeddings=None, type='full'):
+    def predict_uncertainty(self, data_in, atom_embedding=None, distances='train', extra_embeddings=None, type='full'):
         
         data = self.transform_data_input(data_in)
 
@@ -493,7 +493,7 @@ class Nequip_error_NN(uncertainty_base):
         self.test_errors = test_errors
         self.test_energies = test_energies
 
-    def adversarial_loss(self, data, T, distances='train_val'):
+    def adversarial_loss(self, data, T, distances='train'):
 
         out = self.model(self.transform_data_input(data))
         self.atom_embedding = out['node_features']
@@ -517,7 +517,7 @@ class Nequip_error_NN(uncertainty_base):
 
         return adv_loss
 
-    def predict_uncertainty(self, data, atom_embedding=None, distances='train_val', extra_embeddings=None,type='full'):
+    def predict_uncertainty(self, data, atom_embedding=None, distances='train', extra_embeddings=None,type='full'):
 
         if atom_embedding is None:
             data = self.transform_data_input(data)
@@ -711,7 +711,7 @@ class Nequip_latent_distanceNN(uncertainty_base):
                 pd.DataFrame(NN.metrics).to_csv( self.metrics_func(n))
                         
 
-    def adversarial_loss(self, data, T, distances='train_val'):
+    def adversarial_loss(self, data, T, distances='train'):
 
         data = self.transform_data_input(data)
         
@@ -740,7 +740,7 @@ class Nequip_latent_distanceNN(uncertainty_base):
 
         return adv_loss
 
-    def predict_uncertainty(self, data_in, atom_embedding=None, distances='train_val', extra_embeddings=None, type='full'):
+    def predict_uncertainty(self, data_in, atom_embedding=None, distances='train', extra_embeddings=None, type='full'):
         
         data = self.transform_data_input(data_in)
 
@@ -1120,7 +1120,7 @@ class Nequip_ensemble_NN(uncertainty_base):
         self.test_forces = test_forces
         self.test_indices = test_indices
 
-    def adversarial_loss(self, data, T, distances='train_val'):
+    def adversarial_loss(self, data, T, distances='train'):
 
         data = self.transform_data_input(data)
         
@@ -1150,7 +1150,7 @@ class Nequip_ensemble_NN(uncertainty_base):
 
         return adv_loss
 
-    def predict_uncertainty(self, data, atom_embedding=None, distances='train_val', extra_embeddings=None,type='full'):
+    def predict_uncertainty(self, data, atom_embedding=None, distances='train', extra_embeddings=None,type='full'):
 
         
         data = self.transform_data_input(data)
@@ -1978,7 +1978,7 @@ class Nequip_ensemble(uncertainty_base):
             base_unc = max([self.calibration_coeffs[key][-1],base_unc])
         return base_unc
 
-    def adversarial_loss(self, data, T, distances='train_val'):
+    def adversarial_loss(self, data, T, distances='train'):
 
         data = self.transform_data_input(data)
 
@@ -2004,7 +2004,7 @@ class Nequip_ensemble(uncertainty_base):
 
         return adv_loss
 
-    def predict_uncertainty(self, data, atom_embedding=None, distances='train_val', extra_embeddings=None,type='full'):
+    def predict_uncertainty(self, data, atom_embedding=None, distances='train', extra_embeddings=None,type='full'):
 
         
         data = self.transform_data_input(data)
@@ -2560,7 +2560,7 @@ class Nequip_error_GPR(uncertainty_base):
         self.test_errors = test_errors
         self.test_energies = test_energies
 
-    def adversarial_loss(self, data, T, distances='train_val'):
+    def adversarial_loss(self, data, T, distances='train'):
 
         out = self.model(self.transform_data_input(data))
         self.atom_embedding = out['node_features']
@@ -2584,7 +2584,7 @@ class Nequip_error_GPR(uncertainty_base):
 
         return adv_loss
 
-    def predict_uncertainty(self, data, atom_embedding=None, distances='train_val', extra_embeddings=None,type='full'):
+    def predict_uncertainty(self, data, atom_embedding=None, distances='train', extra_embeddings=None,type='full'):
 
         if atom_embedding is None:
             data = self.transform_data_input(data)
@@ -2784,7 +2784,7 @@ class Nequip_error_pos_NN(uncertainty_base):
             include_keys=['errors']
         )
 
-    def adversarial_loss(self, data, T, distances='train_val'):
+    def adversarial_loss(self, data, T, distances='train'):
 
         out = self.model(self.transform_data_input(data))
         self.atom_embedding = out['node_features']
@@ -2808,7 +2808,7 @@ class Nequip_error_pos_NN(uncertainty_base):
 
         return adv_loss
 
-    def predict_uncertainty(self, data, atom_embedding=None, distances='train_val', extra_embeddings=None,type='full'):
+    def predict_uncertainty(self, data, atom_embedding=None, distances='train', extra_embeddings=None,type='full'):
 
         if atom_embedding is None:
             data = self.transform_data_input(data)
