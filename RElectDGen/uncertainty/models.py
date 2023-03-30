@@ -55,6 +55,71 @@ class uncertainty_base():
         
         return data
 
+class Nequip_unc_oracle(uncertainty_base):
+    def __init__(self, model, config, MLP_config):
+        super().__init__(model, config, MLP_config)
+
+    def calibrate(self, debug=False):
+        pass
+
+    def adversarial_loss(self, data, T, distances='train_val'):
+        pass
+
+    def predict_uncertainty(self, atoms, atom_embedding=None, distances='train_val', extra_embeddings=None, type='full'):
+        assert isinstance(Atoms,atoms)
+        true_forces = atoms.get_forces()
+        data = self.transform_data_input(atoms)
+
+        if atom_embedding is None:
+            out = self.model(data)
+            atom_embedding = out['node_features']
+            self.atom_embedding = atom_embedding
+            self.atom_forces = out['forces']
+        else:
+            atom_embedding = atom_embedding.to(device=torch.device(self.device))
+
+        uncertainties = torch.zeros(atom_embedding.shape[0],2, device=self.device)
+
+        uncertainties[:,0] = torch.linalg.norm(true_forces-self.atom_forces,axis=-1)
+        return uncertainties
+
+    def predict_from_traj(self, traj, max=True, batch_size=1):
+        uncertainty = []
+        atom_embeddings = []
+        self.pred_forces = []
+        # data = [self.transform(atoms) for atoms in traj]
+        # dataset = DataLoader(data, batch_size=batch_size)
+        # for i, batch in enumerate(dataset):
+        #     uncertainty.append(self.predict_uncertainty(batch))
+        #     atom_embeddings.append(self.atom_embedding)
+        ti = time.time()
+        times = np.empty(len(traj))
+        for i, atoms in enumerate(traj):
+            uncertainty.append(self.predict_uncertainty(atoms).detach())
+            atom_embeddings.append(self.atom_embedding.detach())
+            self.pred_forces.append(self.atom_forces.detach())
+            tf = time.time()
+            times[i] = tf-ti
+            ti = tf
+        
+        print(f'Dataset Prediction Times:\nAverage Time: {times.mean()}, Max Time: {times.max()}, Min Time: {times.min()}')
+
+        uncertainty = torch.cat(uncertainty).cpu()
+        atom_embeddings = torch.cat(atom_embeddings).cpu()
+
+        if max:
+            atom_lengths = [len(atoms) for atoms in traj]
+            start_inds = [0] + np.cumsum(atom_lengths[:-1]).tolist()
+            end_inds = np.cumsum(atom_lengths).tolist()
+
+            uncertainty_partition = [uncertainty[si:ei] for si, ei in zip(start_inds,end_inds)]
+            embeddings = [atom_embeddings[si:ei] for si, ei in zip(start_inds,end_inds)]
+            return torch.vstack([unc[torch.argmax(unc.sum(dim=1))] for unc in uncertainty_partition]), embeddings
+        else:
+            self.pred_forces = torch.cat(self.pred_forces).cpu()
+            self.pred_forces = self.pred_forces.reshape(len(traj),-1,3)
+            uncertainty = uncertainty.reshape(len(traj),-1,2)
+            return uncertainty, atom_embeddings.reshape(len(traj),-1,atom_embeddings.shape[-1])
 
 class Nequip_latent_distance(uncertainty_base):
     def __init__(self, model, config, MLP_config):
@@ -283,7 +348,10 @@ class Nequip_latent_distance(uncertainty_base):
         for i, atoms in enumerate(traj):
             uncertainty.append(self.predict_uncertainty(atoms).detach())
             atom_embeddings.append(self.atom_embedding.detach())
-            self.pred_forces.append(self.atom_forces.detach())
+            if max:
+                self.pred_forces.append(self.atom_forces.detach().tolist())
+            else:
+                self.pred_forces.append(self.atom_forces.detach())
             tf = time.time()
             times[i] = tf-ti
             ti = tf
