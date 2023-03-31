@@ -65,19 +65,21 @@ class Nequip_unc_oracle(uncertainty_base):
     def adversarial_loss(self, data, T, distances='train'):
         pass
 
-    def predict_uncertainty(self, atoms, atom_embedding=None, distances='train', extra_embeddings=None, type='full'):
-        assert isinstance(atoms,Atoms)
-        true_forces = torch.tensor(atoms.get_forces())
-        data = self.transform_data_input(atoms)
-
-        if atom_embedding is None:
-            out = self.model(data)
-            atom_embedding = out['node_features']
-            self.atom_embedding = atom_embedding
-            self.atom_forces = out['forces']
+    def predict_uncertainty(self, data, atom_embedding=None, distances='train', extra_embeddings=None, type='full'):
+        if isinstance(data,Atoms):
+            true_forces = torch.tensor(data.get_forces())
+        elif isinstance(data,AtomicData):
+            true_forces = data['forces']
         else:
-            atom_embedding = atom_embedding.to(device=torch.device(self.device))
+            raise TypeError(f'Data must be either Atoms or Atomic Data, but got {data.__class__}')
+        
+        data = self.transform_data_input(data)
 
+        out = self.model(data)
+        atom_embedding = out['node_features']
+        self.atom_embedding = atom_embedding
+        self.atom_forces = out['forces']
+        
         uncertainties = torch.zeros(atom_embedding.shape[0],2, device=self.device)
 
         uncertainties[:,0] = torch.linalg.norm(true_forces-self.atom_forces,axis=-1)
