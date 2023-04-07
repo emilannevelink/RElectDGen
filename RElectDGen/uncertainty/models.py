@@ -1666,7 +1666,7 @@ class Nequip_ensemble(uncertainty_base):
         calibration_coeffs = {}
         for key in self.MLP_config.get('chemical_symbol_to_type'):    
             if self.separate_unc:
-                calibration_coeffs[key] = np.zeros(self.calibration_polyorder+1,3)
+                calibration_coeffs[key] = np.zeros((self.calibration_polyorder+1,3))
                 if self.calibration_polyorder>0:
                     calibration_coeffs[key][-2,:] = 1
             else:
@@ -1678,7 +1678,10 @@ class Nequip_ensemble(uncertainty_base):
 
         uncertainty_dir = os.path.join(self.MLP_config['workdir'],self.config.get('uncertainty_dir', 'uncertainty'))
         os.makedirs(uncertainty_dir,exist_ok=True)
-        self.calibration_coeffs_filename =  os.path.join(uncertainty_dir, self.config.get('uncertainty_calibration_filename', f'uncertainty_calibration_coeffs.json'))
+        if self.separate_unc:
+            self.calibration_coeffs_filename =  os.path.join(uncertainty_dir, self.config.get('uncertainty_calibration_filename', f'uncertainty_calibration_coeffs_sep.json'))
+        else:
+            self.calibration_coeffs_filename =  os.path.join(uncertainty_dir, self.config.get('uncertainty_calibration_filename', f'uncertainty_calibration_coeffs.json'))
 
     def calibrate(self, debug = False):
         
@@ -1713,7 +1716,7 @@ class Nequip_ensemble(uncertainty_base):
                     print(e)
             data = {}
             for key in self.MLP_config.get('chemical_symbol_to_type'):
-                data[key] = list(calibration_coeffs[key])
+                data[key] = calibration_coeffs[key].tolist()
 
             with open(self.calibration_coeffs_filename,'w') as fl:
                 json.dump(data,fl)
@@ -1913,8 +1916,11 @@ class Nequip_ensemble(uncertainty_base):
             force_norm = data['forces'].norm(dim=1).unsqueeze(dim=1)
             force_lim = torch.max(force_norm,torch.ones_like(force_norm,device=self.device))
             perc_err = ((force_outputs.detach().mean(dim=0)-data['forces'])).abs().cpu()/force_lim.cpu()
-            force_error = ((force_outputs.detach().mean(dim=0)-data['forces'])).norm(dim=1)
-            pred_uncertainty = self.predict_uncertainty(data).sum(dim=-1).detach()
+            force_error = ((force_outputs.detach().mean(dim=0)-data['forces']))
+            if not self.separate_unc:
+                force_error = force_error.norm(dim=1)
+            
+            pred_uncertainty = self.predict_uncertainty(data).sum(dim=1).detach()
             # print(force_error,flush=True)
             for key in self.MLP_config.get('chemical_symbol_to_type'):
                 mask = (data['atom_types']==self.MLP_config.get('chemical_symbol_to_type')[key]).flatten()
@@ -2036,11 +2042,14 @@ class Nequip_ensemble(uncertainty_base):
         else:
             uncertainties_std = force_outputs.std(axis=0).norm(dim=-1)
         
-        uncertainties_mean = torch.zeros_like(uncertainties_std,device=self.device)
+        uncertainty = torch.zeros((uncertainties_std.shape[0],2),device=self.device)
 
-        uncertainty = torch.transpose(torch.stack([uncertainties_mean,uncertainties_std]),0,1).to(self.device)
+        # uncertainty = torch.transpose(torch.stack([uncertainties_mean,uncertainties_std]),0,1).to(self.device)
 
-        uncertainty[:,1] = self.apply_calibration(out['atom_types'],uncertainty[:,1])
+        if self.separate_unc:
+            uncertainty[:,1] = self.apply_calibration(out['atom_types'],uncertainties_std).max(dim=-1).values
+        else:
+            uncertainty[:,1] = self.apply_calibration(out['atom_types'],uncertainties_std)
         return uncertainty
 
     def predict_from_traj(self, traj, max=True, batch_size=1):

@@ -23,7 +23,7 @@ def find_NLL_params(errors,raw_uncertainties,polyorder=1):
         print(res,flush=True)
         coeffs = res.x
     else:
-        coeffs = np.empty(polyorder+1,*raw_uncertainties.shape[1:])
+        coeffs = np.empty((polyorder+1,*raw_uncertainties.shape[1:]))
         for i in range(raw_uncertainties.shape[1]):
             coeffs[:,i] = find_NLL_params(errors[:,i],raw_uncertainties[:,i],polyorder)
 
