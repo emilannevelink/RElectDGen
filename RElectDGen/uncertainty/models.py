@@ -891,6 +891,7 @@ class Nequip_ensemble_NN(uncertainty_base):
         os.makedirs(uncertainty_dir,exist_ok=True)
         self.state_dict_func = lambda n: os.path.join(uncertainty_dir, f'uncertainty_state_dict_{n}.pth')
         self.metrics_func = lambda n: os.path.join(uncertainty_dir, f'uncertainty_metrics_{n}.csv')
+        
 
     def load_NNs(self):
         self.NNs = []
@@ -1655,16 +1656,25 @@ class Nequip_ensemble(uncertainty_base):
 
         self.config = config
         self.calibration_type = self.config.get('UQ_calibration_type','linear')
+
+        self.separate_unc = self.config.get('separate_unc',False)
+
         if self.calibration_type == 'power':
             self.calibration_polyorder = 1
         else:
             self.calibration_polyorder = self.config.get('calibration_polyorder',1)
         calibration_coeffs = {}
         for key in self.MLP_config.get('chemical_symbol_to_type'):    
-            calibration_coeffs[key] = np.zeros(self.calibration_polyorder+1)
-            if self.calibration_polyorder>0:
-                calibration_coeffs[key][-2] = 1
+            if self.separate_unc:
+                calibration_coeffs[key] = np.zeros(self.calibration_polyorder+1,3)
+                if self.calibration_polyorder>0:
+                    calibration_coeffs[key][-2,:] = 1
+            else:
+                calibration_coeffs[key] = np.zeros(self.calibration_polyorder+1)
+                if self.calibration_polyorder>0:
+                    calibration_coeffs[key][-2] = 1
         self.calibration_coeffs = calibration_coeffs
+        
 
         uncertainty_dir = os.path.join(self.MLP_config['workdir'],self.config.get('uncertainty_dir', 'uncertainty'))
         os.makedirs(uncertainty_dir,exist_ok=True)
@@ -2021,10 +2031,14 @@ class Nequip_ensemble(uncertainty_base):
         self.atom_energies = atom_energies.mean(dim=0)
         self.atom_embedding = out['node_features']
         
-        uncertainties_std = force_outputs.std(axis=0).norm(dim=-1)
+        if self.separate_unc:
+            uncertainties_std = force_outputs.std(axis=0)
+        else:
+            uncertainties_std = force_outputs.std(axis=0).norm(dim=-1)
+        
         uncertainties_mean = torch.zeros_like(uncertainties_std,device=self.device)
 
-        uncertainty = torch.vstack([uncertainties_mean,uncertainties_std]).T.to(self.device)
+        uncertainty = torch.transpose(torch.stack([uncertainties_mean,uncertainties_std]),0,1).to(self.device)
 
         uncertainty[:,1] = self.apply_calibration(out['atom_types'],uncertainty[:,1])
         return uncertainty
