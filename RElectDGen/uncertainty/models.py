@@ -132,6 +132,7 @@ class Nequip_latent_distance(uncertainty_base):
         self.parameter_length = 2 if func_name=='optimize2params' else self.latent_size+1
         params_file = config.get('params_file','uncertainty_params.pkl')
         self.params_file = os.path.join(self.MLP_config['workdir'],params_file)
+        self.separate_unc = self.config.get('separate_unc',False)
 
     def parse_data(self):
         dataset = dataset_from_config(self.MLP_config)
@@ -168,8 +169,11 @@ class Nequip_latent_distance(uncertainty_base):
             for key in self.MLP_config.get('chemical_symbol_to_type'):
                 mask = (data['atom_types']==self.MLP_config.get('chemical_symbol_to_type')[key]).flatten()
                 test_embeddings[key] = torch.cat([test_embeddings[key],out['node_features'][mask].detach()])
-                test_errors[key] = torch.cat([test_errors[key],error.mean(dim=1)[mask].detach()])
                 test_energies[key] = torch.cat([test_energies[key], out['atomic_energy'][mask].detach()])
+                if self.separate_unc:
+                    test_errors[key] = torch.cat([test_errors[key],error[mask].detach()])
+                else:
+                    test_errors[key] = torch.cat([test_errors[key],error.mean(dim=1)[mask].detach()])
         
         self.test_embeddings = test_embeddings
         self.test_energies = test_energies
@@ -195,7 +199,7 @@ class Nequip_latent_distance(uncertainty_base):
 
                 params[key] = []
                 for _ in range(self.n_ensemble):
-                    params[key].append(self.params_func(self.test_errors[key].reshape(-1).detach().cpu().numpy(),min_vectors[key]))
+                    params[key].append(self.params_func(self.test_errors[key].squeeze().detach().cpu().numpy(),min_vectors[key]))
 
             self.params = params
             self.save_params()
@@ -313,27 +317,53 @@ class Nequip_latent_distance(uncertainty_base):
         else:
             distance = torch.abs(vector)
 
-        uncertainty_raw = torch.zeros(self.n_ensemble,distance.shape[0], device=self.device)
-        for i in range(self.n_ensemble):
-            sig_1 = torch.tensor(self.params[key][i][0]).abs().type_as(distance)
-            sig_2 = torch.tensor(self.params[key][i][1:]).abs().type_as(distance)
-            
-            if type == 'full':
-                uncertainty = sig_1 + torch.sum(distance*sig_2,axis=1)
-            elif type == 'std':
-                uncertainty = torch.sum(distance*sig_2,axis=1)
+        
+        if not self.separate_unc:
+            uncertainty_raw = torch.zeros(self.n_ensemble,distance.shape[0], device=self.device)
+            for i in range(self.n_ensemble):
+                sig_1 = torch.tensor(self.params[key][i][0]).abs().type_as(distance)
+                sig_2 = torch.tensor(self.params[key][i][1:]).abs().type_as(distance)
+                
+                if type == 'full':
+                    uncertainty = sig_1 + torch.sum(distance*sig_2,axis=1)
+                elif type == 'std':
+                    uncertainty = torch.sum(distance*sig_2,axis=1)
 
-            uncertainty_raw[i] = uncertainty
-        uncertainties_mean = torch.mean(uncertainty_raw,axis=0)
-        if uncertainty_raw.shape[0] == 1:
-            uncertainties_std = torch.zeros_like(uncertainties_mean)
+                uncertainty_raw[i] = uncertainty
+            uncertainties_mean = torch.mean(uncertainty_raw,axis=0)
+            if uncertainty_raw.shape[0] == 1:
+                uncertainties_std = torch.zeros_like(uncertainties_mean)
+            else:
+                uncertainties_std = torch.std(uncertainty_raw,axis=0)
+
+            uncertainty = torch.vstack([uncertainties_mean,uncertainties_std]).T
+            uncertainty *= self.config.get('uncertainty_factor',1) ### for NLL to choose confidence level
         else:
-            uncertainties_std = torch.std(uncertainty_raw,axis=0)
+            uncertainty_sep = torch.zeros(3,distance.shape[0],2, device=self.device)
+            for j in range(3):
+                uncertainty_raw = torch.zeros(self.n_ensemble,distance.shape[0], device=self.device)
+                for i in range(self.n_ensemble):
+                    sig_1 = torch.tensor(self.params[key][i][0]).abs().type_as(distance)
+                    sig_2 = torch.tensor(self.params[key][i][1:]).abs().type_as(distance)
+                    
+                    if type == 'full':
+                        uncertainty = sig_1 + torch.sum(distance*sig_2,axis=1)
+                    elif type == 'std':
+                        uncertainty = torch.sum(distance*sig_2,axis=1)
 
-        uncertainty = torch.vstack([uncertainties_mean,uncertainties_std]).T
-        uncertainty *= self.config.get('uncertainty_factor',1) ### for NLL to choose confidence level
-        # uncertainty_ens = uncertainty_mean + uncertainty_std
+                    uncertainty_raw[i] = uncertainty
+                uncertainties_mean = torch.mean(uncertainty_raw,axis=0)
+                if uncertainty_raw.shape[0] == 1:
+                    uncertainties_std = torch.zeros_like(uncertainties_mean)
+                else:
+                    uncertainties_std = torch.std(uncertainty_raw,axis=0)
 
+                uncertainty = torch.vstack([uncertainties_mean,uncertainties_std]).T
+                uncertainty *= self.config.get('uncertainty_factor',1) ### for NLL to choose confidence level
+                uncertainty_sep[j] = uncertainty
+            
+            max_index = torch.max(uncertainty_sep.sum(dim=-1),dim=0).indices
+            uncertainty = uncertainty_sep[max_index]
         return uncertainty
 
     def predict_from_traj(self, traj, max=True, batch_size=1):
@@ -426,6 +456,7 @@ class Nequip_error_NN(uncertainty_base):
         os.makedirs(uncertainty_dir,exist_ok=True)
         self.state_dict_func = lambda n: os.path.join(uncertainty_dir, f'uncertainty_state_dict_{n}.pth')
         self.metrics_func = lambda n: os.path.join(uncertainty_dir, f'uncertainty_metrics_{n}.csv')
+        self.separate_unc = self.config.get('separate_unc',False)
 
     def load_NNs(self):
         self.NNs = []
@@ -473,7 +504,10 @@ class Nequip_error_NN(uncertainty_base):
             train_embeddings = torch.cat([train_embeddings,out['node_features'].detach()])
             
             error = torch.absolute(out['forces'] - data.forces)
-            train_errors = torch.cat([train_errors,error.mean(dim=1)])
+            if not self.separate_unc:
+                train_errors = torch.cat([train_errors,error.mean(dim=1).detach()])
+            else:
+                train_errors = torch.cat([train_errors,error.detach()])
 
         self.train_energies = train_energies
         self.train_embeddings = train_embeddings
@@ -487,9 +521,11 @@ class Nequip_error_NN(uncertainty_base):
             test_energies = torch.cat([test_energies, out['atomic_energy'].mean().detach().unsqueeze(0)])
 
             error = torch.absolute(out['forces'] - data.forces)
-
             test_embeddings = torch.cat([test_embeddings,out['node_features'].detach()])
-            test_errors = torch.cat([test_errors,error.mean(dim=1).detach()])
+            if not self.separate_unc:
+                test_errors = torch.cat([test_errors,error.mean(dim=1).detach()])
+            else:
+                test_errors = torch.cat([test_errors,error.detach()])
         
         self.test_embeddings = test_embeddings
         self.test_errors = test_errors

@@ -54,12 +54,17 @@ def optimize2params(test_errors, min_vectors):
 
 def optimizevecparams(test_errors, min_vectors):
 
-    min_vectors = np.abs(min_vectors)
-    params0 = np.random.rand(min_vectors.shape[1]+1) # [0.01]*(min_vectors.shape[1]+1)
-    bounds = [(0,None)]*len(params0)
-    res = minimize(optimizeparams,params0,args=(test_errors,min_vectors),bounds=bounds,method='Nelder-Mead', options={'maxiter':1000000})
-    print(res,flush=True)
-    params = np.abs(res.x)
+    if len(test_errors.shape)==1:
+        min_vectors = np.abs(min_vectors)
+        params0 = np.random.rand(min_vectors.shape[1]+1) # [0.01]*(min_vectors.shape[1]+1)
+        bounds = [(0,None)]*len(params0)
+        res = minimize(optimizeparams,params0,args=(test_errors,min_vectors),bounds=bounds,method='Nelder-Mead', options={'maxiter':1000000})
+        print(res,flush=True)
+        params = np.abs(res.x)
+    else:
+        params = np.empty((min_vectors.shape[1]+1,3))
+        for i in range(3):
+            params[:,i] = optimizevecparams(test_errors[:,i],min_vectors)
 
     return params
 
