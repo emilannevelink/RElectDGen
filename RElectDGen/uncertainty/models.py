@@ -2560,6 +2560,7 @@ class Nequip_error_GPR(uncertainty_base):
 
         self.ninducing_points = self.config.get('GPR_ninducing_points', 100)
         self.unc_epochs = self.config.get('uncertainty_epochs', 1000)
+        self.learning_rate = self.config.get('GPR_learning_rate',0.01)
 
         uncertainty_dir = os.path.join(self.MLP_config['workdir'],self.config.get('uncertainty_dir', 'uncertainty'))
         os.makedirs(uncertainty_dir,exist_ok=True)
@@ -2584,7 +2585,7 @@ class Nequip_error_GPR(uncertainty_base):
         self.parse_data()
 
         if not load:
-            self.GPR = uncertainty_GPR(self.latent_size,self.ninducing_points)
+            self.GPR = uncertainty_GPR(self.latent_size,self.ninducing_points,self.unc_epochs,lr=self.learning_rate)
             self.GPR.train(self.test_embeddings, self.test_errors)
             torch.save(self.GPR.get_state_dict(),self.state_dict_filename)
             pd.DataFrame(self.GPR.metrics).to_csv(self.metrics_filename)
