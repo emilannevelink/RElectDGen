@@ -1956,7 +1956,7 @@ class Nequip_ensemble(uncertainty_base):
             if not self.separate_unc:
                 force_error = force_error.norm(dim=1)
             
-            pred_uncertainty = self.predict_uncertainty(data).sum(dim=1).detach()
+            pred_uncertainty = self.predict_uncertainty(data,type='full').detach()
             # print(force_error,flush=True)
             for key in self.MLP_config.get('chemical_symbol_to_type'):
                 mask = (data['atom_types']==self.MLP_config.get('chemical_symbol_to_type')[key]).flatten()
@@ -2058,7 +2058,7 @@ class Nequip_ensemble(uncertainty_base):
 
         return adv_loss
 
-    def predict_uncertainty(self, data, atom_embedding=None, distances='train', extra_embeddings=None,type='full'):
+    def predict_uncertainty(self, data, atom_embedding=None, distances='train', extra_embeddings=None,type='single'):
 
         
         data = self.transform_data_input(data)
@@ -2073,6 +2073,7 @@ class Nequip_ensemble(uncertainty_base):
         self.atom_energies = atom_energies.mean(dim=0)
         self.atom_embedding = out['node_features']
         
+        
         if self.separate_unc:
             uncertainties_std = force_outputs.std(axis=0)
         else:
@@ -2082,6 +2083,8 @@ class Nequip_ensemble(uncertainty_base):
 
         # uncertainty = torch.transpose(torch.stack([uncertainties_mean,uncertainties_std]),0,1).to(self.device)
 
+        if type =='full': # and self.separate_unc
+            return self.apply_calibration(out['atom_types'],uncertainties_std)
         if self.separate_unc:
             uncertainty[:,1] = self.apply_calibration(out['atom_types'],uncertainties_std).max(dim=-1).values
         else:
@@ -2660,10 +2663,10 @@ class Nequip_error_GPR(uncertainty_base):
         if type == 'full':
             # uncertainty_ens = uncertainty_mean + uncertainty_std
             uncertainty = torch.vstack([mean,upper_confidence-mean]).T.to(self.device)
-        elif type == 'mean':
+        elif type == 'std':
             # uncertainty_ens = uncertainty_mean
             uncertainty = torch.vstack([torch.zeros_like(mean),upper_confidence-mean]).T.to(self.device)
-        elif type == 'std':
+        elif type == 'mean':
             # uncertainty_ens = uncertainty_std
             uncertainty = torch.vstack([mean,torch.zeros_like(mean)]).T.to(self.device)
 
