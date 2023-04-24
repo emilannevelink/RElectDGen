@@ -535,8 +535,8 @@ class Nequip_error_NN(uncertainty_base):
         self.test_errors = test_errors
         self.test_energies = test_energies
 
-        self.all_embeddings = np.concatenate([train_embeddings,test_embeddings])
-        self.all_errors = np.concatenate([train_errors,test_errors])
+        self.all_embeddings = torch.cat([train_embeddings,test_embeddings])
+        self.all_errors = torch.cat([train_errors,test_errors])
 
     def adversarial_loss(self, data, T, distances='train'):
 
