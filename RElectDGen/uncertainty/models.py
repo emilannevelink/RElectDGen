@@ -451,6 +451,7 @@ class Nequip_error_NN(uncertainty_base):
 
         self.hidden_dimensions = self.config.get('uncertainty_hidden_dimensions', [])
         self.unc_epochs = self.config.get('uncertainty_epochs', 2000)
+        self.unc_data = self.config.get('uncertainty_data','all')
 
         uncertainty_dir = os.path.join(self.MLP_config['workdir'],self.config.get('uncertainty_dir', 'uncertainty'))
         os.makedirs(uncertainty_dir,exist_ok=True)
@@ -486,7 +487,10 @@ class Nequip_error_NN(uncertainty_base):
             for n in train_indices:    
                 #train NN to fit energies
                 NN = uncertainty_NN(self.latent_size, self.hidden_dimensions,epochs=self.unc_epochs)
-                NN.train(self.test_embeddings, self.test_errors)
+                if self.unc_data == 'all':
+                    NN.train(self.all_embeddings, self.all_errors)
+                else:
+                    NN.train(self.test_embeddings, self.test_errors)
                 self.NNs.append(NN)
                 torch.save(NN.get_state_dict(), self.state_dict_func(n))
                 pd.DataFrame(NN.metrics).to_csv( self.metrics_func(n))
@@ -530,6 +534,9 @@ class Nequip_error_NN(uncertainty_base):
         self.test_embeddings = test_embeddings
         self.test_errors = test_errors
         self.test_energies = test_energies
+
+        self.all_embeddings = np.concatenate([train_embeddings,test_embeddings])
+        self.all_errors = np.concatenate([train_errors,test_errors])
 
     def adversarial_loss(self, data, T, distances='train'):
 
@@ -1710,7 +1717,6 @@ class Nequip_ensemble(uncertainty_base):
                 if self.calibration_polyorder>0:
                     calibration_coeffs[key][-2] = 1
         self.calibration_coeffs = calibration_coeffs
-        
 
         uncertainty_dir = os.path.join(self.MLP_config['workdir'],self.config.get('uncertainty_dir', 'uncertainty'))
         os.makedirs(uncertainty_dir,exist_ok=True)
