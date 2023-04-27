@@ -1,4 +1,4 @@
-from genericpath import isfile
+from functools import partial
 import json
 import sys
 import os
@@ -163,6 +163,7 @@ class uncertainty_base():
         else:
             self.pred_forces = torch.cat(self.pred_forces).cpu()
             self.pred_forces = self.pred_forces.reshape(len(traj),-1,3)
+            self.pred_energies = torch.cat(self.pred_energies).cpu()
             uncertainty = uncertainty.reshape(len(traj),-1,2)
             return uncertainty, atom_embeddings.reshape(len(traj),-1,atom_embeddings.shape[-1])
         
@@ -275,6 +276,7 @@ class Nequip_latent_distance(uncertainty_base):
 
         func_name = config.get('params_func','optimize2params')
         self.params_func = getattr(optimization_functions,func_name)
+        self.params_func = partial(self.params_func,dist=config.get('UQ_distribution_type','norm'))
         self.parameter_length = 2 if func_name=='optimize2params' else self.latent_size+1
         params_file = config.get('params_file','uncertainty_params.pkl')
         self.params_file = os.path.join(self.MLP_config['workdir'],params_file)
@@ -872,7 +874,7 @@ class Nequip_reg_error_NN(uncertainty_base):
             atom_embedding = out['node_features']
             self.atom_embedding = atom_embedding
             self.atom_forces = out['forces']
-            self.atoms_energy = out['energy']
+            self.atoms_energy = out['total_energy']
 
         uncertainty_raw = torch.zeros(self.n_ensemble,atom_embedding.shape[0])
         for i, NN in enumerate(self.NNs):
@@ -896,45 +898,6 @@ class Nequip_reg_error_NN(uncertainty_base):
 
         return uncertainty
 
-    def predict_from_traj(self, traj, max=True, batch_size=1):
-        uncertainty = []
-        atom_embeddings = []
-        self.pred_forces = []
-        # data = [self.transform(atoms) for atoms in traj]
-        # dataset = DataLoader(data, batch_size=batch_size)
-        # for i, batch in enumerate(dataset):
-        #     uncertainty.append(self.predict_uncertainty(batch))
-        #     atom_embeddings.append(self.atom_embedding)
-        ti = time.time()
-        times = np.empty(len(traj))
-        for i, atoms in enumerate(traj):
-            uncertainty.append(self.predict_uncertainty(atoms).detach())
-            atom_embeddings.append(self.atom_embedding.detach())
-            self.pred_forces.append(self.atom_forces.detach())
-            tf = time.time()
-            times[i] = tf-ti
-            ti = tf
-
-        print(f'Dataset Prediction Times:\nAverage Time: {times.mean()}, Max Time: {times.max()}, Min Time: {times.min()}')
-        
-        uncertainty = torch.cat(uncertainty).detach().cpu()
-        atom_embeddings = torch.cat(atom_embeddings).detach().cpu()
-
-        if max:
-            atom_lengths = [len(atoms) for atoms in traj]
-            start_inds = [0] + np.cumsum(atom_lengths[:-1]).tolist()
-            end_inds = np.cumsum(atom_lengths).tolist()
-
-            uncertainty_partition = [uncertainty[si:ei] for si, ei in zip(start_inds,end_inds)]
-            embeddings = [atom_embeddings[si:ei] for si, ei in zip(start_inds,end_inds)]
-            return torch.tensor([unc.max() for unc in uncertainty_partition]), embeddings
-        else:
-            self.pred_forces = torch.cat(self.pred_forces).cpu()
-            self.pred_forces = self.pred_forces.reshape(len(traj),-1,3)
-            uncertainty = uncertainty.reshape(len(traj),-1,2)
-            return uncertainty, atom_embeddings.reshape(len(traj),-1,atom_embeddings.shape[-1])
-
-    
 
 class Nequip_latent_distanceNN(uncertainty_base):
     def __init__(self, model, config, MLP_config):

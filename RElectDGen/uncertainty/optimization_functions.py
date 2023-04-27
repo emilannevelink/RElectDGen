@@ -41,24 +41,24 @@ def npNLL(errors,uncertainties):
 def MSE(errors,uncertainties):
     return torch.pow((errors-uncertainties),2)
 
-def optimize2params(test_errors, min_vectors):
+def optimize2params(test_errors, min_vectors,dist='norm'):
 
     min_distances = np.linalg.norm(min_vectors,axis=1).reshape(-1,1)
     params0 = np.random.rand(2)
     bounds = [(0,None)]*len(params0)
-    res = minimize(optimizeparams,params0,args=(test_errors,min_distances),bounds=bounds,method='Nelder-Mead')
+    res = minimize(optimizeparams,params0,args=(test_errors,min_distances,dist),bounds=bounds,method='Nelder-Mead')
     print(res,flush=True)
     params = np.abs(res.x)
 
     return params
 
-def optimizevecparams(test_errors, min_vectors):
+def optimizevecparams(test_errors, min_vectors,dist='norm'):
 
     if len(test_errors.shape)==1:
         min_vectors = np.abs(min_vectors)
         params0 = np.random.rand(min_vectors.shape[1]+1) # [0.01]*(min_vectors.shape[1]+1)
         bounds = [(0,None)]*len(params0)
-        res = minimize(optimizeparams,params0,args=(test_errors,min_vectors),bounds=bounds,method='Nelder-Mead', options={'maxiter':1000000})
+        res = minimize(optimizeparams,params0,args=(test_errors,min_vectors,dist),bounds=bounds,method='Nelder-Mead', options={'maxiter':1000000})
         print(res,flush=True)
         params = np.abs(res.x)
     else:
@@ -68,14 +68,17 @@ def optimizevecparams(test_errors, min_vectors):
 
     return params
 
-def optimizeparams(params,error_d,d):
+def optimizeparams(params,error_d,d,dist='norm'):
     sig_1, sig_2 = params[0],params[1:]
     
     sd = np.abs(sig_1) + (d*np.abs(sig_2)).sum(axis=1)
     
     # negLL = -np.sum( stats.norm.logpdf(error_d, loc=0, scale=sd) )
     # negLL = NLL(error_d,sd)
-    negLL = (np.power(error_d/sd,2) + np.log(sd)).mean()
+    if dist == 'norm':
+        negLL = (np.power(error_d/sd,2) + np.log(sd)).mean()
+    elif dist == 'maxwell':
+        negLL = (3*np.log(sd)-2*np.log(error_d)+0.5*np.power(error_d/sd,2)).mean() # + const
     
     return negLL    
 
@@ -325,8 +328,10 @@ class uncertainty_reg_NN():
     lr = 0.001, 
     momentum=0.9,
     patience= None,
+    error_norm_cutoff = 0.01,
     min_lr = None) -> None:
         self.train_percent = train_percent
+        self.error_norm_cutoff = error_norm_cutoff
         if patience is None:
             patience = epochs/10
         if min_lr is None:
@@ -357,25 +362,30 @@ class uncertainty_reg_NN():
         self.epochs = epochs
         # self.loss = torch.nn.MSELoss()
         # self.loss = torch.nn.NLLLoss()
-        self.loss = NLL
+        self.loss = NLL_raw
         self.optim = torch.optim.Adam(self.model.parameters(), lr = lr)
         self.lr_scheduler = LRScheduler(self.optim, patience, self.min_lr)
 
     def train(self, x, y):
         # x = torch.tensor(x).to(self.device) #Break computational graph for training
-        x = x.clone().detach().flatten()
+        x = x.clone().detach()#.flatten()
         # y = torch.tensor(y).to(self.device)
         y = y.clone().detach()
+        y_norm = torch.linalg.norm(y,axis=-1).flatten()
+
+        mask = y_norm>self.error_norm_cutoff
+        x = x[mask]
+        y = y[mask]
+        y_norm = y_norm[mask]
 
         ### Fit a gaussian to the component errors
         norm_args = stats.norm.fit(y,floc=0)
-        res = stats.kstest(y,'norm',norm_args)
+        res = stats.kstest(y.flatten(),'norm',norm_args)
         print('Gaussian arguments are: ', norm_args)
         print('Gaussian fit to components is: ',)
         print(res)
 
         ### get the norm of the error
-        y_norm = torch.linalg.norm(y,axis=-1).flatten()
         res = stats.kstest(y_norm,'maxwell',norm_args)
         print('Maxwell fit to components is: ')
         print(res)
@@ -408,7 +418,7 @@ class uncertainty_reg_NN():
                 unc = torch.exp(self.model(inputs))
 
                 regularize = torch.tensor(stats.maxwell.pdf(errors.unsqueeze(1),*norm_args))
-                loss = self.loss(errors.unsqueeze(1),unc)/regularize
+                loss = (self.loss(errors.unsqueeze(1),unc)/regularize).mean()
 
                 # self.optim.zero_grad()
                 loss.backward()
@@ -424,7 +434,7 @@ class uncertainty_reg_NN():
                 unc = torch.exp(self.model(inputs))
 
                 regularize = torch.tensor(stats.maxwell.pdf(errors.unsqueeze(1),*norm_args))
-                loss = self.loss(errors.unsqueeze(1),unc)/regularize
+                loss = (self.loss(errors.unsqueeze(1),unc)/regularize).mean()
 
                 running_loss += loss.item()*len(inputs)
             validation_loss = running_loss/len(val_ind)
