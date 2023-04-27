@@ -276,7 +276,8 @@ class Nequip_latent_distance(uncertainty_base):
 
         func_name = config.get('params_func','optimize2params')
         self.params_func = getattr(optimization_functions,func_name)
-        self.params_func = partial(self.params_func,dist=config.get('UQ_distribution_type','norm'))
+        self.dist_name = config.get('UQ_distribution_type','norm')
+        self.params_func = partial(self.params_func,dist=self.dist_name)
         self.parameter_length = 2 if func_name=='optimize2params' else self.latent_size+1
         params_file = config.get('params_file','uncertainty_params.pkl')
         self.params_file = os.path.join(self.MLP_config['workdir'],params_file)
@@ -513,85 +514,6 @@ class Nequip_latent_distance(uncertainty_base):
             max_index = torch.max(uncertainty_sep.sum(dim=-1),dim=0).indices
             uncertainty = uncertainty_sep[max_index]
         return uncertainty
-
-    def predict_from_traj(self, traj, max=True, batch_size=1):
-        uncertainty = []
-        atom_embeddings = []
-        self.pred_forces = []
-        # data = [self.transform(atoms) for atoms in traj]
-        # dataset = DataLoader(data, batch_size=batch_size)
-        # for i, batch in enumerate(dataset):
-        #     uncertainty.append(self.predict_uncertainty(batch))
-        #     atom_embeddings.append(self.atom_embedding)
-        ti = time.time()
-        times = np.empty(len(traj))
-        for i, atoms in enumerate(traj):
-            uncertainty.append(self.predict_uncertainty(atoms).detach())
-            atom_embeddings.append(self.atom_embedding.detach())
-            if max:
-                self.pred_forces.append(self.atom_forces.detach().tolist())
-            else:
-                self.pred_forces.append(self.atom_forces.detach())
-            tf = time.time()
-            times[i] = tf-ti
-            ti = tf
-        
-        print(f'Dataset Prediction Times:\nAverage Time: {times.mean()}, Max Time: {times.max()}, Min Time: {times.min()}')
-
-        uncertainty = torch.cat(uncertainty).cpu()
-        atom_embeddings = torch.cat(atom_embeddings).cpu()
-
-        if max:
-            atom_lengths = [len(atoms) for atoms in traj]
-            start_inds = [0] + np.cumsum(atom_lengths[:-1]).tolist()
-            end_inds = np.cumsum(atom_lengths).tolist()
-
-            uncertainty_partition = [uncertainty[si:ei] for si, ei in zip(start_inds,end_inds)]
-            embeddings = [atom_embeddings[si:ei] for si, ei in zip(start_inds,end_inds)]
-            return torch.vstack([unc[torch.argmax(unc.sum(dim=1))] for unc in uncertainty_partition]), embeddings
-        else:
-            self.pred_forces = torch.cat(self.pred_forces).cpu()
-            self.pred_forces = self.pred_forces.reshape(len(traj),-1,3)
-            uncertainty = uncertainty.reshape(len(traj),-1,2)
-            return uncertainty, atom_embeddings.reshape(len(traj),-1,atom_embeddings.shape[-1])
-
-    def plot_fit(self,filename=None):
-        
-        if not hasattr(self, 'test_errors'):
-            self.parse_data()
-            
-        fig, ax = plt.subplots(1,3,figsize=(15,5))
-
-        pred_errors = self.predict_uncertainty(0,self.train_embeddings,type='std').detach()
-        min_err = min([self.train_errors.min()])#,pred_errors.min()])
-        max_err = max([self.train_errors.max()])#,pred_errors.max()])
-        ax[0].scatter(self.train_errors,pred_errors,alpha=0.5)
-        ax[0].plot([min_err,max_err], [min_err,max_err],'k',linestyle='--')
-        ax[0].set_xlabel('True Error')
-        ax[0].set_ylabel('Predicted Error')
-        ax[0].axis('square')
-
-        print((pred_errors-self.train_errors).mean())
-        print((pred_errors-self.train_errors).std())
-
-        pred_errors = self.predict_uncertainty(0,self.test_embeddings,type='mean').detach()
-        min_err = min([self.test_errors.min()])#,pred_errors.min()])
-        max_err = max([self.test_errors.max()])#,pred_errors.max()])
-        ax[1].scatter(self.test_errors,pred_errors,alpha=0.5)
-        ax[1].plot([min_err,max_err], [min_err,max_err],'k',linestyle='--')
-        ax[1].set_xlabel('True Error')
-        ax[1].set_ylabel('Predicted Error')
-        ax[1].axis('square')
-
-        ax[2].axhline(0,color='k',linestyle='--')
-        ax[2].scatter(np.arange(len(self.test_errors)),pred_errors-self.test_errors,alpha=0.5)
-        ax[2].set_ylabel('Residual')
-
-        print((pred_errors-self.test_errors).mean())
-        print((pred_errors-self.test_errors).std())
-
-        if filename is not None:
-            plt.savefig(filename)
 
 class Nequip_error_NN(uncertainty_base):
     def __init__(self, model, config, MLP_config):
