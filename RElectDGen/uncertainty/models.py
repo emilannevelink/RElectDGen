@@ -424,6 +424,7 @@ class Nequip_latent_distance(uncertainty_base):
             atom_embedding = out['node_features']
             self.atom_embedding = atom_embedding
             self.atom_forces = out['forces']
+            self.atoms_energy = out['total_energy']
         else:
             atom_embedding = atom_embedding.to(device=torch.device(self.device))
 
