@@ -5,7 +5,7 @@ import numpy as np
 from .save import get_results_dir
 
 def write_to_tmp_dict(filename,dict):
-    
+    ### TODO: add locking to prevent race condition
     if os.path.isfile(filename):
         with open(filename,'r') as fl:
             old_dict = json.load(fl)
@@ -14,9 +14,32 @@ def write_to_tmp_dict(filename,dict):
 
     new_dict = {**old_dict,**dict}
 
+    path = os.path.dirname(filename)
+    if len(path)>0:
+        os.makedirs(path,exist_ok=True)
     with open(filename,'w') as fl:
         json.dump(new_dict,fl)
 
+def compile_tmp_dicts(dir=None):
+    tmp_dict = {}
+    for fl in os.listdir(dir):
+        if fl.endswith('.json'):
+            filename = os.path.join(dir,fl) if dir is not None else fl
+            with open(filename,'r') as fl:
+                tmp_dict = {**tmp_dict,**json.load(fl)}
+            os.remove(filename)
+    return tmp_dict
+
+def write_tmp_to_logfile(logfile):
+    tmp_dict = compile_tmp_dicts()
+    tmp_dict = {**tmp_dict,**compile_tmp_dicts('tmp')}
+    tmp_df = pd.DataFrame(tmp_dict,index=[0])
+    if os.path.isfile(logfile):
+        df = pd.read_csv(logfile)
+        df = pd.concat([df,tmp_df])
+    else:
+        df = tmp_df
+    df.to_csv(logfile,index=False)
 
 def get_mae_from_results(root='results', index = None):
 
