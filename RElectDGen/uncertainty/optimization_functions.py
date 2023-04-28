@@ -8,12 +8,12 @@ from torch.utils.data import Dataset, DataLoader
 from nequip.data import AtomicData
 import copy
 
-def find_NLL_params(errors,raw_uncertainties,polyorder=1):
+def find_NLL_params(errors,raw_uncertainties,polyorder=1,dist_type='norm'):
     errors = np.array(errors)
     raw_uncertainties = np.array(raw_uncertainties)
     def loss(coeffs):
         uncertainties = np.poly1d(coeffs)(raw_uncertainties)
-        return npNLL(errors,uncertainties)
+        return npNLL(errors,uncertainties,dist_type)
     
     if len(raw_uncertainties.shape)==1:
         coeffs0 = np.random.rand(polyorder+1)
@@ -35,8 +35,11 @@ def NLL(errors,uncertainties):
 def NLL_raw(errors,uncertainties):
     return (torch.pow(errors/uncertainties,2) + torch.log(uncertainties))
 
-def npNLL(errors,uncertainties):
-    return (np.power(errors/uncertainties,2) + np.log(uncertainties)).mean()
+def npNLL(errors,uncertainties,dist_type='norm'):
+    if dist_type == 'norm':
+        return (np.power(errors/uncertainties,2) + np.log(uncertainties)).mean()
+    elif dist_type == 'maxwell':
+        return (3*np.log(uncertainties)-2*np.log(errors)+0.5*np.power(errors/uncertainties,2)).mean() # + const
 
 def MSE(errors,uncertainties):
     return torch.pow((errors-uncertainties),2)

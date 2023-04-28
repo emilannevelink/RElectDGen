@@ -30,9 +30,11 @@ def compile_tmp_dicts(dir=None):
             os.remove(filename)
     return tmp_dict
 
-def write_tmp_to_logfile(logfile):
+def write_tmp_to_logfile(logfile,index=None):
     tmp_dict = compile_tmp_dicts()
     tmp_dict = {**tmp_dict,**compile_tmp_dicts('tmp')}
+    if index is not None:
+        tmp_dict['AL_index'] = index
     tmp_df = pd.DataFrame(tmp_dict,index=[0])
     if os.path.isfile(logfile):
         df = pd.read_csv(logfile)

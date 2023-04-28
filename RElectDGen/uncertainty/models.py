@@ -1817,11 +1817,14 @@ class Nequip_ensemble(uncertainty_base):
 
         self.config = config
         self.calibration_type = self.config.get('UQ_calibration_type','linear')
+        self.dist_name = config.get('UQ_distribution_type','norm')
 
         self.separate_unc = self.config.get('separate_unc',False)
 
         if self.calibration_type == 'power':
             self.calibration_polyorder = 1
+        # elif self.calibration_type == 'prefactor':
+        #     self.calibration_polyorder = 0
         else:
             self.calibration_polyorder = self.config.get('calibration_polyorder',1)
         calibration_coeffs = {}
@@ -1830,10 +1833,14 @@ class Nequip_ensemble(uncertainty_base):
                 calibration_coeffs[key] = np.zeros((self.calibration_polyorder+1,3))
                 if self.calibration_polyorder>0:
                     calibration_coeffs[key][-2,:] = 1
+                # if self.calibration_type == 'prefactor':
+                #     calibration_coeffs[key] = np.ones((self.calibration_polyorder+1,3))
             else:
                 calibration_coeffs[key] = np.zeros(self.calibration_polyorder+1)
                 if self.calibration_polyorder>0:
                     calibration_coeffs[key][-2] = 1
+                # if self.calibration_type == 'prefactor':
+                #     calibration_coeffs[key] = np.ones((self.calibration_polyorder+1))
         self.calibration_coeffs = calibration_coeffs
 
         uncertainty_dir = os.path.join(self.MLP_config['workdir'],self.config.get('uncertainty_dir', 'uncertainty'))
@@ -1864,7 +1871,9 @@ class Nequip_ensemble(uncertainty_base):
                 if self.calibration_type == 'power':
                     calibration_coeffs[key] = np.polyfit(np.log(self.validation_err_pred[key].cpu()),np.log(self.validation_err_real[key].cpu()),self.calibration_polyorder)
                 elif self.calibration_type == 'NLL':
-                    calibration_coeffs[key] = find_NLL_params(self.validation_err_real[key].cpu(),self.validation_err_pred[key].cpu(),self.calibration_polyorder)
+                    calibration_coeffs[key] = find_NLL_params(self.validation_err_real[key].cpu(),self.validation_err_pred[key].cpu(),self.calibration_polyorder,self.dist_name)
+                # elif self.calibration_type == 'prefactor':
+                #     calibration_coeffs[key] = find_NLL_params_prefactor(self.validation_err_real[key].cpu(),self.validation_err_pred[key].cpu(),self.calibration_polyorder,self.dist_name)
                 else:
                     calibration_coeffs[key] = np.polyfit(self.validation_err_pred[key].cpu(),self.validation_err_real[key].cpu(),self.calibration_polyorder)
                 try:
