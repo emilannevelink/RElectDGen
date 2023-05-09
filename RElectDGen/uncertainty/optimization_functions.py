@@ -29,6 +29,27 @@ def find_NLL_params(errors,raw_uncertainties,polyorder=1,dist_type='norm'):
 
     return coeffs
 
+def find_NLL_params_prefactor(errors,raw_uncertainties,polyorder=1,dist_type='norm'):
+    errors = np.array(errors)
+    raw_uncertainties = np.array(raw_uncertainties)
+    def loss(coeffs):
+        uncertainties = coeffs*raw_uncertainties
+        return npNLL(errors,uncertainties,dist_type)
+    
+    if len(raw_uncertainties.shape)==1:
+        coeffs0 = np.random.rand(1)
+        bounds = [(0,None)]*len(coeffs0)
+        # constraints = LinearConstraint()
+        res = minimize(loss,coeffs0,bounds=bounds,method='Nelder-Mead')
+        print(res,flush=True)
+        coeffs = res.x
+    else:
+        coeffs = np.empty((polyorder+1,*raw_uncertainties.shape[1:]))
+        for i in range(raw_uncertainties.shape[1]):
+            coeffs[:,i] = find_NLL_params_prefactor(errors[:,i],raw_uncertainties[:,i],polyorder,dist_type)
+
+    return coeffs
+
 def NLL(errors,uncertainties):
     return (torch.pow(errors/uncertainties,2) + torch.log(uncertainties)).mean()
 

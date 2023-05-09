@@ -19,7 +19,7 @@ from nequip.data import AtomicData, dataset_from_config, DataLoader, ASEDataset
 from nequip.data.transforms import TypeMapper
 
 from . import optimization_functions
-from .optimization_functions import uncertainty_NN, uncertaintydistance_NN, uncertainty_ensemble_NN, train_NN, find_NLL_params, uncertainty_GPR, uncertainty_reg_NN
+from .optimization_functions import uncertainty_NN, uncertaintydistance_NN, uncertainty_ensemble_NN, train_NN, find_NLL_params, uncertainty_GPR, uncertainty_reg_NN, find_NLL_params_prefactor
 
 class uncertainty_base():
     def __init__(self, model, config, MLP_config):
@@ -1777,8 +1777,8 @@ class Nequip_ensemble(uncertainty_base):
 
         if self.calibration_type == 'power':
             self.calibration_polyorder = 1
-        # elif self.calibration_type == 'prefactor':
-        #     self.calibration_polyorder = 0
+        elif self.calibration_type == 'prefactor':
+            self.calibration_polyorder = 0
         else:
             self.calibration_polyorder = self.config.get('calibration_polyorder',1)
         calibration_coeffs = {}
@@ -1787,14 +1787,14 @@ class Nequip_ensemble(uncertainty_base):
                 calibration_coeffs[key] = np.zeros((self.calibration_polyorder+1,3))
                 if self.calibration_polyorder>0:
                     calibration_coeffs[key][-2,:] = 1
-                # if self.calibration_type == 'prefactor':
-                #     calibration_coeffs[key] = np.ones((self.calibration_polyorder+1,3))
+                if self.calibration_type == 'prefactor':
+                    calibration_coeffs[key] = np.ones((self.calibration_polyorder+1,3))
             else:
                 calibration_coeffs[key] = np.zeros(self.calibration_polyorder+1)
                 if self.calibration_polyorder>0:
                     calibration_coeffs[key][-2] = 1
-                # if self.calibration_type == 'prefactor':
-                #     calibration_coeffs[key] = np.ones((self.calibration_polyorder+1))
+                if self.calibration_type == 'prefactor':
+                    calibration_coeffs[key] = np.ones((self.calibration_polyorder+1))
         self.calibration_coeffs = calibration_coeffs
 
         
@@ -1825,8 +1825,8 @@ class Nequip_ensemble(uncertainty_base):
                     calibration_coeffs[key] = np.polyfit(np.log(self.validation_err_pred[key].cpu()),np.log(self.validation_err_real[key].cpu()),self.calibration_polyorder)
                 elif self.calibration_type == 'NLL':
                     calibration_coeffs[key] = find_NLL_params(self.validation_err_real[key].cpu(),self.validation_err_pred[key].cpu(),self.calibration_polyorder,self.dist_name)
-                # elif self.calibration_type == 'prefactor':
-                #     calibration_coeffs[key] = find_NLL_params_prefactor(self.validation_err_real[key].cpu(),self.validation_err_pred[key].cpu(),self.calibration_polyorder,self.dist_name)
+                elif self.calibration_type == 'prefactor':
+                    calibration_coeffs[key] = find_NLL_params_prefactor(self.validation_err_real[key].cpu(),self.validation_err_pred[key].cpu(),self.calibration_polyorder,self.dist_name)
                 else:
                     calibration_coeffs[key] = np.polyfit(self.validation_err_pred[key].cpu(),self.validation_err_real[key].cpu(),self.calibration_polyorder)
                 try:
@@ -2105,6 +2105,9 @@ class Nequip_ensemble(uncertainty_base):
             if self.calibration_type == 'power':
                 coeffs = torch.tensor(self.calibration_coeffs[key],device=self.device)
                 calibrated[mask] = torch.exp(coeffs[1]+torch.log(raw[mask])*coeffs[0])
+            elif self.calibration_type == 'prefactor':
+                coeffs = torch.tensor(self.calibration_coeffs[key],device=self.device)
+                calibrated[mask] = coeffs*raw[mask]
             else:
                 for i, coeff in enumerate(self.calibration_coeffs[key][::-1]):
                     coeffs = torch.tensor(coeff,device=self.device)
