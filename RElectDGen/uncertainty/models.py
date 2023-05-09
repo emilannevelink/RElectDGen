@@ -96,6 +96,30 @@ class uncertainty_base():
         self.all_component_errors = torch.cat([self.train_component_errors,self.test_component_errors])
         self.all_errors = torch.cat([self.train_errors,self.test_errors])
 
+    def parse_UQ_data(self):
+        UQ_config = self.config.get('UQ_config')
+        assert UQ_config is not None
+        
+        UQ_dataset = dataset_from_config(UQ_config)
+        UQ_indices = (np.random.permutation(len(UQ_dataset))[:UQ_config.get('nsamples')]).tolist()
+
+        UQ_embeddings = torch.empty((0,self.latent_size),device=self.device)
+        UQ_component_errors = torch.empty((0),device=self.device)
+        UQ_energies = torch.empty((0),device=self.device)
+        for data in UQ_dataset[UQ_indices]:
+            out = self.model(self.transform_data_input(data))
+            UQ_energies = torch.cat([UQ_energies, out['atomic_energy'].mean().detach().unsqueeze(0)])
+            UQ_embeddings = torch.cat([UQ_embeddings,out['node_features'].detach()])
+            
+            error = out['forces'] - data.forces
+            UQ_component_errors = torch.cat([UQ_component_errors,error.detach()])
+
+        self.UQ_embeddings = UQ_embeddings
+        self.UQ_energies = UQ_energies
+        self.UQ_component_errors = UQ_component_errors
+        self.UQ_errors = torch.linalg.norm(UQ_component_errors,axis=-1)
+        
+
     def adversarial_loss(self, data, T, distances='train'):
 
         out = self.model(self.transform_data_input(data))
@@ -2259,7 +2283,11 @@ class Nequip_error_GPR(uncertainty_base):
 
         if not load:
             self.GPR = uncertainty_GPR(self.latent_size,self.ninducing_points,self.unc_epochs,lr=self.learning_rate)
-            self.GPR.train(self.test_embeddings, self.test_errors)
+            if self.config.get('train_UQ_different_dataset',False):
+                self.parse_UQ_data()
+                self.GPR.train(self.UQ_embeddings, self.UQ_errors)
+            else:
+                self.GPR.train(self.test_embeddings, self.test_errors)
             torch.save(self.GPR.get_state_dict(),self.state_dict_filename)
             pd.DataFrame(self.GPR.metrics).to_csv(self.metrics_filename)
 
