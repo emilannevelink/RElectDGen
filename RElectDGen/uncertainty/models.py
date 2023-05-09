@@ -2,6 +2,7 @@ from functools import partial
 import json
 import sys
 import os
+import yaml
 import time
 import pickle
 from ase import Atoms
@@ -33,6 +34,9 @@ class uncertainty_base():
 
         self.self_interaction = self.MLP_config.get('dataset_extra_fixed_fields',{}).get('self_interaction',False)
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
+        self.uncertainty_dir = os.path.join(self.MLP_config['workdir'],self.config.get('uncertainty_dir', 'uncertainty'))
+        os.makedirs(self.uncertainty_dir,exist_ok=True)
 
         self.natoms = len(MLP_config['type_names'])
         self.kb = 8.6173e-5 #eV/K
@@ -102,6 +106,11 @@ class uncertainty_base():
         
         UQ_dataset = dataset_from_config(UQ_config)
         UQ_indices = (np.random.permutation(len(UQ_dataset))[:UQ_config.get('nsamples')]).tolist()
+        UQ_config['indices'] = UQ_indices
+
+        UQ_config_filename = os.path.join(self.uncertainty_dir,self.config.get('UQ_config_filename','UQ_config.yaml'))
+        with open(UQ_config_filename,'w') as fl:
+            yaml.dump(UQ_config,fl)
 
         UQ_embeddings = torch.empty((0,self.latent_size),device=self.device)
         UQ_component_errors = torch.empty((0),device=self.device)
@@ -267,7 +276,7 @@ class Nequip_latent_distance(uncertainty_base):
         self.params_func = partial(self.params_func,dist=self.dist_name)
         self.parameter_length = 2 if func_name=='optimize2params' else self.latent_size+1
         params_file = config.get('params_file','uncertainty_params.pkl')
-        self.params_file = os.path.join(self.MLP_config['workdir'],params_file)
+        self.params_file = os.path.join(self.uncertainty_dir,params_file)
         self.separate_unc = self.config.get('separate_unc',False)
 
     def parse_data(self):
@@ -511,10 +520,8 @@ class Nequip_error_NN(uncertainty_base):
         self.unc_epochs = self.config.get('uncertainty_epochs', 2000)
         self.unc_data = self.config.get('uncertainty_data','all')
 
-        uncertainty_dir = os.path.join(self.MLP_config['workdir'],self.config.get('uncertainty_dir', 'uncertainty'))
-        os.makedirs(uncertainty_dir,exist_ok=True)
-        self.state_dict_func = lambda n: os.path.join(uncertainty_dir, f'uncertainty_state_dict_{n}.pth')
-        self.metrics_func = lambda n: os.path.join(uncertainty_dir, f'uncertainty_metrics_{n}.csv')
+        self.state_dict_func = lambda n: os.path.join(self.uncertainty_dir, f'uncertainty_state_dict_{n}.pth')
+        self.metrics_func = lambda n: os.path.join(self.uncertainty_dir, f'uncertainty_metrics_{n}.csv')
         self.separate_unc = self.config.get('separate_unc',False)
 
     def load_NNs(self):
@@ -733,10 +740,8 @@ class Nequip_reg_error_NN(uncertainty_base):
         self.unc_epochs = self.config.get('uncertainty_epochs', 2000)
         self.unc_data = self.config.get('uncertainty_data','all')
 
-        uncertainty_dir = os.path.join(self.MLP_config['workdir'],self.config.get('uncertainty_dir', 'uncertainty'))
-        os.makedirs(uncertainty_dir,exist_ok=True)
-        self.state_dict_func = lambda n: os.path.join(uncertainty_dir, f'reg_error_NN_state_dict_{n}.pth')
-        self.metrics_func = lambda n: os.path.join(uncertainty_dir, f'reg_error_NN_metrics_{n}.csv')
+        self.state_dict_func = lambda n: os.path.join(self.uncertainty_dir, f'reg_error_NN_state_dict_{n}.pth')
+        self.metrics_func = lambda n: os.path.join(self.uncertainty_dir, f'reg_error_NN_metrics_{n}.csv')
         self.separate_unc = self.config.get('separate_unc',False)
 
     def load_NNs(self):
@@ -816,10 +821,8 @@ class Nequip_latent_distanceNN(uncertainty_base):
         self.hidden_dimensions = self.config.get('uncertainty_hidden_dimensions', [])
         self.unc_epochs = self.config.get('uncertainty_epochs', 2000)
 
-        uncertainty_dir = os.path.join(self.MLP_config['workdir'],self.config.get('uncertainty_dir', 'uncertainty'))
-        os.makedirs(uncertainty_dir,exist_ok=True)
-        self.state_dict_func = lambda n: os.path.join(uncertainty_dir, f'uncertainty_state_dict_{n}.pth')
-        self.metrics_func = lambda n: os.path.join(uncertainty_dir, f'uncertainty_metrics_{n}.csv')
+        self.state_dict_func = lambda n: os.path.join(self.uncertainty_dir, f'uncertainty_state_dict_{n}.pth')
+        self.metrics_func = lambda n: os.path.join(self.uncertainty_dir, f'uncertainty_metrics_{n}.csv')
         
     def parse_data(self):
 
@@ -1072,10 +1075,9 @@ class Nequip_ensemble_NN(uncertainty_base):
         self.unc_batch_size = self.config.get('uncertainty_batch_size', 100)
         self.optimization_function = config.get('optimization_function','uncertainty_ensemble_NN')
         self.natoms = len(MLP_config['type_names'])
-        uncertainty_dir = os.path.join(self.MLP_config['workdir'],self.config.get('uncertainty_dir', 'uncertainty'))
-        os.makedirs(uncertainty_dir,exist_ok=True)
-        self.state_dict_func = lambda n: os.path.join(uncertainty_dir, f'uncertainty_state_dict_{n}.pth')
-        self.metrics_func = lambda n: os.path.join(uncertainty_dir, f'uncertainty_metrics_{n}.csv')
+        
+        self.state_dict_func = lambda n: os.path.join(self.uncertainty_dir, f'uncertainty_state_dict_{n}.pth')
+        self.metrics_func = lambda n: os.path.join(self.uncertainty_dir, f'uncertainty_metrics_{n}.csv')
         
 
     def load_NNs(self):
@@ -1867,12 +1869,11 @@ class Nequip_ensemble(uncertainty_base):
                 #     calibration_coeffs[key] = np.ones((self.calibration_polyorder+1))
         self.calibration_coeffs = calibration_coeffs
 
-        uncertainty_dir = os.path.join(self.MLP_config['workdir'],self.config.get('uncertainty_dir', 'uncertainty'))
-        os.makedirs(uncertainty_dir,exist_ok=True)
+        
         if self.separate_unc:
-            self.calibration_coeffs_filename =  os.path.join(uncertainty_dir, self.config.get('uncertainty_calibration_filename', f'uncertainty_calibration_coeffs_sep.json'))
+            self.calibration_coeffs_filename =  os.path.join(self.uncertainty_dir, self.config.get('uncertainty_calibration_filename', f'uncertainty_calibration_coeffs_sep.json'))
         else:
-            self.calibration_coeffs_filename =  os.path.join(uncertainty_dir, self.config.get('uncertainty_calibration_filename', f'uncertainty_calibration_coeffs.json'))
+            self.calibration_coeffs_filename =  os.path.join(self.uncertainty_dir, self.config.get('uncertainty_calibration_filename', f'uncertainty_calibration_coeffs.json'))
 
     def calibrate(self, debug = False):
         
@@ -2259,10 +2260,8 @@ class Nequip_error_GPR(uncertainty_base):
         self.unc_epochs = self.config.get('uncertainty_epochs', 1000)
         self.learning_rate = self.config.get('GPR_learning_rate',0.01)
 
-        uncertainty_dir = os.path.join(self.MLP_config['workdir'],self.config.get('uncertainty_dir', 'uncertainty'))
-        os.makedirs(uncertainty_dir,exist_ok=True)
-        self.state_dict_filename = os.path.join(uncertainty_dir, f'uncertainty_GPR_state_dict.pth')
-        self.metrics_filename = os.path.join(uncertainty_dir, f'uncertainty_GPR_metrics.csv')
+        self.state_dict_filename = os.path.join(self.uncertainty_dir, f'uncertainty_GPR_state_dict.pth')
+        self.metrics_filename = os.path.join(self.uncertainty_dir, f'uncertainty_GPR_metrics.csv')
 
     def load_GPR(self):
         load = False
@@ -2458,8 +2457,6 @@ class Nequip_error_pos_NN(uncertainty_base):
         self.unc_epochs = self.config.get('uncertainty_epochs', 1000)
         
         self.optimization_function = config.get('optimization_function','uncertainty_pos_NN')
-        self.uncertainty_dir = os.path.join(self.MLP_config['workdir'],self.config.get('uncertainty_dir', 'uncertainty'))
-        os.makedirs(self.uncertainty_dir,exist_ok=True)
         
         default_state_dict_func = lambda n: f'uncertainty_pos_NN_state_dict_{n}.pth'
         self.state_dict_func = self.uncertainty_config.get('state_dict_func',default_state_dict_func)
