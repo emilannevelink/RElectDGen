@@ -499,6 +499,8 @@ class uncertainty_GPR():
     lr = 0.01, 
     momentum=0.9,
     patience= None,
+    log_transform=True,
+    inducing_points_initialization = 'random',
     min_lr = None) -> None:
         
         if patience is None:
@@ -512,6 +514,8 @@ class uncertainty_GPR():
         self.ninducing_points = ninducing_points
         self.epochs = epochs
         self.input_dim = input_dim
+        self.log_transform = log_transform
+        self.inducing_points_initialization = inducing_points_initialization
 
         inducing_points = torch.rand((self.ninducing_points,input_dim))#*(xmax-xmin)-xmean)*1.5
         self.model = GPModel(inducing_points)
@@ -524,13 +528,26 @@ class uncertainty_GPR():
         # x = torch.tensor(x).to(self.device) #Break computational graph for training
         x = x.clone().detach()
         # y = torch.tensor(y).to(self.device)
-        y = torch.log(y.clone().detach())
+        y = y.clone().detach()
+        if self.log_transform:
+            y = torch.log(y)
+        
 
         xmax = x.max(axis=0).values
         xmin = x.min(axis=0).values
         xmean = x.mean(axis=0)
 
-        inducing_points = (torch.rand((self.ninducing_points,self.input_dim))*(xmax-xmin)-xmean)*1.5
+        if self.inducing_points_initialization == 'random':
+            inducing_points = (torch.rand((self.ninducing_points,self.input_dim))*(xmax-xmin)-xmean)*1.5
+        elif self.inducing_points_initialization == 'xrandom':
+            indices = torch.randperm(self.ninducing_points)
+            inducing_points = x[indices]
+        elif self.inducing_points_initialization == 'ymax':
+            indices = torch.argsort(y)[:self.ninducing_points]
+            inducing_points = x[indices]
+        else:
+            raise ValueError
+
         self.model = GPModel(inducing_points)
         self.likelihood = gpytorch.likelihoods.GaussianLikelihood()
 
@@ -622,7 +639,10 @@ class uncertainty_GPR():
         observed_pred = self.best_likelihood(self.best_model(x))
         lower, upper = observed_pred.confidence_region()
 
-        return torch.exp(observed_pred.mean), torch.exp(upper)
+        if self.log_transform:
+            return torch.exp(observed_pred.mean), torch.exp(upper)
+        else:
+            return observed_pred.mean, upper
 
     def get_state_dict(self):
         return {

@@ -2187,6 +2187,8 @@ class Nequip_error_GPR(uncertainty_base):
         self.ninducing_points = self.config.get('GPR_ninducing_points', 100)
         self.unc_epochs = self.config.get('uncertainty_epochs', 1000)
         self.learning_rate = self.config.get('GPR_learning_rate',0.01)
+        self.log_transform = self.config.get('GPR_log_transform',True)
+        self.inducing_points_initialization = self.config.get('GPR_inducing_points_initialization','random')
 
         self.state_dict_filename = os.path.join(self.uncertainty_dir, f'uncertainty_GPR_state_dict.pth')
         self.metrics_filename = os.path.join(self.uncertainty_dir, f'uncertainty_GPR_metrics.csv')
@@ -2209,7 +2211,7 @@ class Nequip_error_GPR(uncertainty_base):
         self.parse_data()
 
         if not load:
-            self.GPR = uncertainty_GPR(self.latent_size,self.ninducing_points,self.unc_epochs,lr=self.learning_rate)
+            self.GPR = uncertainty_GPR(self.latent_size,self.ninducing_points,self.unc_epochs,lr=self.learning_rate,log_transform=self.log_transform,inducing_points_initialization=self.inducing_points_initialization)
             if self.config.get('train_UQ_different_dataset',False):
                 self.parse_UQ_data()
                 self.GPR.train(self.UQ_embeddings, self.UQ_errors)
