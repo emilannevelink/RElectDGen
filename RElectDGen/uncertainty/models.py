@@ -636,6 +636,7 @@ class Nequip_error_NN(uncertainty_base):
             atom_embedding = out['node_features']
             self.atom_embedding = atom_embedding
             self.atom_forces = out['forces']
+            self.atoms_energy = out['total_energy']
 
         uncertainty_raw = torch.zeros(self.n_ensemble,atom_embedding.shape[0])
         for i, NN in enumerate(self.NNs):
@@ -658,79 +659,6 @@ class Nequip_error_NN(uncertainty_base):
             uncertainty = torch.vstack([uncertainties_mean,torch.zeros_like(uncertainties_std)]).T.to(self.device)
 
         return uncertainty
-
-    def predict_from_traj(self, traj, max=True, batch_size=1):
-        uncertainty = []
-        atom_embeddings = []
-        self.pred_forces = []
-        # data = [self.transform(atoms) for atoms in traj]
-        # dataset = DataLoader(data, batch_size=batch_size)
-        # for i, batch in enumerate(dataset):
-        #     uncertainty.append(self.predict_uncertainty(batch))
-        #     atom_embeddings.append(self.atom_embedding)
-        ti = time.time()
-        times = np.empty(len(traj))
-        for i, atoms in enumerate(traj):
-            uncertainty.append(self.predict_uncertainty(atoms).detach())
-            atom_embeddings.append(self.atom_embedding.detach())
-            self.pred_forces.append(self.atom_forces.detach())
-            tf = time.time()
-            times[i] = tf-ti
-            ti = tf
-
-        print(f'Dataset Prediction Times:\nAverage Time: {times.mean()}, Max Time: {times.max()}, Min Time: {times.min()}')
-        
-        uncertainty = torch.cat(uncertainty).detach().cpu()
-        atom_embeddings = torch.cat(atom_embeddings).detach().cpu()
-
-        if max:
-            atom_lengths = [len(atoms) for atoms in traj]
-            start_inds = [0] + np.cumsum(atom_lengths[:-1]).tolist()
-            end_inds = np.cumsum(atom_lengths).tolist()
-
-            uncertainty_partition = [uncertainty[si:ei] for si, ei in zip(start_inds,end_inds)]
-            embeddings = [atom_embeddings[si:ei] for si, ei in zip(start_inds,end_inds)]
-            return torch.tensor([unc.max() for unc in uncertainty_partition]), embeddings
-        else:
-            self.pred_forces = torch.cat(self.pred_forces).cpu()
-            self.pred_forces = self.pred_forces.reshape(len(traj),-1,3)
-            uncertainty = uncertainty.reshape(len(traj),-1,2)
-            return uncertainty, atom_embeddings.reshape(len(traj),-1,atom_embeddings.shape[-1])
-
-    def plot_fit(self, filename=None):
-            
-        fig, ax = plt.subplots(1,3,figsize=(15,5))
-
-        pred_errors = self.predict_uncertainty(0,self.train_embeddings,type='mean').detach()
-        min_err = min([self.train_errors.min()])#,pred_errors.min()])
-        max_err = max([self.train_errors.max()])#,pred_errors.max()])
-        ax[0].scatter(self.train_errors,pred_errors,alpha=0.5)
-        ax[0].plot([min_err,max_err], [min_err,max_err],'k',linestyle='--')
-        ax[0].set_xlabel('True Error')
-        ax[0].set_ylabel('Predicted Error')
-        ax[0].axis('square')
-
-        print((pred_errors-self.train_errors).mean())
-        print((pred_errors-self.train_errors).std())
-
-        pred_errors = self.predict_uncertainty(0,self.test_embeddings,type='mean').detach()
-        min_err = min([self.test_errors.min()])#,pred_errors.min()])
-        max_err = max([self.test_errors.max()])#,pred_errors.max()])
-        ax[1].scatter(self.test_errors,pred_errors,alpha=0.5)
-        ax[1].plot([min_err,max_err], [min_err,max_err],'k',linestyle='--')
-        ax[1].set_xlabel('True Error')
-        ax[1].set_ylabel('Predicted Error')
-        ax[1].axis('square')
-
-        ax[2].axhline(0,color='k',linestyle='--')
-        ax[2].scatter(np.arange(len(self.test_errors)),pred_errors-self.test_errors,alpha=0.5)
-        ax[2].set_ylabel('Residual')
-
-        print((pred_errors-self.test_errors).mean())
-        print((pred_errors-self.test_errors).std())
-
-        if filename is not None:
-            plt.savefig(filename)
 
 class Nequip_reg_error_NN(uncertainty_base):
     def __init__(self, model, config, MLP_config):
@@ -2358,6 +2286,7 @@ class Nequip_error_GPR(uncertainty_base):
             atom_embedding = out['node_features']
             self.atom_embedding = atom_embedding
             self.atom_forces = out['forces']
+            self.atoms_energy = out['total_energy']
 
         mean, upper_confidence = self.GPR.predict(atom_embedding)
         
@@ -2372,79 +2301,6 @@ class Nequip_error_GPR(uncertainty_base):
             uncertainty = torch.vstack([mean,torch.zeros_like(mean)]).T.to(self.device)
 
         return uncertainty
-
-    def predict_from_traj(self, traj, max=True, batch_size=1):
-        uncertainty = []
-        atom_embeddings = []
-        self.pred_forces = []
-        # data = [self.transform(atoms) for atoms in traj]
-        # dataset = DataLoader(data, batch_size=batch_size)
-        # for i, batch in enumerate(dataset):
-        #     uncertainty.append(self.predict_uncertainty(batch))
-        #     atom_embeddings.append(self.atom_embedding)
-        ti = time.time()
-        times = np.empty(len(traj))
-        for i, atoms in enumerate(traj):
-            uncertainty.append(self.predict_uncertainty(atoms).detach())
-            atom_embeddings.append(self.atom_embedding.detach())
-            self.pred_forces.append(self.atom_forces.detach())
-            tf = time.time()
-            times[i] = tf-ti
-            ti = tf
-
-        print(f'Dataset Prediction Times:\nAverage Time: {times.mean()}, Max Time: {times.max()}, Min Time: {times.min()}')
-        
-        uncertainty = torch.cat(uncertainty).detach().cpu()
-        atom_embeddings = torch.cat(atom_embeddings).detach().cpu()
-
-        if max:
-            atom_lengths = [len(atoms) for atoms in traj]
-            start_inds = [0] + np.cumsum(atom_lengths[:-1]).tolist()
-            end_inds = np.cumsum(atom_lengths).tolist()
-
-            uncertainty_partition = [uncertainty[si:ei] for si, ei in zip(start_inds,end_inds)]
-            embeddings = [atom_embeddings[si:ei] for si, ei in zip(start_inds,end_inds)]
-            return torch.tensor([unc.max() for unc in uncertainty_partition]), embeddings
-        else:
-            self.pred_forces = torch.cat(self.pred_forces).cpu()
-            self.pred_forces = self.pred_forces.reshape(len(traj),-1,3)
-            uncertainty = uncertainty.reshape(len(traj),-1,2)
-            return uncertainty, atom_embeddings.reshape(len(traj),-1,atom_embeddings.shape[-1])
-
-    def plot_fit(self, filename=None):
-            
-        fig, ax = plt.subplots(1,3,figsize=(15,5))
-
-        pred_errors = self.predict_uncertainty(0,self.train_embeddings,type='mean').detach()
-        min_err = min([self.train_errors.min()])#,pred_errors.min()])
-        max_err = max([self.train_errors.max()])#,pred_errors.max()])
-        ax[0].scatter(self.train_errors,pred_errors,alpha=0.5)
-        ax[0].plot([min_err,max_err], [min_err,max_err],'k',linestyle='--')
-        ax[0].set_xlabel('True Error')
-        ax[0].set_ylabel('Predicted Error')
-        ax[0].axis('square')
-
-        print((pred_errors-self.train_errors).mean())
-        print((pred_errors-self.train_errors).std())
-
-        pred_errors = self.predict_uncertainty(0,self.test_embeddings,type='mean').detach()
-        min_err = min([self.test_errors.min()])#,pred_errors.min()])
-        max_err = max([self.test_errors.max()])#,pred_errors.max()])
-        ax[1].scatter(self.test_errors,pred_errors,alpha=0.5)
-        ax[1].plot([min_err,max_err], [min_err,max_err],'k',linestyle='--')
-        ax[1].set_xlabel('True Error')
-        ax[1].set_ylabel('Predicted Error')
-        ax[1].axis('square')
-
-        ax[2].axhline(0,color='k',linestyle='--')
-        ax[2].scatter(np.arange(len(self.test_errors)),pred_errors-self.test_errors,alpha=0.5)
-        ax[2].set_ylabel('Residual')
-
-        print((pred_errors-self.test_errors).mean())
-        print((pred_errors-self.test_errors).std())
-
-        if filename is not None:
-            plt.savefig(filename)
 
 class Nequip_error_pos_NN(uncertainty_base):
     def __init__(self, model, config, MLP_config):
@@ -2580,6 +2436,7 @@ class Nequip_error_pos_NN(uncertainty_base):
             atom_embedding = out['node_features']
             self.atom_embedding = atom_embedding
             self.atom_forces = out['forces']
+            self.atoms_energy = out['total_energy']
 
         uncertainty_raw = torch.zeros(self.n_ensemble,len(data['pos']), device=self.device)
         for i, NN in enumerate(self.NNs):
@@ -2594,47 +2451,6 @@ class Nequip_error_pos_NN(uncertainty_base):
         uncertainty = torch.vstack([uncertainty_mean,uncertainty_std]).T
 
         return uncertainty
-
-    def predict_from_traj(self, traj, max=True, batch_size=1):
-        uncertainty = []
-        atom_embeddings = []
-        self.pred_forces = []
-        # data = [self.transform(atoms) for atoms in traj]
-        # dataset = DataLoader(data, batch_size=batch_size)
-        # for i, batch in enumerate(dataset):
-        #     uncertainty.append(self.predict_uncertainty(batch))
-        #     atom_embeddings.append(self.atom_embedding)
-        ti = time.time()
-        times = np.empty(len(traj))
-        for i, atoms in enumerate(traj):
-            uncertainty.append(self.predict_uncertainty(atoms).detach())
-            atom_embeddings.append(self.atom_embedding.detach())
-            self.pred_forces.append(self.atom_forces.detach())
-            tf = time.time()
-            times[i] = tf-ti
-            ti = tf
-
-        print(f'Dataset Prediction Times:\nAverage Time: {times.mean()}, Max Time: {times.max()}, Min Time: {times.min()}')
-        
-        uncertainty = torch.cat(uncertainty).detach().cpu()
-        atom_embeddings = torch.cat(atom_embeddings).detach().cpu()
-
-        if max:
-            atom_lengths = [len(atoms) for atoms in traj]
-            start_inds = [0] + np.cumsum(atom_lengths[:-1]).tolist()
-            end_inds = np.cumsum(atom_lengths).tolist()
-
-            uncertainty_partition = [uncertainty[si:ei] for si, ei in zip(start_inds,end_inds)]
-            embeddings = [atom_embeddings[si:ei] for si, ei in zip(start_inds,end_inds)]
-            return torch.tensor([unc.max() for unc in uncertainty_partition]), embeddings
-        else:
-            self.pred_forces = torch.cat(self.pred_forces).cpu()
-            self.pred_forces = self.pred_forces.reshape(len(traj),-1,3)
-            uncertainty = uncertainty.reshape(len(traj),-1,2)
-            return uncertainty, atom_embeddings.reshape(len(traj),-1,atom_embeddings.shape[-1])
-
-    def plot_fit(self, filename=None):
-        pass
 
 def f(x):
     return x*x
