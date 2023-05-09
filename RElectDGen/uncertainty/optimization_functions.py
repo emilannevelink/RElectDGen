@@ -540,7 +540,7 @@ class uncertainty_GPR():
         if self.inducing_points_initialization == 'random':
             inducing_points = (torch.rand((self.ninducing_points,self.input_dim))*(xmax-xmin)-xmean)*1.5
         elif self.inducing_points_initialization == 'xrandom':
-            indices = torch.randperm(self.ninducing_points)
+            indices = torch.randperm(len(x))[:self.ninducing_points]
             inducing_points = x[indices]
         elif self.inducing_points_initialization == 'ymax':
             indices = torch.argsort(y)[:self.ninducing_points]
