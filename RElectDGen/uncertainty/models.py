@@ -2218,8 +2218,12 @@ class Nequip_error_GPR(uncertainty_base):
             if self.config.get('train_UQ_different_dataset',False):
                 self.parse_UQ_data()
                 self.GPR.train(self.UQ_embeddings, self.UQ_errors)
-            else:
+            elif self.config.get('train_UQ_dataset','all')=='train':
+                self.GPR.train(self.train_embeddings, self.train_errors)
+            elif self.config.get('train_UQ_dataset','all')=='test':
                 self.GPR.train(self.test_embeddings, self.test_errors)
+            elif self.config.get('train_UQ_dataset','all')=='all':
+                self.GPR.train(self.all_embeddings, self.all_errors)
             torch.save(self.GPR.get_state_dict(),self.state_dict_filename)
             pd.DataFrame(self.GPR.metrics).to_csv(self.metrics_filename)
 
@@ -2257,6 +2261,10 @@ class Nequip_error_GPR(uncertainty_base):
         self.test_embeddings = test_embeddings
         self.test_errors = test_errors
         self.test_energies = test_energies
+
+        self.all_embeddings = torch.cat([train_embeddings,test_embeddings])
+        self.all_component_errors = torch.cat([self.train_component_errors,self.test_component_errors])
+        self.all_errors = torch.cat([self.train_errors,self.test_errors])
 
     def adversarial_loss(self, data, T, distances='train'):
 
