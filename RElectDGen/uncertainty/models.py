@@ -2263,8 +2263,8 @@ class Nequip_error_GPR(uncertainty_base):
         self.test_energies = test_energies
 
         self.all_embeddings = torch.cat([train_embeddings,test_embeddings])
-        self.all_component_errors = torch.cat([self.train_component_errors,self.test_component_errors])
         self.all_errors = torch.cat([self.train_errors,self.test_errors])
+        self.all_energies = torch.cat([self.train_errors,self.test_energies])
 
     def adversarial_loss(self, data, T, distances='train'):
 
