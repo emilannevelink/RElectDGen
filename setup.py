@@ -49,6 +49,7 @@ setup(
         "packaging",
         "memory_profiler",
         "gpytorch",
+        "scikit-learn",
     ],
     zip_safe=True,
 )

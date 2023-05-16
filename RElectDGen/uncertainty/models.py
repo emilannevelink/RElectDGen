@@ -2106,7 +2106,7 @@ class Nequip_ensemble(uncertainty_base):
                 coeffs = torch.tensor(self.calibration_coeffs[key],device=self.device)
                 calibrated[mask] = torch.exp(coeffs[1]+torch.log(raw[mask])*coeffs[0])
             elif self.calibration_type == 'prefactor':
-                coeffs = torch.tensor(self.calibration_coeffs[key],device=self.device)
+                coeffs = torch.tensor(self.calibration_coeffs[key],device=self.device,dtype=raw.dtype)
                 calibrated[mask] = coeffs*raw[mask]
             else:
                 for i, coeff in enumerate(self.calibration_coeffs[key][::-1]):

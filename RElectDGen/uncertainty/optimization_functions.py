@@ -8,6 +8,9 @@ from torch.utils.data import Dataset, DataLoader
 from nequip.data import AtomicData
 import copy
 
+from sklearn.cluster import KMeans
+from sklearn.preprocessing import StandardScaler
+
 def find_NLL_params(errors,raw_uncertainties,polyorder=1,dist_type='norm'):
     errors = np.array(errors)
     raw_uncertainties = np.array(raw_uncertainties)
@@ -566,6 +569,18 @@ class uncertainty_GPR():
         elif self.inducing_points_initialization == 'ymax':
             indices = torch.argsort(y)[:self.ninducing_points]
             inducing_points = x[indices]
+        elif self.inducing_points_initialization == 'kmeans':
+            scaler = StandardScaler()
+            scaled_features = scaler.fit_transform(x)
+            kmeans = KMeans(
+                init="random",
+                n_clusters=self.ninducing_points,
+                n_init=10,
+                max_iter=300,
+                random_state=42
+                )
+            kmeans.fit(scaled_features)
+            inducing_points = scaler.inverse_transform(kmeans.cluster_centers_)
         else:
             raise ValueError
 
