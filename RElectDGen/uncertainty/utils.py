@@ -14,14 +14,14 @@ def load_all_keys(hdf5_file):
     all_data = {}
     for key in hdf5_file.keys():
         if isinstance(hdf5_file[key],h5py.Dataset):
-            all_data[key] = torch.tensor(hdf5_file[key][()])
+            all_data[key] = torch.tensor(hdf5_file[key][()],dtype=torch.float)
         else:
             all_data[key] = load_all_keys(hdf5_file[key])
 
     return all_data
 
 def save_to_hdf5(filename,data):
-    with h5py.File(self.filename, 'a') as hf:
+    with h5py.File(filename, 'a') as hf:
         write_all_keys(hf,data)
 
 def write_all_keys(hf,data):

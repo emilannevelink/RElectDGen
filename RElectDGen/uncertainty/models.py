@@ -20,6 +20,7 @@ from nequip.data.transforms import TypeMapper
 
 from . import optimization_functions
 from .optimization_functions import uncertainty_NN, uncertaintydistance_NN, uncertainty_ensemble_NN, train_NN, find_NLL_params, uncertainty_GPR, uncertainty_reg_NN, find_NLL_params_prefactor
+from .utils import load_from_hdf5, save_to_hdf5
 
 class uncertainty_base():
     def __init__(self, model, config, MLP_config):
@@ -69,7 +70,7 @@ class uncertainty_base():
         all_data = load_from_hdf5(self.parsed_data_filename)
         
         for rk in self.parse_keys:
-            if rk not in all_data.files:
+            if rk not in all_data.keys():
                 return False
             else:
                 setattr(self,rk,all_data[rk])
@@ -206,7 +207,7 @@ class uncertainty_base():
         self.atoms_energy = None
         pass
 
-    def predict_from_traj(self, traj, max=True, batch_size=1):
+    def predict_from_traj(self, traj, max=True, flat=False, batch_size=1):
         uncertainty = []
         atom_embeddings = []
         self.pred_forces = []
@@ -240,6 +241,14 @@ class uncertainty_base():
             uncertainty_partition = [uncertainty[si:ei] for si, ei in zip(start_inds,end_inds)]
             embeddings = [atom_embeddings[si:ei] for si, ei in zip(start_inds,end_inds)]
             return torch.tensor([unc.max() for unc in uncertainty_partition]), embeddings
+        elif flat:
+            atom_lengths = [len(atoms) for atoms in traj]
+            start_inds = [0] + np.cumsum(atom_lengths[:-1]).tolist()
+            end_inds = np.cumsum(atom_lengths).tolist()
+
+            uncertainty_partition = [uncertainty[si:ei] for si, ei in zip(start_inds,end_inds)]
+            embeddings = [atom_embeddings[si:ei] for si, ei in zip(start_inds,end_inds)]
+            return uncertainty_partition, embeddings
         else:
             self.pred_forces = torch.cat(self.pred_forces).cpu()
             self.pred_forces = self.pred_forces.reshape(len(traj),-1,3)
@@ -334,7 +343,7 @@ class Nequip_latent_distance(uncertainty_base):
         all_data = load_from_hdf5(self.parsed_data_filename)
         
         for rk in self.parse_keys:
-            if rk not in all_data.files:
+            if rk not in all_data.keys():
                 return False
             else:
                 setattr(self,rk,all_data[rk])
@@ -348,7 +357,7 @@ class Nequip_latent_distance(uncertainty_base):
             'train_errors',
             'train_energies',
             'test_embeddings',
-            'test_energies'
+            'test_energies',
             'test_errors'
         ]
         success = self.load_parsed_data()
@@ -365,6 +374,7 @@ class Nequip_latent_distance(uncertainty_base):
 
             for key in self.chemical_symbol_to_type:
                 train_embeddings[key] = torch.empty((0,self.latent_size),device=self.device)
+                train_errors[key] = torch.empty((0),device=self.device)
                 train_energies[key] = torch.empty((0),device=self.device)
                 test_embeddings[key] = torch.empty((0,self.latent_size),device=self.device)
                 test_errors[key] = torch.empty((0),device=self.device)
