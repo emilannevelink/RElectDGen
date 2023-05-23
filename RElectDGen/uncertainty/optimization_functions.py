@@ -580,7 +580,8 @@ class uncertainty_GPR():
                 random_state=42
                 )
             kmeans.fit(scaled_features)
-            inducing_points = scaler.inverse_transform(kmeans.cluster_centers_)
+            device = None if x.get_device() < 0 else x.get_device()
+            inducing_points = torch.tensor(scaler.inverse_transform(kmeans.cluster_centers_),device=device,dtype=x.dtype)
         else:
             raise ValueError
 

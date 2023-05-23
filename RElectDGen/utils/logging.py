@@ -43,9 +43,9 @@ def write_tmp_to_logfile(logfile,index=None):
         df = tmp_df
     df.to_csv(logfile,index=False)
 
-def get_mae_from_results(root='results', index = None):
+def get_mae_from_results(root='results', index = None,template=''):
 
-    results_dir = get_results_dir(root=root)
+    results_dir = get_results_dir(root=root,template=template)
 
     results_metrics = os.path.join(results_dir,'metrics_epoch.csv')
     data = pd.read_csv(results_metrics)

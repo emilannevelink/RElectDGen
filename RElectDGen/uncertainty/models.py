@@ -38,6 +38,8 @@ class uncertainty_base():
         self.uncertainty_dir = os.path.join(self.MLP_config['workdir'],self.config.get('uncertainty_dir', 'uncertainty'))
         os.makedirs(self.uncertainty_dir,exist_ok=True)
 
+        self.parsed_data_filename = os.path.join(self.uncertainty_dir,self.config.get('parsed_data_filename','parsed_data.npz'))
+
         self.natoms = len(MLP_config['type_names'])
         self.kb = 8.6173e-5 #eV/K
         self.n_ensemble = config.get('n_uncertainty_ensembles',4)
@@ -59,46 +61,91 @@ class uncertainty_base():
         
         return data
     
-    def parse_data(self):
+    def load_parsed_data(self):
 
-        dataset = dataset_from_config(self.MLP_config)
+        if not os.path.isfile(self.parsed_data_filename):
+            return False
 
-        train_embeddings = torch.empty((0,self.latent_size),device=self.device)
-        train_component_errors = torch.empty((0),device=self.device)
-        train_energies = torch.empty((0),device=self.device)
-        for data in dataset[self.MLP_config.train_idcs]:
-            out = self.model(self.transform_data_input(data))
-            train_energies = torch.cat([train_energies, out['atomic_energy'].mean().detach().unsqueeze(0)])
-            train_embeddings = torch.cat([train_embeddings,out['node_features'].detach()])
-            
-            error = out['forces'] - data.forces
-            train_component_errors = torch.cat([train_component_errors,error.detach()])
-
-        self.train_energies = train_energies
-        self.train_embeddings = train_embeddings
-        self.train_component_errors = train_component_errors
-        self.train_errors = torch.linalg.norm(train_component_errors,axis=-1)
-
-        test_embeddings = torch.empty((0,self.latent_size),device=self.device)
-        test_component_errors = torch.empty((0),device=self.device)
-        test_energies = torch.empty((0),device=self.device)
-        for data in dataset[self.MLP_config.val_idcs]:
-            out = self.model(self.transform_data_input(data))
-            test_energies = torch.cat([test_energies, out['atomic_energy'].mean().detach().unsqueeze(0)])
-            test_embeddings = torch.cat([test_embeddings,out['node_features'].detach()])
-            
-            error = torch.absolute(out['forces'] - data.forces)
-            test_component_errors = torch.cat([test_component_errors,error.detach()])
-            
+        all_data = load_from_hdf5(self.parsed_data_filename)
         
-        self.test_embeddings = test_embeddings
-        self.test_energies = test_energies
-        self.test_component_errors = test_component_errors
-        self.test_errors = torch.linalg.norm(test_component_errors,axis=-1)
+        for rk in self.parse_keys:
+            if rk not in all_data.files:
+                return False
+            else:
+                setattr(self,rk,all_data[rk])
 
-        self.all_embeddings = torch.cat([train_embeddings,test_embeddings])
+        self.train_errors = torch.linalg.norm(self.train_component_errors,axis=-1)
+        self.test_errors = torch.linalg.norm(self.test_component_errors,axis=-1)
+
+        self.all_embeddings = torch.cat([self.train_embeddings,self.test_embeddings])
         self.all_component_errors = torch.cat([self.train_component_errors,self.test_component_errors])
         self.all_errors = torch.cat([self.train_errors,self.test_errors])
+
+        return True
+
+    def save_parsed_data(self):
+
+        data = {}
+        for key in self.parse_keys:
+            data[key] = getattr(self,key)
+
+        save_to_hdf5(self.parsed_data_filename,data)
+
+    def parse_data(self):
+
+        self.parse_keys = [
+            'train_energies', 
+            'train_embeddings', 
+            'train_component_errors',
+            'test_embeddings',
+            'test_energies',
+            'test_component_errors'
+        ]
+
+        success = self.load_parsed_data()
+
+        if not success:
+
+            dataset = dataset_from_config(self.MLP_config)
+
+            train_embeddings = torch.empty((0,self.latent_size),device=self.device)
+            train_component_errors = torch.empty((0),device=self.device)
+            train_energies = torch.empty((0),device=self.device)
+            for data in dataset[self.MLP_config.train_idcs]:
+                out = self.model(self.transform_data_input(data))
+                train_energies = torch.cat([train_energies, out['atomic_energy'].mean().detach().unsqueeze(0)])
+                train_embeddings = torch.cat([train_embeddings,out['node_features'].detach()])
+                
+                error = out['forces'] - data.forces
+                train_component_errors = torch.cat([train_component_errors,error.detach()])
+
+            self.train_energies = train_energies
+            self.train_embeddings = train_embeddings
+            self.train_component_errors = train_component_errors
+            self.train_errors = torch.linalg.norm(train_component_errors,axis=-1)
+
+            test_embeddings = torch.empty((0,self.latent_size),device=self.device)
+            test_component_errors = torch.empty((0),device=self.device)
+            test_energies = torch.empty((0),device=self.device)
+            for data in dataset[self.MLP_config.val_idcs]:
+                out = self.model(self.transform_data_input(data))
+                test_energies = torch.cat([test_energies, out['atomic_energy'].mean().detach().unsqueeze(0)])
+                test_embeddings = torch.cat([test_embeddings,out['node_features'].detach()])
+                
+                error = torch.absolute(out['forces'] - data.forces)
+                test_component_errors = torch.cat([test_component_errors,error.detach()])
+                
+            
+            self.test_embeddings = test_embeddings
+            self.test_energies = test_energies
+            self.test_component_errors = test_component_errors
+            self.test_errors = torch.linalg.norm(test_component_errors,axis=-1)
+
+            self.all_embeddings = torch.cat([train_embeddings,test_embeddings])
+            self.all_component_errors = torch.cat([self.train_component_errors,self.test_component_errors])
+            self.all_errors = torch.cat([self.train_errors,self.test_errors])
+
+            self.save_parsed_data()
 
     def parse_UQ_data(self):
         UQ_config = self.config.get('UQ_config')
@@ -279,50 +326,86 @@ class Nequip_latent_distance(uncertainty_base):
         self.params_file = os.path.join(self.uncertainty_dir,params_file)
         self.separate_unc = self.config.get('separate_unc',False)
 
-    def parse_data(self):
-        dataset = dataset_from_config(self.MLP_config)
+    def load_parsed_data(self):
 
-        train_embeddings = {}
-        train_energies = {}
-        test_embeddings = {}
-        test_errors = {}
-        test_energies = {}
+        if not os.path.isfile(self.parsed_data_filename):
+            return False
 
-        for key in self.chemical_symbol_to_type:
-            train_embeddings[key] = torch.empty((0,self.latent_size),device=self.device)
-            train_energies[key] = torch.empty((0),device=self.device)
-            test_embeddings[key] = torch.empty((0,self.latent_size),device=self.device)
-            test_errors[key] = torch.empty((0),device=self.device)
-            test_energies[key] = torch.empty((0),device=self.device)
-    
-        for data in dataset[self.MLP_config.train_idcs]:
-            out = self.model(self.transform_data_input(data))
-
-            for key in self.MLP_config.get('chemical_symbol_to_type'):
-                mask = (data['atom_types']==self.MLP_config.get('chemical_symbol_to_type')[key]).flatten()
-                train_embeddings[key] = torch.cat([train_embeddings[key],out['node_features'][mask].detach()])
-                train_energies[key] = torch.cat([train_energies[key], out['atomic_energy'][mask].detach()])
-
-        self.train_embeddings = train_embeddings
-        self.train_energies = train_energies
-
-        for data in dataset[self.MLP_config.val_idcs]:
-            out = self.model(self.transform_data_input(data))
-            
-            error = torch.absolute(out['forces'] - data.forces)
-
-            for key in self.MLP_config.get('chemical_symbol_to_type'):
-                mask = (data['atom_types']==self.MLP_config.get('chemical_symbol_to_type')[key]).flatten()
-                test_embeddings[key] = torch.cat([test_embeddings[key],out['node_features'][mask].detach()])
-                test_energies[key] = torch.cat([test_energies[key], out['atomic_energy'][mask].detach()])
-                if self.separate_unc:
-                    test_errors[key] = torch.cat([test_errors[key],error[mask].detach()])
-                else:
-                    test_errors[key] = torch.cat([test_errors[key],error.mean(dim=1)[mask].detach()])
+        all_data = load_from_hdf5(self.parsed_data_filename)
         
-        self.test_embeddings = test_embeddings
-        self.test_energies = test_energies
-        self.test_errors = test_errors
+        for rk in self.parse_keys:
+            if rk not in all_data.files:
+                return False
+            else:
+                setattr(self,rk,all_data[rk])
+
+        
+        return True
+
+    def parse_data(self):
+        self.parse_keys = [
+            'train_embeddings',
+            'train_errors',
+            'train_energies',
+            'test_embeddings',
+            'test_energies'
+            'test_errors'
+        ]
+        success = self.load_parsed_data()
+
+        if not success:
+            dataset = dataset_from_config(self.MLP_config)
+
+            train_embeddings = {}
+            train_errors = {}
+            train_energies = {}
+            test_embeddings = {}
+            test_errors = {}
+            test_energies = {}
+
+            for key in self.chemical_symbol_to_type:
+                train_embeddings[key] = torch.empty((0,self.latent_size),device=self.device)
+                train_energies[key] = torch.empty((0),device=self.device)
+                test_embeddings[key] = torch.empty((0,self.latent_size),device=self.device)
+                test_errors[key] = torch.empty((0),device=self.device)
+                test_energies[key] = torch.empty((0),device=self.device)
+        
+            for data in dataset[self.MLP_config.train_idcs]:
+                out = self.model(self.transform_data_input(data))
+                error = torch.absolute(out['forces'] - data.forces)
+
+                for key in self.MLP_config.get('chemical_symbol_to_type'):
+                    mask = (data['atom_types']==self.MLP_config.get('chemical_symbol_to_type')[key]).flatten()
+                    train_embeddings[key] = torch.cat([train_embeddings[key],out['node_features'][mask].detach()])
+                    train_energies[key] = torch.cat([train_energies[key], out['atomic_energy'][mask].detach()])
+                    if self.separate_unc:
+                        train_errors[key] = torch.cat([train_errors[key],error[mask].detach()])
+                    else:
+                        train_errors[key] = torch.cat([train_errors[key],error.mean(dim=1)[mask].detach()])
+
+            self.train_embeddings = train_embeddings
+            self.train_energies = train_energies
+            self.train_errors = train_errors
+
+            for data in dataset[self.MLP_config.val_idcs]:
+                out = self.model(self.transform_data_input(data))
+                
+                error = torch.absolute(out['forces'] - data.forces)
+
+                for key in self.MLP_config.get('chemical_symbol_to_type'):
+                    mask = (data['atom_types']==self.MLP_config.get('chemical_symbol_to_type')[key]).flatten()
+                    test_embeddings[key] = torch.cat([test_embeddings[key],out['node_features'][mask].detach()])
+                    test_energies[key] = torch.cat([test_energies[key], out['atomic_energy'][mask].detach()])
+                    if self.separate_unc:
+                        test_errors[key] = torch.cat([test_errors[key],error[mask].detach()])
+                    else:
+                        test_errors[key] = torch.cat([test_errors[key],error.mean(dim=1)[mask].detach()])
+            
+            self.test_embeddings = test_embeddings
+            self.test_energies = test_energies
+            self.test_errors = test_errors
+
+            self.save_parsed_data()
 
     def calibrate(self, debug=False):
         
