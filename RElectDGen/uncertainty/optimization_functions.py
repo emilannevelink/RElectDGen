@@ -570,8 +570,9 @@ class uncertainty_GPR():
             indices = torch.argsort(y)[:self.ninducing_points]
             inducing_points = x[indices]
         elif self.inducing_points_initialization == 'kmeans':
+            device = None if x.get_device() < 0 else x.get_device()
             scaler = StandardScaler()
-            scaled_features = scaler.fit_transform(x)
+            scaled_features = scaler.fit_transform(x.cpu())
             kmeans = KMeans(
                 init="random",
                 n_clusters=self.ninducing_points,
@@ -580,7 +581,6 @@ class uncertainty_GPR():
                 random_state=42
                 )
             kmeans.fit(scaled_features)
-            device = None if x.get_device() < 0 else x.get_device()
             inducing_points = torch.tensor(scaler.inverse_transform(kmeans.cluster_centers_),device=device,dtype=x.dtype)
         else:
             raise ValueError
@@ -589,6 +589,8 @@ class uncertainty_GPR():
         self.likelihood = gpytorch.likelihoods.GaussianLikelihood()
 
         if torch.cuda.is_available():
+            x = x.cuda()
+            y = y.cuda()
             self.model = self.model.cuda()
             self.likelihood = self.likelihood.cuda()
         
@@ -655,8 +657,8 @@ class uncertainty_GPR():
             self.lr_scheduler(validation_loss)
             
             metrics['lr'].append(optimizer.param_groups[0]['lr'])
-            metrics['train_loss'].append(train_loss.detach())
-            metrics['validation_loss'].append(validation_loss.detach())
+            metrics['train_loss'].append(train_loss.detach().cpu())
+            metrics['validation_loss'].append(validation_loss.detach().cpu())
 
             if np.argmin(metrics['validation_loss']) == n:
                 self.best_model.load_state_dict(self.model.state_dict())
@@ -690,6 +692,9 @@ class uncertainty_GPR():
     def load_state_dict(self, state_dict):
         self.best_model.load_state_dict(state_dict['model_dict'])
         self.best_likelihood.load_state_dict(state_dict['likelihood_dict'])
+        if torch.cuda.is_available():
+            self.best_model = self.best_model.cuda()
+            self.best_likelihood = self.best_likelihood.cuda()
 
 class uncertaintydistance_NN():
     def __init__(self, 

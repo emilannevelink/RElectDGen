@@ -303,8 +303,8 @@ class Nequip_unc_oracle(uncertainty_base):
 
     def predict_uncertainty(self, data, atom_embedding=None, distances='train', extra_embeddings=None, type='full'):
         if isinstance(data,Atoms):
-            true_forces = torch.tensor(data.get_forces())
-        elif isinstance(data,AtomicData):
+            true_forces = torch.tensor(data.get_forces(), device=self.device)
+        elif isinstance(data,(AtomicData,dict)):
             true_forces = data['forces']
         else:
             raise TypeError(f'Data must be either Atoms or Atomic Data, but got {data.__class__}')
@@ -524,14 +524,16 @@ class Nequip_latent_distance(uncertainty_base):
         self.min_vectors = {}
         for key in self.MLP_config.get('chemical_symbol_to_type'):
             if distances == 'train_val':
-                embeddings = torch.cat([self.train_embeddings[key],self.test_embeddings[key]])
+                embeddings = torch.cat([self.train_embeddings[key],self.test_embeddings[key]],device=self.device)
             elif distances == 'train':
                 embeddings = self.train_embeddings[key]
 
-            if extra_embeddings is not None:
-                embeddings = torch.cat([embeddings,extra_embeddings[key]])
+            embeddings = embeddings.to(device=self.device)
 
-            embeddings.to(device=self.device)
+            if extra_embeddings is not None:
+                tmp = extra_embeddings[key].to(device=self.device)
+                embeddings = torch.cat([embeddings,tmp])
+
             mask = (atom_types==self.MLP_config.get('chemical_symbol_to_type')[key]).flatten()
 
             if torch.any(mask):
@@ -2292,7 +2294,7 @@ class Nequip_error_GPR(uncertainty_base):
     def load_GPR(self):
         load = False
         if os.path.isfile(self.state_dict_filename):
-            self.GPR = uncertainty_GPR(self.latent_size,self.ninducing_points)
+            self.GPR = uncertainty_GPR(self.latent_size,self.ninducing_points,log_transform=self.log_transform)
             try:
                 self.GPR.load_state_dict(torch.load(self.state_dict_filename))
                 load = True
