@@ -2288,18 +2288,23 @@ class Nequip_error_GPR(uncertainty_base):
         self.log_transform = self.config.get('GPR_log_transform',True)
         self.inducing_points_initialization = self.config.get('GPR_inducing_points_initialization','random')
 
+        self.separate_unc = self.config.get('separate_unc',False)
+
         self.state_dict_filename = os.path.join(self.uncertainty_dir, f'uncertainty_GPR_state_dict.pth')
-        self.metrics_filename = os.path.join(self.uncertainty_dir, f'uncertainty_GPR_metrics.csv')
+        self.metrics_filename_fn = lambda key: os.path.join(self.uncertainty_dir, f'uncertainty_GPR_metrics_{key}.csv')
 
     def load_GPR(self):
         load = False
         if os.path.isfile(self.state_dict_filename):
-            self.GPR = uncertainty_GPR(self.latent_size,self.ninducing_points,log_transform=self.log_transform)
-            try:
-                self.GPR.load_state_dict(torch.load(self.state_dict_filename))
-                load = True
-            except:
-                pass
+            self.GPR = {}
+            state_dicts = torch.load(self.state_dict_filename)
+            for key in self.MLP_config.get('chemical_symbol_to_type'):
+                self.GPR[key] = uncertainty_GPR(self.latent_size,self.ninducing_points,log_transform=self.log_transform)
+                try:
+                    self.GPR[key].load_state_dict(state_dicts[key])
+                    load = True
+                except:
+                    pass
         
         return load
 
@@ -2315,10 +2320,6 @@ class Nequip_error_GPR(uncertainty_base):
                 return False
             else:
                 setattr(self,rk,all_data[rk])
-
-        self.all_embeddings = torch.cat([self.train_embeddings,self.test_embeddings])
-        self.all_errors = torch.cat([self.train_errors,self.test_errors])
-        self.all_energies = torch.cat([self.train_energies,self.test_energies])
         
         return True
 
@@ -2328,18 +2329,23 @@ class Nequip_error_GPR(uncertainty_base):
         self.parse_data()
 
         if not load:
-            self.GPR = uncertainty_GPR(self.latent_size,self.ninducing_points,self.unc_epochs,lr=self.learning_rate,log_transform=self.log_transform,inducing_points_initialization=self.inducing_points_initialization)
-            if self.config.get('train_UQ_different_dataset',False):
-                self.parse_UQ_data()
-                self.GPR.train(self.UQ_embeddings, self.UQ_errors)
-            elif self.config.get('train_UQ_dataset','all')=='train':
-                self.GPR.train(self.train_embeddings, self.train_errors)
-            elif self.config.get('train_UQ_dataset','all')=='test':
-                self.GPR.train(self.test_embeddings, self.test_errors)
-            elif self.config.get('train_UQ_dataset','all')=='all':
-                self.GPR.train(self.all_embeddings, self.all_errors)
-            torch.save(self.GPR.get_state_dict(),self.state_dict_filename)
-            pd.DataFrame(self.GPR.metrics).to_csv(self.metrics_filename)
+            self.GPR = {}
+            state_dicts = {}
+            UQ_dataset_type = self.config.get('train_UQ_dataset','all')
+            for key in self.MLP_config.get('chemical_symbol_to_type'):
+                self.GPR[key] = uncertainty_GPR(self.latent_size,self.ninducing_points,self.unc_epochs,lr=self.learning_rate,log_transform=self.log_transform,inducing_points_initialization=self.inducing_points_initialization)
+                if self.config.get('train_UQ_different_dataset',False):
+                    self.parse_UQ_data()
+                    self.GPR.train(self.UQ_embeddings, self.UQ_errors)
+                elif UQ_dataset_type =='train':
+                    self.GPR[key].train(self.train_embeddings[key], self.train_errors[key])
+                elif UQ_dataset_type =='test':
+                    self.GPR[key].train(self.test_embeddings[key], self.test_errors[key])
+                elif UQ_dataset_type =='all':
+                    self.GPR[key].train(self.all_embeddings[key], self.all_errors[key])
+                state_dicts[key] = self.GPR[key].get_state_dict()
+                pd.DataFrame(self.GPR[key].metrics).to_csv(self.metrics_filename_fn(key))
+            torch.save(state_dicts,self.state_dict_filename)
 
     def parse_data(self):
         self.parse_keys = [
@@ -2355,42 +2361,65 @@ class Nequip_error_GPR(uncertainty_base):
         if not success:
             dataset = dataset_from_config(self.MLP_config)
 
-            train_embeddings = torch.empty((0,self.latent_size),device=self.device)
-            train_errors = torch.empty((0),device=self.device)
-            train_energies = torch.empty((0),device=self.device)
+            train_embeddings = {}
+            train_errors = {}
+            train_energies = {}
+            test_embeddings = {}
+            test_errors = {}
+            test_energies = {}
+
+            for key in self.chemical_symbol_to_type:
+                train_embeddings[key] = torch.empty((0,self.latent_size),device=self.device)
+                train_errors[key] = torch.empty((0),device=self.device)
+                train_energies[key] = torch.empty((0),device=self.device)
+                test_embeddings[key] = torch.empty((0,self.latent_size),device=self.device)
+                test_errors[key] = torch.empty((0),device=self.device)
+                test_energies[key] = torch.empty((0),device=self.device)
+        
             for data in dataset[self.MLP_config.train_idcs]:
                 out = self.model(self.transform_data_input(data))
-                train_energies = torch.cat([train_energies, out['atomic_energy'].mean().detach().unsqueeze(0)])
-                train_embeddings = torch.cat([train_embeddings,out['node_features'].detach()])
-                
                 error = torch.absolute(out['forces'] - data.forces)
-                train_errors = torch.cat([train_errors,error.mean(dim=1)])
 
-            self.train_energies = train_energies
+                for key in self.MLP_config.get('chemical_symbol_to_type'):
+                    mask = (data['atom_types']==self.MLP_config.get('chemical_symbol_to_type')[key]).flatten()
+                    train_embeddings[key] = torch.cat([train_embeddings[key],out['node_features'][mask].detach()])
+                    train_energies[key] = torch.cat([train_energies[key], out['atomic_energy'][mask].detach()])
+                    if self.separate_unc:
+                        train_errors[key] = torch.cat([train_errors[key],error[mask].detach()])
+                    else:
+                        train_errors[key] = torch.cat([train_errors[key],error.mean(dim=1)[mask].detach()])
+
             self.train_embeddings = train_embeddings
+            self.train_energies = train_energies
             self.train_errors = train_errors
 
-            test_embeddings = torch.empty((0,self.latent_size),device=self.device)
-            test_errors = torch.empty((0),device=self.device)
-            test_energies = torch.empty((0),device=self.device)
             for data in dataset[self.MLP_config.val_idcs]:
                 out = self.model(self.transform_data_input(data))
-                test_energies = torch.cat([test_energies, out['atomic_energy'].mean().detach().unsqueeze(0)])
-
+                
                 error = torch.absolute(out['forces'] - data.forces)
 
-                test_embeddings = torch.cat([test_embeddings,out['node_features'].detach()])
-                test_errors = torch.cat([test_errors,error.mean(dim=1).detach()])
+                for key in self.MLP_config.get('chemical_symbol_to_type'):
+                    mask = (data['atom_types']==self.MLP_config.get('chemical_symbol_to_type')[key]).flatten()
+                    test_embeddings[key] = torch.cat([test_embeddings[key],out['node_features'][mask].detach()])
+                    test_energies[key] = torch.cat([test_energies[key], out['atomic_energy'][mask].detach()])
+                    if self.separate_unc:
+                        test_errors[key] = torch.cat([test_errors[key],error[mask].detach()])
+                    else:
+                        test_errors[key] = torch.cat([test_errors[key],error.mean(dim=1)[mask].detach()])
             
             self.test_embeddings = test_embeddings
-            self.test_errors = test_errors
             self.test_energies = test_energies
-
-            self.all_embeddings = torch.cat([train_embeddings,test_embeddings])
-            self.all_errors = torch.cat([self.train_errors,self.test_errors])
-            self.all_energies = torch.cat([self.train_energies,self.test_energies])
+            self.test_errors = test_errors
 
             self.save_parsed_data()
+        
+        self.all_embeddings = {}
+        self.all_energies = {}
+        self.all_errors = {}
+        for key in self.MLP_config.get('chemical_symbol_to_type'):
+            self.all_embeddings[key] = torch.cat([self.train_embeddings,self.test_embeddings],device=self.device)
+            self.all_energies[key] = torch.cat([self.train_energies,self.test_energies],device=self.device)
+            self.all_errors[key] = torch.cat([self.train_errors,self.test_errors],device=self.device)
 
     def adversarial_loss(self, data, T, distances='train'):
 
@@ -2426,20 +2455,28 @@ class Nequip_error_GPR(uncertainty_base):
             self.atom_embedding = atom_embedding
             self.atom_forces = out['forces']
             self.atoms_energy = out['total_energy']
-
-        mean, upper_confidence = self.GPR.predict(atom_embedding)
         
-        if type == 'full':
-            # uncertainty_ens = uncertainty_mean + uncertainty_std
-            uncertainty = torch.vstack([mean,upper_confidence-mean]).T.to(self.device)
-        elif type == 'std':
-            # uncertainty_ens = uncertainty_mean
-            uncertainty = torch.vstack([torch.zeros_like(mean),upper_confidence-mean]).T.to(self.device)
-        elif type == 'mean':
-            # uncertainty_ens = uncertainty_std
-            uncertainty = torch.vstack([mean,torch.zeros_like(mean)]).T.to(self.device)
+        atom_types = data['atom_types']
+        uncertainties = torch.zeros(atom_embedding.shape[0],2, device=self.device)
+        for key in self.MLP_config.get('chemical_symbol_to_type'):
+            mask = (atom_types==self.MLP_config.get('chemical_symbol_to_type')[key]).flatten()
+            mean, upper_confidence = self.GPR[key].predict(atom_embedding[key])
+            
+            if type == 'full':
+                uncertainties[mask,0] = mean
+                uncertainties[mask,1] = upper_confidence-mean
+                # uncertainty_ens = uncertainty_mean + uncertainty_std
+                # uncertainty = torch.vstack([mean,upper_confidence-mean]).T.to(self.device)
+            elif type == 'std':
+                # uncertainty_ens = uncertainty_mean
+                # uncertainty = torch.vstack([torch.zeros_like(mean),upper_confidence-mean]).T.to(self.device)
+                uncertainties[mask,1] = upper_confidence-mean
+            elif type == 'mean':
+                uncertainties[mask,0] = mean
+                # uncertainty_ens = uncertainty_std
+                # uncertainty = torch.vstack([mean,torch.zeros_like(mean)]).T.to(self.device)
 
-        return uncertainty
+        return uncertainties
 
 class Nequip_error_pos_NN(uncertainty_base):
     def __init__(self, model, config, MLP_config):
