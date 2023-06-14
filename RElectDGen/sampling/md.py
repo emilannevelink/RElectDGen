@@ -46,6 +46,7 @@ def md_from_atoms(
     
     if dump_file is None:
         dump_file = f'MD_dump_file_{rind}.csv'
+    print(data_directory)
     dump_file = os.path.join(data_directory,dump_file)
 
     #MDLogger only has append, delete log file
