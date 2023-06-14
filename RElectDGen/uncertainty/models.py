@@ -474,9 +474,13 @@ class Nequip_latent_distance(uncertainty_base):
     def predict_uncertainty(self, data_in, atom_embedding=None, distances='train', extra_embeddings=None, type='full'):
         
         data = self.transform_data_input(data_in)
-        print('transformed')
+
         out = self.model(data)
-        print('evaluated model')
+        atom_embedding = out['node_features']
+        self.atom_embedding = atom_embedding
+        self.atom_forces = out['forces']
+        self.atoms_energy = out['total_energy']
+    
         atom_types = data['atom_types']
         uncertainties = torch.zeros(atom_embedding.shape[0],2, device=self.device)
 
@@ -509,7 +513,6 @@ class Nequip_latent_distance(uncertainty_base):
                 self.min_vectors[key] = min_vectors.detach().cpu().numpy()
             
                 uncertainties[mask] = self.uncertainty_from_vector(min_vectors, key, type=type)
-        print('calculated uncertainties')
         out['uncertainties'] = uncertainties
         return out
 
