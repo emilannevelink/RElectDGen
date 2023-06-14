@@ -2,6 +2,7 @@ import argparse, subprocess
 from ase.io.trajectory import Trajectory
 import numpy as np
 import os
+import shutil
 import yaml
 import time
 import json
@@ -40,12 +41,20 @@ def parse_command_line(argsin):
 
     return config, MLP_config_new, args.MLP_config, args.array_index
 
+def remove_processed(results_directory):
+
+    for root, dirs, files in os.walk(results_directory):
+        for name in dirs:
+            if 'processed' in name:
+                shutil.rmtree(os.path.join(root,name))
 
 @profile
 def main(args=None):
     
     start_time = time.time()
     config, MLP_config, MLP_config_filename, array_index = parse_command_line(args)
+
+    remove_processed(MLP_config.get('root'))
     
     # tmp_filename = os.path.join(config.get('directory'),config.get('run_dir'),config.get('tmp_file','tmp.json'))
 
