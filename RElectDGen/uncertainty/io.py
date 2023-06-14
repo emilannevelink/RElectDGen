@@ -46,7 +46,7 @@ def get_dataset_uncertainties(UQ: uncertainty_base):
             mask = np.array(atoms.get_chemical_symbols())==symbol
             dataset_train_uncertainties[symbol] = np.concatenate([
                 dataset_train_uncertainties[symbol],
-                out['uncertainties'].sum(axis=-1)[mask]
+                out['uncertainties'].sum(axis=-1)[mask].detach().cpu().numpy()
             ])
 
     val_idcs = np.array(UQ.MLP_config.get('val_idcs'))
@@ -57,7 +57,7 @@ def get_dataset_uncertainties(UQ: uncertainty_base):
             mask = np.array(atoms.get_chemical_symbols())==symbol
             dataset_train_uncertainties[symbol] = np.concatenate([
                 dataset_train_uncertainties[symbol],
-                out['uncertainties'].sum(axis=-1)[mask]
+                out['uncertainties'].sum(axis=-1)[mask].detach().cpu().numpy()
             ])
 
     return dataset_train_uncertainties, dataset_val_uncertainties
