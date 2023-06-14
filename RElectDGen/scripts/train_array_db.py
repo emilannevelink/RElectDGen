@@ -42,10 +42,8 @@ def parse_command_line(argsin):
     return config, MLP_config_new, args.MLP_config, args.array_index
 
 def remove_processed(results_directory):
-    print(results_directory)
     for root, dirs, files in os.walk(results_directory):
         for name in dirs:
-            print(root, name)
             if 'processed' in name:
                 shutil.rmtree(os.path.join(root,name))
 
