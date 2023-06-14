@@ -16,11 +16,13 @@ def load_UQ(config,MLP_config):
     ### Setup NN ASE calculator
     if uncertainty_function in ['Nequip_ensemble']:
         n_ensemble = config.get('n_uncertainty_ensembles',4)
-        calc_nn, model, MLP_config = nns_from_results(train_directory,n_ensemble,template)
-        r_max = MLP_config[0].get('r_max')
     else:
-        calc_nn, model, MLP_config = nn_from_results(train_directory,template=template)
-        r_max = MLP_config.get('r_max')
+        n_ensemble = 1
+    
+    calc_nn, model, MLP_config = nns_from_results(train_directory,n_ensemble,template)
+    if n_ensemble == 1:
+        model = model[0]
+        MLP_config = MLP_config[0]
 
     ### Calibrate Uncertainty Quantification
     UQ_func = getattr(uncertainty_models,uncertainty_function)
