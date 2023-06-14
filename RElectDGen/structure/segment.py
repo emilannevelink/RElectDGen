@@ -16,7 +16,7 @@ import multiprocessing as mp
 import copy
 
 from .build import create_slab
-from ..calculate.calculator import nn_from_results
+from ..calculate._MLIP import nn_from_results
 from nequip.data import AtomicData
 from nequip.data.transforms import TypeMapper
 

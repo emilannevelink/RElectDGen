@@ -16,7 +16,7 @@ from RElectDGen.utils.io import add_to_trajectory
 
 from ..uncertainty import models as uncertainty_models
 
-from ..calculate.calculator import nn_from_results, nns_from_results
+from ..calculate._MLIP import nn_from_results, nns_from_results
 from ..utils.logging import write_to_tmp_dict, add_checks_to_config
 from ..structure.build import get_initial_structure
 import time

@@ -1,7 +1,7 @@
 import argparse
 import os
 import yaml
-from ..calculate.calculator import nn_from_results
+from ..calculate._MLIP import nn_from_results
 import time
 
 from ..uncertainty import models as uncertainty_models

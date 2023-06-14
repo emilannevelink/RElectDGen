@@ -3,7 +3,7 @@ from ase.io import read
 
 from RElectDGen.uncertainty.models import uncertainty_base
 from RElectDGen.uncertainty import models as uncertainty_models
-from RElectDGen.calculate.calculator import nn_from_results, nns_from_results
+from RElectDGen.calculate._MLIP import nn_from_results, nns_from_results
 
 def load_UQ(config,MLP_config):
     train_directory = config.get('train_directory','results')

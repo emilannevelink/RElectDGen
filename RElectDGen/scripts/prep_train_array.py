@@ -16,7 +16,7 @@ from nequip.data import dataset_from_config
 
 from ..uncertainty import models as uncertainty_models
 
-from RElectDGen.calculate.calculator import nn_from_results
+from RElectDGen.calculate._MLIP import nn_from_results
 from RElectDGen.utils.save import check_NN_parameters, check_nan_parameters
 from RElectDGen.utils.logging import get_mae_from_results, write_to_tmp_dict, get_dataset_sizes
 

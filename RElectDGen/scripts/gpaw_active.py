@@ -7,7 +7,7 @@ from ase.parallel import world
 import numpy as np
 
 from RElectDGen.calculate.recalculate import recalculate_traj_energies
-from RElectDGen.calculate.calculator import oracle_from_config
+from RElectDGen.calculate._dft import oracle_from_config
 from RElectDGen.utils.logging import write_to_tmp_dict
 
 parser = argparse.ArgumentParser()

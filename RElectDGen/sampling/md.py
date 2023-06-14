@@ -7,6 +7,7 @@ from ase.md.velocitydistribution import MaxwellBoltzmannDistribution, ZeroRotati
 from ase import units
 from ase.md import MDLogger
 from ase.io import Trajectory
+from ase.parallel import world
 
 from ..utils.md_utils import md_func_fn
 
@@ -50,7 +51,7 @@ def md_from_atoms(
     dump_file = os.path.join(data_directory,dump_file)
 
     #MDLogger only has append, delete log file
-    if os.path.isfile(dump_file):
+    if os.path.isfile(dump_file) and world.rank == 0:
         os.remove(dump_file)
     dyn.attach(MDLogger(dyn,atoms,dump_file,mode='w'),interval=1)
     
