@@ -51,10 +51,10 @@ class UncCalculator(Calculator):
         """
         # call to base-class to set atoms attribute
         Calculator.calculate(self, atoms)
-
+        print('Uncertainty Calculator')
         # predict + extract data
         out = self.uq_module.predict_uncertainty(atoms)
-        
+        print(out)
         self.results = {"uncertainty": out['uncertainties'].sum(axis=-1)}
         # only store results the model actually computed to avoid KeyErrors
         if AtomicDataDict.TOTAL_ENERGY_KEY in out:
