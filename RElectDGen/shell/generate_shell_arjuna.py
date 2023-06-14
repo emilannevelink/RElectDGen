@@ -103,7 +103,7 @@ def slurm_config_from_config(config, file):
     elif (
         'train' in file or
         'UQ' in file or
-        'analyze' in file
+        'sample' in file
     ):
         slurm_config['p'] = config.get('MLP_queue', config.get('queue', 'cpu'))
         cores = config.get('MLP_cores', config.get('cores'))
@@ -118,6 +118,18 @@ def slurm_config_from_config(config, file):
         sampling_time_limit = config.get('sampling_time_limit')
         if ('MLP' in file or 'adv' in file) and sampling_time_limit is not None:
             slurm_config['t'] = sampling_time_limit
+    elif ('gpaw' in file):
+        slurm_config['p'] = config.get('gpaw_queue',config.get('queue','cpu'))
+        slurm_config['n'] = config.get('gpaw_cores',config.get('cores'))
+        slurm_config['N'] = config.get('gpaw_nodes',config.get('nodes',1))
+
+        initial_time_limit = config.get('initial_time_limit')
+        if 'MD' in file and initial_time_limit is not None:
+            slurm_config['t'] = initial_time_limit
+        active_time_limit = config.get('active_time_limit')
+        if ('active' in file or 
+            'array' in file) and active_time_limit is not None:
+            slurm_config['t'] = active_time_limit
 
     if 'gpu' in slurm_config['p']:
         slurm_config['A'] = 'venkvis_gpu'
