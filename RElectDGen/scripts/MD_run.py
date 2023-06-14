@@ -8,7 +8,7 @@ from ase.md import MDLogger
 
 
 from RElectDGen.utils.md_utils import md_func_from_config
-from ..calculate.calculator import nn_from_results, nns_from_results
+from ..calculate._MLIP import nn_from_results, nns_from_results
 from ..structure.build import get_initial_structure
 import time
 

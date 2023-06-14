@@ -8,7 +8,7 @@ def recalculate_traj_energies(traj,calc=None,config=None,writer=None,rewrite_pbc
 	start_time = time.time()
 	# traj_new = []
 	if calc==None:
-		from .calculator import oracle_from_config
+		from ._MLIP import oracle_from_config
 	else:
 		calci = calc
 	for i, atoms in enumerate(traj):
@@ -46,7 +46,7 @@ def recalculate_traj_energies(traj,calc=None,config=None,writer=None,rewrite_pbc
 
 def calculate_atoms(atoms, dft_config,recalculate=True):
 	import gpaw
-	from .calculator import oracle_from_config
+	from ._dft import oracle_from_config
 	start_time = time.time()
 	# traj_new = []
 	calci = oracle_from_config(dft_config,atoms=atoms)

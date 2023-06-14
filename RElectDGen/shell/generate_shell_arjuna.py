@@ -66,7 +66,7 @@ def shell_from_config(config):
                 f'srun  --mpi=pmix -n {gpaw_cores}' + f' gpaw python {file} $1 $2' + " ${SLURM_ARRAY_TASK_ID}"
             ]
         elif 'gpaw_md' in file.lower():
-            file = os.path.join(config.get('scripts_path'),'gpaw_MD.py')
+            file = os.path.join(config.get('scripts_path'),'gpaw_MD_db.py')
             commands += [
                 f'srun  --mpi=pmix -n {gpaw_cores}' + f' gpaw python {file} $1 $2'
             ]

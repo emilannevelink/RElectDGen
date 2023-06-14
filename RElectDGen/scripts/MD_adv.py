@@ -27,7 +27,7 @@ from nequip.data import AtomicData, AtomicDataDict
 
 from RElectDGen.scripts.gpaw_MD import get_initial_MD_steps
 
-from ..calculate.calculator import nn_from_results, nns_from_results
+from ..calculate._MLIP import nn_from_results, nns_from_results
 from ..structure.segment import clusters_from_traj
 from ..utils.logging import write_to_tmp_dict, add_checks_to_config
 from ..structure.build import get_initial_structure

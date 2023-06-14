@@ -86,7 +86,7 @@ def main(args=None):
         except:
             pass
 
-        from RElectDGen.calculate.calculator import oracle_from_config
+        from RElectDGen.calculate._dft import oracle_from_config
         calc_oracle = oracle_from_config(config.get('dft_config'), atoms=supercell)
         supercell.calc = calc_oracle    
         # MaxwellBoltzmannDistribution(supercell, temperature_K=config.get('GPAW_MD_temperature'))
