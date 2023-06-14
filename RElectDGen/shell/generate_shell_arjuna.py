@@ -38,6 +38,7 @@ def shell_from_config(config):
             "source /home/spack/.spack/opt/spack/linux-centos7-broadwell/gcc-11.2.0/miniconda3-4.9.2-et7ujxrrzevxewx65fnmzqkftwwkrsyc/etc/profile.d/conda.sh",
             f'conda activate {conda_environment}',
             f'export LD_LIBRARY_PATH={libstdc_location}:$LD_LIBRARY_PATH',
+            'spack load /pteuooj #openmpi',
         ]
 
         if 'train_prep' in file:
