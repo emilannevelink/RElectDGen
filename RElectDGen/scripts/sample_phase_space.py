@@ -45,8 +45,9 @@ def main(args=None):
     UQ, unc_calc = load_unc_calc(config,MLP_config)
 
     ### get atoms objects
+    data_directory = config.get('data_directory')
     db_filename = os.path.join(
-        config.get('data_directory'),
+        data_directory,
         config.get('ase_db_filename')
     )
     assert os.path.isfile(db_filename)
@@ -82,7 +83,8 @@ def main(args=None):
         atoms.calc = unc_calc
         traj, stable = md_from_atoms(
             atoms,
-            **config.get('MLP_md_kwargs')
+            **config.get('MLP_md_kwargs'),
+            data_directory=data_directory
         )
 
         nsamplesi = len(traj)*len(traj[0])
