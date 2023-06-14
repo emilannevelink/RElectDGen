@@ -63,9 +63,10 @@ def main(args=None):
 
     config['cell'] = supercell.get_cell()
 
+    data_directory = config.get('data_directory')
     dft_md_kwargs = config.get('dft_md_kwargs')
     trajectory_file = os.path.join(
-        config.get('data_directory'),
+        data_directory,
         dft_md_kwargs.get('trajectory_file')
     )
     # data_file = os.path.join(config.get('data_directory'),config.get('hdf5_file'))
@@ -87,7 +88,7 @@ def main(args=None):
             pass
 
         from RElectDGen.calculate._dft import oracle_from_config
-        calc_oracle = oracle_from_config(config.get('dft_config'), atoms=supercell)
+        calc_oracle = oracle_from_config(config.get('dft_config'), atoms=supercell,data_directory=data_directory)
         supercell.calc = calc_oracle    
         # MaxwellBoltzmannDistribution(supercell, temperature_K=config.get('GPAW_MD_temperature'))
         # ZeroRotation(supercell)

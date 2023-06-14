@@ -39,6 +39,7 @@ def oracle_from_config(config,atoms=None,data_directory=''):
             kpts = config.get('kpoints')
 
         GPAW_dump_file = os.path.join(data_directory,config.get('GPAW_dump_file'))
+        print(GPAW_dump_file)
         calculator = GPAW(
                     xc=xc,
                     kpts=(kpts),
