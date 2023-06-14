@@ -34,13 +34,13 @@ def parse_command_line(argsin):
     return config
 
 
-def check_dft_steps(config):
-    dft_md_kwargs = config.get('dft_md_kwargs')
+def check_oracle_steps(config):
+    oracle_md_kwargs = config.get('oracle_md_kwargs')
     trajectory_file = os.path.join(
         config.get('data_directory'),
-        dft_md_kwargs.get('trajectory_file')
+        oracle_md_kwargs.get('trajectory_file')
     )
-    initial_MD_steps = dft_md_kwargs.get('steps')
+    initial_MD_steps = oracle_md_kwargs.get('steps')
     
     if os.path.isfile(trajectory_file):
         if world.rank == 0:
@@ -64,16 +64,16 @@ def main(args=None):
     config['cell'] = supercell.get_cell()
 
     data_directory = config.get('data_directory')
-    dft_md_kwargs = config.get('dft_md_kwargs')
+    oracle_md_kwargs = config.get('oracle_md_kwargs')
     trajectory_file = os.path.join(
         data_directory,
-        dft_md_kwargs.get('trajectory_file')
+        oracle_md_kwargs.get('trajectory_file')
     )
     # data_file = os.path.join(config.get('data_directory'),config.get('hdf5_file'))
     
     print(trajectory_file)
 
-    initial_MD_steps = check_dft_steps(config)
+    initial_MD_steps = check_oracle_steps(config)
 
     if initial_MD_steps > 0:
         if world.rank == 0:
@@ -88,7 +88,7 @@ def main(args=None):
             pass
 
         from RElectDGen.calculate._dft import oracle_from_config
-        calc_oracle = oracle_from_config(config.get('dft_config'), atoms=supercell,data_directory=data_directory)
+        calc_oracle = oracle_from_config(config.get('oracle_config'), atoms=supercell,data_directory=data_directory)
         supercell.calc = calc_oracle    
         # MaxwellBoltzmannDistribution(supercell, temperature_K=config.get('GPAW_MD_temperature'))
         # ZeroRotation(supercell)
@@ -96,7 +96,7 @@ def main(args=None):
 
         # md_func, md_kwargs = md_func_from_config(config, prefix='GPAW')
         print('Data directory: ', data_directory)
-        traj, stable = md_from_atoms(supercell,**dft_md_kwargs,delete_tmp=False,data_directory=data_directory)
+        traj, stable = md_from_atoms(supercell,**oracle_md_kwargs,delete_tmp=False,data_directory=data_directory)
 
         # GPAW_MD_dump_file = os.path.join(config.get('data_directory'),config.get('GPAW_MD_dump_file'))
         # md_kwargs['logfile'] = GPAW_MD_dump_file

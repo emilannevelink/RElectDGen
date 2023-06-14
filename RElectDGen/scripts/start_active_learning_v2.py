@@ -1,7 +1,7 @@
 import argparse
 import subprocess
 import os, yaml
-from RElectDGen.scripts.gpaw_MD_db import check_dft_steps
+from RElectDGen.scripts.gpaw_MD_db import check_oracle_steps
 
 def parse_command_line(args):
     parser = argparse.ArgumentParser()
@@ -77,7 +77,7 @@ def main(args=None):
     location = config.get('dir_shell', 'submits')
     for shell_file in filenames:
         shell_file = os.path.join(location,shell_file)
-        if 'gpaw_MD' in shell_file and check_dft_steps(config)>0:
+        if 'gpaw_MD' in shell_file and check_oracle_steps(config)>0:
             commands = ['sbatch', shell_file, active_learning_config, MLP_config_current]
             command_string = ' '.join(commands)
             process = subprocess.run(command_string, capture_output=True, shell=True)
