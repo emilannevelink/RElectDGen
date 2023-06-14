@@ -21,6 +21,7 @@ def md_from_atoms(
     dump_file: str = None,
     trajectory_file: str = None,
     delete_tmp: bool = True,
+    data_directory: str = '',
     **kwargs
 ):  
     print('Starting timer', flush=True)
@@ -45,6 +46,7 @@ def md_from_atoms(
     
     if dump_file is None:
         dump_file = f'MD_dump_file_{rind}.csv'
+    dump_file = os.path.join(data_directory,dump_file)
 
     #MDLogger only has append, delete log file
     if os.path.isfile(dump_file):
@@ -53,6 +55,7 @@ def md_from_atoms(
     
     if trajectory_file is None:
         trajectory_file = f'MD_traj_file_{rind}.traj'
+    trajectory_file = os.path.join(data_directory,trajectory_file)
 
     traj = Trajectory(trajectory_file, 'w', atoms)
     dyn.attach(traj.write, interval=1)

@@ -96,7 +96,7 @@ def main(args=None):
 
         # md_func, md_kwargs = md_func_from_config(config, prefix='GPAW')
 
-        traj, stable = md_from_atoms(supercell,**dft_md_kwargs,delete_tmp=False)
+        traj, stable = md_from_atoms(supercell,**dft_md_kwargs,delete_tmp=False,data_directory=data_directory)
 
         # GPAW_MD_dump_file = os.path.join(config.get('data_directory'),config.get('GPAW_MD_dump_file'))
         # md_kwargs['logfile'] = GPAW_MD_dump_file
