@@ -43,6 +43,8 @@ def shell_from_config(config):
 
         if 'train_prep' in file:
             commands += [
+                'rm results/processed*/ -r',
+                'REDGEN-combine-datasets --config_file $1 --MLP_config_file $2',
                 'REDGEN-train-prep --config_file $1 --MLP_config_file $2',
             ]
         elif 'train_array' in file:
@@ -58,12 +60,12 @@ def shell_from_config(config):
             commands += [
                 'REDGEN-sample --config_file $1 --MLP_config_file $2'
             ]
-        elif 'recalculate_GPAW' in file:
+        elif 'gpaw_array' in file.lower():
             file = os.path.join(config.get('scripts_path'),'gpaw_active_array_db.py')
             commands += [
                 f'srun  --mpi=pmix -n {gpaw_cores}' + f' gpaw python {file} --config_file $1 --MLP_config_file $2 --loop_learning_count $3' + " --array_index ${SLURM_ARRAY_TASK_ID}"
             ]
-        elif 'GPAW_MD' in file:
+        elif 'gpaw_md' in file.lower():
             file = os.path.join(config.get('scripts_path'),'gpaw_MD.py')
             commands += [
                 f'srun  --mpi=pmix -n {gpaw_cores}' + f' gpaw python {file} --config_file $1 --MLP_config_file $2 --loop_learning_count $3' + " --array_index ${SLURM_ARRAY_TASK_ID}"
