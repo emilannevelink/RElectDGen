@@ -2,6 +2,7 @@ from ase.calculators.calculator import Calculator, all_changes
 from ase.stress import full_3x3_to_voigt_6_stress
 
 from nequip.data import AtomicDataDict
+from nequip.ase.nequip_calculator import NequIPCalculator
 
 from RElectDGen.uncertainty.models import uncertainty_base
 from RElectDGen.uncertainty.io import load_UQ
@@ -15,7 +16,7 @@ def load_unc_calc(config, MLP_config):
 
     return UQ, unc_calc
 
-class UncCalculator(Calculator):
+class UncCalculator(Calculator,NequIPCalculator):
     """NequIP ASE Calculator.
 
     .. warning::
@@ -52,6 +53,7 @@ class UncCalculator(Calculator):
         # call to base-class to set atoms attribute
         Calculator.calculate(self, atoms)
         print('Uncertainty Calculator')
+        print(atoms)
         # predict + extract data
         out = self.uq_module.predict_uncertainty(atoms)
         print(out)
