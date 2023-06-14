@@ -4,6 +4,16 @@ from ase.stress import full_3x3_to_voigt_6_stress
 from nequip.data import AtomicDataDict
 
 from RElectDGen.uncertainty.models import uncertainty_base
+from RElectDGen.uncertainty.io import load_UQ
+
+def load_unc_calc(config, MLP_config):
+
+    UQ = load_UQ(config,MLP_config)
+    UQ.calibrate()
+
+    unc_calc = UncCalculator(UQ)
+
+    return UQ, unc_calc
 
 class UncCalculator(Calculator):
     """NequIP ASE Calculator.

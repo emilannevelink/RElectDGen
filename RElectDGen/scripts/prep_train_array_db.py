@@ -7,7 +7,7 @@ import yaml
 import time
 import gc
 import shutil
-from ase.db import connect
+from ase.io import read
 
 import torch
 from nequip.model import model_from_config
@@ -15,11 +15,11 @@ from nequip.data.transforms import TypeMapper
 from nequip.utils import Config
 from nequip.data import dataset_from_config
 
-from ..uncertainty import models as uncertainty_models
+# from ..uncertainty import models as uncertainty_models
 
-from RElectDGen.calculate._MLIP import nn_from_results
-from RElectDGen.utils.save import check_NN_parameters, check_nan_parameters
-from RElectDGen.utils.logging import get_mae_from_results, write_to_tmp_dict, get_dataset_sizes
+# from RElectDGen.calculate._MLIP import nn_from_results
+# from RElectDGen.utils.save import check_NN_parameters, check_nan_parameters
+# from RElectDGen.utils.logging import get_mae_from_results, write_to_tmp_dict, get_dataset_sizes
 
 from memory_profiler import profile
 
@@ -132,13 +132,13 @@ def main(args=None):
     #             print(f'Previous train and validation losses are close enough for network {i}', flush=True) 
 
     ### get atoms objects
-    db_filename = os.path.join(
+    traj_filename = os.path.join(
         config.get('data_directory'),
-        config.get('ase_db_filename')
+        config.get('combined_trajectory')
     )
-    assert os.path.isfile(db_filename)
-    db = connect(db_filename)
-    traj = [row.toatoms() for row in db.select(success=True)] # implies that calc=True as well
+    assert os.path.isfile(traj_filename)
+    
+    traj = read(traj_filename,index=':')
     
     # uncertainty_dict = {}
     # load = False

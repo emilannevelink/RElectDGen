@@ -1,8 +1,5 @@
 from nequip.train import Trainer
 
-from RElectDGen.uncertainty.io import load_UQ
-from .unc_calculator import UncCalculator
-
 def nn_from_results(root='results',train_directory=None,template=''):
     # spack cannot load nequip due to older ase version
     import torch
@@ -80,12 +77,3 @@ def nns_from_results(root='results',n_ensemble=4,template=''):
     
     print(f'Kept {len(model)} of {n_ensemble} models', flush=True)
     return calc_nn, model, MLP_config
-
-def load_unc_calc(config, MLP_config):
-
-    UQ = load_UQ(config,MLP_config)
-    UQ.calibrate()
-
-    unc_calc = UncCalculator(UQ)
-
-    return UQ, unc_calc

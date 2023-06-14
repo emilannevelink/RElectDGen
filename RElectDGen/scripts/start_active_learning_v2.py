@@ -115,7 +115,10 @@ def main(args=None):
             job_types.append(shell_file)
 
         elif 'train_array' in shell_file:
-            n_ensemble = config.get('n_uncertainty_ensembles',4)
+            if 'ensemble' in config.get('uncertainty_function','').lower():
+                n_ensemble = config.get('n_uncertainty_ensembles',4)
+            else:
+                n_ensemble = 1
             if len(job_ids)>0:
                 commands = ['sbatch', f'--dependency=afterok:{job_ids[-1]}', f'--array=0-{n_ensemble-1}', shell_file, active_learning_config, MLP_config_current, str(i)]
             else:
