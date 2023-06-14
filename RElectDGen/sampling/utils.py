@@ -7,6 +7,7 @@ from ase.io import read
 from nequip.data import AtomicData
 from ase.io.formats import UnknownFileTypeError
 from RElectDGen.structure.build import get_initial_structure
+from RElectDGen.statistics.cutoffs import get_statistics_cutoff
 
 def sort_by_uncertainty(traj, embeddings, UQ, max_samples, min_uncertainty=0.04, max_uncertainty=np.inf):
 
@@ -217,6 +218,20 @@ def sample_from_dataset(config):
     traj = traj_md
     return traj
 
+def sample_from_ase_db(
+    db,
+    nsamples: int = 1,
+    md_stable_cutoff: int = 2,
+):
+    rows = []
+    for row in db.select(md_stable=0):
+        rows.append(row)
+    
+    indices = np.random.permutation(len(rows))[:nsamples]
+    rows = [rows[i] for i in indices]
+    
+    return rows
+
 def sample_from_initial_structures(config):
     initial_structures_filename = os.path.join(
         config.get('data_directory'),
@@ -230,3 +245,23 @@ def sample_from_initial_structures(config):
         supercell = get_initial_structure(config)
         
     return supercell
+
+def get_uncertain(traj,minimum_uncertainty_cutoff):
+    
+    uncertainty_indices = np.empty(0,dtype=int)
+    for symbol in np.unique(traj[0].get_chemical_symbols()):
+        all_uncertainties = []
+        for atoms in traj:
+            mask = np.array(atoms.get_chemical_symbols())==symbol
+            all_uncertainties.append(atoms.results['uncertainties'][mask])
+        all_uncertainties = np.concatenate(all_uncertainties)
+
+        max_uncertainties = all_uncertainties.max(axis=1)
+        uncertainty_indices = np.concatenate([
+            uncertainty_indices,
+            np.argwhere(max_uncertainties>minimum_uncertainty_cutoff[symbol]).flatten()
+        ])
+            
+    uncertainty_indices = np.unique(uncertainty_indices)
+    traj_uncertain = [traj[ind] for ind in uncertainty_indices]
+    return traj_uncertain

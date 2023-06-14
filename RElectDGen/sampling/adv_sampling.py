@@ -78,10 +78,11 @@ def min_func(positions, UQ, atoms, T, UQ_max_uncertainty, adv_max_force):
     out = neg_loss.detach().cpu().numpy()
     max_uncertainty = UQ.uncertainties.detach().sum(axis=-1).max()
     max_force = torch.linalg.norm(UQ.atom_forces.detach(),axis=-1).max()
-    if (
-            max_uncertainty > UQ_max_uncertainty or
-            max_force > adv_max_force
-            ):
+    if max_uncertainty > UQ_max_uncertainty:
+        print('Hit max uncertainty', max_uncertainty, UQ_max_uncertainty)
+        out = np.ones_like(out)*np.nan
+    elif max_force > adv_max_force:
+        print('Hit max force', max_force, adv_max_force)
         out = np.ones_like(out)*np.nan
 
     return out

@@ -38,45 +38,61 @@ def parse_command_line(argsin):
 
     MLP_config_new = Config.from_file(args.MLP_config)
 
-    return config, args.array_index
+    return config, MLP_config_new, args.MLP_config, args.array_index
 
 
 @profile
 def main(args=None):
     
     start_time = time.time()
-    config, array_index = parse_command_line(args)
+    config, MLP_config, MLP_config_filename, array_index = parse_command_line(args)
     
-    tmp_filename = os.path.join(config.get('directory'),config.get('run_dir'),config.get('tmp_file','tmp.json'))
+    # tmp_filename = os.path.join(config.get('directory'),config.get('run_dir'),config.get('tmp_file','tmp.json'))
 
     train_directory = config['train_directory']
     if train_directory[-1] == '/':
         train_directory = train_directory[:-1]
 
-    if os.path.isfile(tmp_filename):
-        with open(tmp_filename,'r') as fl:
-            logging_dict = json.load(fl)
-    else:
-        logging_dict = {}
+    # if os.path.isfile(tmp_filename):
+    #     with open(tmp_filename,'r') as fl:
+    #         logging_dict = json.load(fl)
+    # else:
+    #     logging_dict = {}
     
-    MLP_config_filename = f'tmp_MLP_{array_index}.yaml'
-    if logging_dict.get('load',False):
-        commands = ['nequip-train-load', MLP_config_filename]
+    base_dir = os.path.dirname(MLP_config_filename)
+    base_file = os.path.basename(MLP_config_filename)
+    tmp_MLP_config = os.path.join(
+            base_dir,
+            'tmp',
+            base_file.split('.yaml')[0] + f'_{array_index}.yaml'
+        )
+    # if logging_dict.get('load',False):
+    #     commands = ['nequip-train-load', MLP_config_filename]
+    # else:
+    commands = ['nequip-train', tmp_MLP_config]
+
+    # if logging_dict.get('train',True):
+    print('Training NN ... ', flush=True)
+    print(commands, flush=True)
+        
+    process = subprocess.run(commands,capture_output=True)
+    # print(process)
+    [print(line) for line in process.stderr.split(b'\n')]
+
+    # print(process.stderr.decode('ascii'))
+
+    uncertainty_function = config.get('uncertainty_function')
+    if uncertainty_function in ['Nequip_ensemble']:
+        n_ensemble = config.get('n_uncertainty_ensembles',4)
     else:
-        commands = ['nequip-train', MLP_config_filename]
+        n_ensemble = 1
+    
+    if n_ensemble>1:
+        root = train_directory + f'_{array_index}'
+    else:
+        root = train_directory
 
-    if logging_dict.get('train',True):
-        print('Training NN ... ', flush=True)
-        print(commands, flush=True)
-            
-        process = subprocess.run(commands,capture_output=True)
-        # print(process)
-        [print(line) for line in process.stderr.split(b'\n')]
-
-        # print(process.stderr.decode('ascii'))
-
-    root = train_directory + f'_{array_index}'
-    mae_dict = get_mae_from_results(root,index=array_index)
+    mae_dict = get_mae_from_results(root,index=array_index, template=MLP_config['run_name'])
 
     logging_dict = {
         **mae_dict,
@@ -84,7 +100,8 @@ def main(args=None):
     }
 
     ###TODO: this leads to a race condition... add some check functionality to check
-    write_to_tmp_dict(tmp_filename,logging_dict)
+    # write_to_tmp_dict(tmp_filename,logging_dict)
+    os.remove(tmp_MLP_config)
 
 if __name__ == '__main__':
     main()
