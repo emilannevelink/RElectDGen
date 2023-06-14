@@ -40,7 +40,7 @@ def main(args=None):
                 db = connect(os.path.join(config.get('data_directory'),filename))
                 add_traj = []
                 for row in db.select(success=True):
-                    add_traj.append(row.toatoms)
+                    add_traj.append(row.toatoms())
             traj += add_traj
 
             print(len(add_traj), len(traj), filename)
@@ -54,7 +54,7 @@ def main(args=None):
             db = connect(ase_db_file)
             add_traj = []
             for row in db.select(success=True):
-                add_traj.append(row.toatoms)
+                add_traj.append(row.toatoms())
             traj += add_traj
             print(len(add_traj), len(traj))
         except:

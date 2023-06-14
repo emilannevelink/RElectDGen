@@ -52,6 +52,7 @@ def check_oracle_steps(config):
             if world.rank == 0:
                 print('Loading Trajectory fialed, re-initializing',flush=True)
 
+    print('Initial MD steps: ', initial_MD_steps)
     return initial_MD_steps
 
 
