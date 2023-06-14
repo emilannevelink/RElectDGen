@@ -2,7 +2,8 @@ from ase.calculators.calculator import Calculator, all_changes
 from ase.stress import full_3x3_to_voigt_6_stress
 
 from nequip.data import AtomicDataDict
-from nequip.ase.nequip_calculator import NequIPCalculator
+from ase.calculators.singlepoint import SinglePointCalculator
+# from nequip.ase.nequip_calculator import NequIPCalculator
 
 from RElectDGen.uncertainty.models import uncertainty_base
 from RElectDGen.uncertainty.io import load_UQ
@@ -16,7 +17,7 @@ def load_unc_calc(config, MLP_config):
 
     return UQ, unc_calc
 
-class UncCalculator(Calculator,NequIPCalculator):
+class UncCalculator(SinglePointCalculator):
     """NequIP ASE Calculator.
 
     .. warning::
