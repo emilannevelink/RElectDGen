@@ -2,7 +2,7 @@ import os
 import numpy as np
 from ase.parallel import world
 
-def oracle_from_config(config,atoms=None):
+def oracle_from_config(config,atoms=None,data_directory=''):
 
     calculator_type = config.get('calculator_type', 'gpaw')
     if calculator_type == 'gpaw':
@@ -38,7 +38,7 @@ def oracle_from_config(config,atoms=None):
         else:
             kpts = config.get('kpoints')
 
-        GPAW_dump_file = os.path.join(config.get('data_directory'),config.get('GPAW_dump_file'))
+        GPAW_dump_file = os.path.join(data_directory,config.get('GPAW_dump_file'))
         calculator = GPAW(
                     xc=xc,
                     kpts=(kpts),

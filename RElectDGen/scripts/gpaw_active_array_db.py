@@ -55,7 +55,7 @@ def main(args=None):
     if world.rank == 0:
         print(i, array_index, id)
     
-    atoms, success = calculate_atoms(atoms, config.get('dft_config'))
+    atoms, success = calculate_atoms(atoms, config.get('dft_config'),data_directory=config.get('data_directory'))
     
     db.update(id,atoms,calc=True,success=success)
     

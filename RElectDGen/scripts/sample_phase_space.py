@@ -10,7 +10,7 @@ from ase.db import connect
 
 from RElectDGen.sampling.utils import sample_from_ase_db
 from RElectDGen.utils.logging import write_to_tmp_dict
-from RElectDGen.calculate.calculator import load_unc_calc
+from RElectDGen.calculate._MLIP import load_unc_calc
 from RElectDGen.sampling.md import md_from_atoms
 from RElectDGen.sampling.utils import get_uncertain
 from RElectDGen.statistics.cutoffs import get_all_dists_cutoffs, get_statistics_cutoff, get_best_dict

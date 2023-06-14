@@ -44,12 +44,12 @@ def recalculate_traj_energies(traj,calc=None,config=None,writer=None,rewrite_pbc
 
 	# return traj_new
 
-def calculate_atoms(atoms, dft_config,recalculate=True):
+def calculate_atoms(atoms, dft_config,recalculate=True,data_directory=''):
 	import gpaw
 	from ._dft import oracle_from_config
 	start_time = time.time()
 	# traj_new = []
-	calci = oracle_from_config(dft_config,atoms=atoms)
+	calci = oracle_from_config(dft_config,atoms=atoms,data_directory=data_directory)
 	atoms.calc = calci
 	success = False
 	try:
@@ -66,7 +66,7 @@ def calculate_atoms(atoms, dft_config,recalculate=True):
 			print(exception)
 		if recalculate:
 			atoms.positions += np.array([0.1,0.1,0.])
-			atoms, success = calculate_atoms(atoms,dft_config,recalculate=False)
+			atoms, success = calculate_atoms(atoms,dft_config,recalculate=False,data_directory=data_directory)
 	except gpaw.KohnShamConvergenceError:
 		if world.rank == 0:
 			print(f'Convergence Error')
