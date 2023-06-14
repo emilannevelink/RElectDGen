@@ -36,6 +36,7 @@ def md_from_atoms(
         MaxwellBoltzmannDistribution(atoms, temperature_K=temperature)
         ZeroRotation(atoms)
         Stationary(atoms)
+        print(atoms.get_velocities())
 
     print(temperature,flush=True)
 
