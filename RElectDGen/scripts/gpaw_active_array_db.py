@@ -11,12 +11,18 @@ from RElectDGen.structure.utils import extend_cell
 
 def parse_command_line(argsin):
     parser = argparse.ArgumentParser()
-    parser.add_argument('--config_file', dest='config',
-                        help='active_learning configuration file', type=str)
-    parser.add_argument('--MLP_config_file', dest='MLP_config',
-                        help='Nequip configuration file', type=str)
-    parser.add_argument('--array_index', dest='array_index',
-                        help='active_learning_loop', type=int)
+    parser.add_argument('config', metavar='config_file', type=str,
+                        help='active_learning configuration file')
+    parser.add_argument('MLP_config', metavar='MLP_config', type=str,
+                        help='Nequip configuration file')
+    parser.add_argument('array_index', metavar='array_index', type=str,
+                        help='Active Learning Index')
+    # parser.add_argument('--config_file', dest='config',
+    #                     help='active_learning configuration file', type=str)
+    # parser.add_argument('--MLP_config_file', dest='MLP_config',
+    #                     help='Nequip configuration file', type=str)
+    # parser.add_argument('--array_index', dest='array_index',
+    #                     help='active_learning_loop', type=int)
     args = parser.parse_args(argsin)
     
     with open(args.config,'r') as fl:

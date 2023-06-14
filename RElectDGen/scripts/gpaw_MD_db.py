@@ -16,10 +16,14 @@ import yaml
 
 def parse_command_line(argsin):
     parser = argparse.ArgumentParser()
-    parser.add_argument('--config_file', dest='config',
-                        help='active_learning configuration file', type=str)
-    parser.add_argument('--MLP_config_file', dest='MLP_config',
-                        help='Nequip configuration file', type=str)
+    parser.add_argument('config', metavar='config_file', type=str,
+                        help='active_learning configuration file')
+    parser.add_argument('MLP_config', metavar='MLP_config', type=str,
+                        help='Nequip configuration file')
+    # parser.add_argument('--config_file', dest='config',
+    #                     help='active_learning configuration file', type=str)
+    # parser.add_argument('--MLP_config_file', dest='MLP_config',
+    #                     help='Nequip configuration file', type=str)
     args = parser.parse_args()
 
     

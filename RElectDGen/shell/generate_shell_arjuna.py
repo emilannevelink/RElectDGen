@@ -63,12 +63,12 @@ def shell_from_config(config):
         elif 'gpaw_array' in file.lower():
             file = os.path.join(config.get('scripts_path'),'gpaw_active_array_db.py')
             commands += [
-                f'srun  --mpi=pmix -n {gpaw_cores}' + f' gpaw python {file} --config_file $1 --MLP_config_file $2' + " --array_index ${SLURM_ARRAY_TASK_ID}"
+                f'srun  --mpi=pmix -n {gpaw_cores}' + f' gpaw python {file} $1 $2' + " ${SLURM_ARRAY_TASK_ID}"
             ]
         elif 'gpaw_md' in file.lower():
             file = os.path.join(config.get('scripts_path'),'gpaw_MD.py')
             commands += [
-                f'srun  --mpi=pmix -n {gpaw_cores}' + f' gpaw python {file} --config_file $1 --MLP_config_file $2'
+                f'srun  --mpi=pmix -n {gpaw_cores}' + f' gpaw python {file} $1 $2'
             ]
         elif 'restart' in file:
             commands += [
