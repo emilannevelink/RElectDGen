@@ -37,6 +37,7 @@ def md_from_atoms(
         ZeroRotation(atoms)
         Stationary(atoms)
         print(atoms.get_velocities())
+        print(atoms.get_masses())
 
     print(temperature,flush=True)
 

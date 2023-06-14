@@ -1,5 +1,6 @@
 import argparse
 import yaml, os
+import shutil
 from ase.io import read, Trajectory
 from ..utils.save import update_config_trainval
 from ..utils.data import reduce_traj_finite, reduce_traj_isolated, reduce_traj_free_H
@@ -18,6 +19,14 @@ def parse_command_line(argsin):
         config = yaml.load(fl,yaml.FullLoader)
 
     return config, args.MLP_config
+
+def remove_processed(results_directory):
+
+    for root, dirs, files in os.walk(results_directory):
+        for name in dirs:
+            if 'processed' in name:
+                shutil.rmtree(os.path.join(root,name))
+
 
 def main(args=None):
 
@@ -74,6 +83,8 @@ def main(args=None):
         _, traj_reduced = reduce_traj_free_H(traj_reduced)
         print('Reduce free Hydrogen ', len(traj), len(traj_reduced),flush=True)
     reduced_size = len(traj_reduced)
+
+    remove_processed(MLP_config.get('root'))
 
     print(combined_trajectory,flush=True)
     writer = Trajectory(combined_trajectory,'w')
