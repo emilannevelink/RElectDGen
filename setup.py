@@ -46,6 +46,7 @@ setup(
         "torch==1.12",
         "e3nn==0.5.0",
         "nequip==0.5.5",
+        "wandb",
         "pyyaml",
         "packaging",
         "memory_profiler",

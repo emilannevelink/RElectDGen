@@ -73,6 +73,7 @@ def main(args=None):
     # config.get('gpaw_nodes',config.get('nodes',1)))
 
     # for i in range(1,1+config.get('n_temperature_sweep')):
+    print(check_oracle_steps(config)>0)
     i = 0
     location = config.get('dir_shell', 'submits')
     for shell_file in filenames:
