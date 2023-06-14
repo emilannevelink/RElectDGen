@@ -42,9 +42,10 @@ def parse_command_line(argsin):
     return config, MLP_config_new, args.MLP_config, args.array_index
 
 def remove_processed(results_directory):
-
+    print(results_directory)
     for root, dirs, files in os.walk(results_directory):
         for name in dirs:
+            print(root, name)
             if 'processed' in name:
                 shutil.rmtree(os.path.join(root,name))
 
@@ -54,7 +55,7 @@ def main(args=None):
     start_time = time.time()
     config, MLP_config, MLP_config_filename, array_index = parse_command_line(args)
 
-    remove_processed(MLP_config.get('root'))
+    
     
     # tmp_filename = os.path.join(config.get('directory'),config.get('run_dir'),config.get('tmp_file','tmp.json'))
 
@@ -78,6 +79,9 @@ def main(args=None):
     # if logging_dict.get('load',False):
     #     commands = ['nequip-train-load', MLP_config_filename]
     # else:
+    MLP_config_tmp = Config.from_file(tmp_MLP_config)
+    remove_processed(MLP_config_tmp.get('root'))
+
     commands = ['nequip-train', tmp_MLP_config]
 
     # if logging_dict.get('train',True):

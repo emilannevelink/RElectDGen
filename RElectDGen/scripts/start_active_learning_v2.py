@@ -73,49 +73,25 @@ def main(args=None):
     # config.get('gpaw_nodes',config.get('nodes',1)))
 
     # for i in range(1,1+config.get('n_temperature_sweep')):
-    print(check_oracle_steps(config)>0)
     i = 0
     location = config.get('dir_shell', 'submits')
     for shell_file in filenames:
         shell_file = os.path.join(location,shell_file)
-        print(('gpaw_MD' in shell_file) and (check_oracle_steps(config)>0))
-        if ('gpaw_MD' in shell_file and check_oracle_steps(config)>0):
-            commands = ['sbatch', shell_file, active_learning_config, MLP_config_current]
-            command_string = ' '.join(commands)
-            process = subprocess.run(command_string, capture_output=True, shell=True)
-            job_ids.append(int(process.stdout.split(b' ')[-1]))
-            job_types.append(shell_file)
+        submit = True 
+        
+        if ('gpaw_MD' in shell_file) and not check_oracle_steps(config)>0:
+            submit = False
         elif 'gpaw_array' in shell_file:
             narray = int(config.get('max_samples')-1)
             if len(job_ids)>0:
                 commands = ['sbatch', f'--dependency=afterok:{job_ids[-1]}', f'--array=0-{narray}', shell_file, active_learning_config, MLP_config_current, str(i)]
             else:
                 commands = ['sbatch', f'--array=0-{narray}', shell_file, active_learning_config, MLP_config_current, str(i)]
-            
-            command_string = ' '.join(commands)
-            process = subprocess.run(command_string, capture_output=True, shell=True)
-            job_ids.append(int(process.stdout.split(b' ')[-1]))
-            job_types.append(shell_file)
-
-            # shell_file = 'submits/gpaw_summary.sh'
-            # commands = ['sbatch', f'--dependency=afterok:{job_ids[-1]}', shell_file, active_learning_config, MLP_config_current, str(i)]
-
-            # command_string = ' '.join(commands)
-            # process = subprocess.run(command_string, capture_output=True, shell=True)
-            # job_ids.append(int(process.stdout.split(b' ')[-1]))
-            # job_types.append(shell_file)
-
         elif 'train_prep' in shell_file:
             if len(job_ids)>0:
                 commands = ['sbatch', f'--dependency=afterok:{job_ids[-1]}', shell_file, active_learning_config, MLP_config_current, str(i)]
             else:
                 commands = ['sbatch', shell_file, active_learning_config, MLP_config_current, str(i)]
-
-            command_string = ' '.join(commands)
-            process = subprocess.run(command_string, capture_output=True, shell=True)
-            job_ids.append(int(process.stdout.split(b' ')[-1]))
-            job_types.append(shell_file)
-
         elif 'train_array' in shell_file:
             if 'ensemble' in config.get('uncertainty_function','').lower():
                 n_ensemble = config.get('n_uncertainty_ensembles',4)
@@ -124,19 +100,14 @@ def main(args=None):
             if len(job_ids)>0:
                 commands = ['sbatch', f'--dependency=afterok:{job_ids[-1]}', f'--array=0-{n_ensemble-1}', shell_file, active_learning_config, MLP_config_current, str(i)]
             else:
-                commands = ['sbatch', f'--array=0-{n_ensemble-1}', shell_file,active_learning_config, MLP_config_current, str(i)]
-            
-            command_string = ' '.join(commands)
-            process = subprocess.run(command_string, capture_output=True, shell=True)
-            job_ids.append(int(process.stdout.split(b' ')[-1]))
-            job_types.append(shell_file)
-
+                commands = ['sbatch', f'--array=0-{n_ensemble-1}', shell_file,active_learning_config, MLP_config_current, str(i)]      
         else:
             if len(job_ids)>0:
                 commands = ['sbatch', f'--dependency=afterok:{job_ids[-1]}', shell_file, active_learning_config, MLP_config_current, str(i)]
             else:
                 commands = ['sbatch', shell_file, active_learning_config, MLP_config_current, str(i)]
 
+        if submit:
             command_string = ' '.join(commands)
             process = subprocess.run(command_string, capture_output=True, shell=True)
             job_ids.append(int(process.stdout.split(b' ')[-1]))
