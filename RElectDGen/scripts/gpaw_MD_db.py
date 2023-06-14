@@ -3,9 +3,7 @@ from ase.io import trajectory
 
 from ase.io.trajectory import Trajectory
 from ase.io import read, write
-from ase.md.velocitydistribution import MaxwellBoltzmannDistribution, ZeroRotation, Stationary
-from RElectDGen.utils.md_utils import md_func_fn
-from RElectDGen.sampling.md_sampling import md_from_atoms
+from RElectDGen.sampling.md import md_from_atoms
 from ase.md import MDLogger
 from ase import units
 
