@@ -101,13 +101,25 @@ def slurm_config_from_config(config, file):
     elif (
         'train' in file or
         'UQ' in file or
-        'analyze' in file
+        'sample' in file
     ):
         slurm_config['p'] = config.get(
             'MLP_queue', config.get('queue', 'RM-shared'))
         cores = config.get('MLP_cores', config.get('cores'))
         slurm_config['N'] = config.get('MLP_nodes', config.get('nodes', 1))
         slurm_config['--ntasks'] = 1
+    elif ('gpaw' in file):
+        slurm_config['p'] = config.get('gpaw_queue',config.get('queue','cpu'))
+        slurm_config['n'] = config.get('gpaw_cores',config.get('cores'))
+        slurm_config['N'] = config.get('gpaw_nodes',config.get('nodes',1))
+
+        initial_time_limit = config.get('initial_time_limit')
+        if 'MD' in file and initial_time_limit is not None:
+            slurm_config['t'] = initial_time_limit
+        active_time_limit = config.get('active_time_limit')
+        if ('active' in file or 
+            'array' in file) and active_time_limit is not None:
+            slurm_config['t'] = active_time_limit
 
     # Add distinction for RM-shared and GPU-shared
     if 'RM-shared' in slurm_config['p']:
