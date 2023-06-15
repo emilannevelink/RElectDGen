@@ -54,8 +54,7 @@ def main(args = None):
     )
     assert os.path.isfile(db_filename)
     db = connect(db_filename)
-    n_unstable = sum([row for row in db.select(success=True,md_stable=0)])
-    
+    n_unstable = len([row for row in db.select(success=True,md_stable=0)])
     
     if n_unstable > termination_conditions.get('max_n_unstable',0):
         continue_al = True
