@@ -19,7 +19,7 @@ def shell_from_config(config):
 
     filenames = config.get('shell_filenames')
 
-    if 'shared' in config.get('gpaw_queue'):
+    if 'shared' in config.get('gpaw_queue',config.get('queue')):
         gpaw_cores = config.get('gpaw_cores',config.get('cores'))
     else:
         gpaw_cores = max_cpu_cores if 'RM' in config.get('gpaw_queue') else max_gpu_cores
