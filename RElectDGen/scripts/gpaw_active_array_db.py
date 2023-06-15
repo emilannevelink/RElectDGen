@@ -50,6 +50,8 @@ def main(args=None):
             break
     
     if 'atoms' not in locals():
+        if world.rank == 0:
+            print(f'Array index {array_index} too large, exiting')
         sys.exit()
 
     if world.rank == 0:
