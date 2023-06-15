@@ -26,7 +26,7 @@ class UncCalculator(NequIPCalculator): # so that it passes through nequip
 
     """
 
-    implemented_properties = ["energy", "energies", "forces", "stress", "free_energy", "uncertainties"]
+    implemented_properties = ["energy", "energies", "forces", "stress", "free_energy", "magmoms"] 
 
     def __init__(
         self,
@@ -59,7 +59,7 @@ class UncCalculator(NequIPCalculator): # so that it passes through nequip
         out = self.uq_module.predict_uncertainty(atoms)
         # print(out)
         self.results = {
-            "uncertainties": out['uncertainties'].sum(axis=-1)
+            "magmoms": out['uncertainties'].sum(axis=-1) #magmoms is a hack to get around ase file io
                 .detach()
                 .squeeze(-1)
                 .cpu()
