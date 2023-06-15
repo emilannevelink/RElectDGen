@@ -118,7 +118,7 @@ def main(args=None):
 
     # add traj to db
     for atoms in traj_add:
-        db.write(atoms,md_stable=0)
+        db.write(atoms,md_stable=0,calc=False)
     
     print('Sampling Complete')
     ### some sort of logging

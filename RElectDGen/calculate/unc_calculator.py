@@ -59,13 +59,8 @@ class UncCalculator(NequIPCalculator): # so that it passes through nequip
         # predict + extract data
         out = self.uq_module.predict_uncertainty(atoms)
         # print(out)
-        self.results = {
-            "magmoms": out['uncertainties'].sum(axis=-1) #magmoms is a hack to get around ase file io
-                .detach()
-                .squeeze(-1)
-                .cpu()
-                .numpy()
-                }
+        self.results = {}
+        atoms.info['uncertainties'] = out['uncertainties'].sum(axis=-1).detach().squeeze(-1).cpu().numpy() #doesn't save in results
         # only store results the model actually computed to avoid KeyErrors
         if AtomicDataDict.TOTAL_ENERGY_KEY in out:
             self.results["energy"] = self.energy_units_to_eV * (
@@ -98,7 +93,6 @@ class UncCalculator(NequIPCalculator): # so that it passes through nequip
             # ase wants voigt format
             stress_voigt = full_3x3_to_voigt_6_stress(stress)
             self.results["stress"] = stress_voigt
-        print(self.results.keys())
 
 class FakeUncCalculator(NequIPCalculator): # so that it passes through nequip
     """NequIP ASE Calculator.
@@ -141,5 +135,5 @@ class FakeUncCalculator(NequIPCalculator): # so that it passes through nequip
         self.results = {
             'energy': np.random.rand(1),
             'forces': np.random.rand(*atoms.get_positions().shape),
-            'magmoms': np.random.rand(atoms.get_positions().shape[0]),
         }
+        atoms.info['uncertainties'] = np.random.rand(atoms.get_positions().shape[0])
