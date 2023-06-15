@@ -42,6 +42,7 @@ def shell_from_config(config):
 
         if 'train_prep' in file:
             commands += [
+                'REDGEN-combine-datasets --config_file $1 --MLP_config_file $2',
                 'REDGEN-train-prep --config_file $1 --MLP_config_file $2',
             ]
         elif 'train_array' in file:
@@ -53,25 +54,25 @@ def shell_from_config(config):
             commands += [
                 'REDGEN-calibrate-UQ --config_file $1 --MLP_config_file $2'
             ]
-        elif 'sample_MD' in file:
+        elif 'sample' in file:
             commands += [
-                'REDGEN-sample-MD --config_file $1 --MLP_config_file $2'
+                'REDGEN-sample --config_file $1 --MLP_config_file $2'
             ]
-        elif 'recalculate_GPAW' in file:
+        elif 'gpaw_array' in file.lower():
             file = os.path.join(config.get('scripts_path'),'gpaw_active_array_db.py')
             commands += [
-                f'mpiexec -n {gpaw_cores}' + f' gpaw python {file} --config_file $1 --MLP_config_file $2 --loop_learning_count $3' + " --array_index ${SLURM_ARRAY_TASK_ID}"
+                f'mpiexec -n {gpaw_cores}' + f' gpaw python {file} $1 $2' + " ${SLURM_ARRAY_TASK_ID}"
             ]
-        elif 'GPAW_MD' in file:
-            file = os.path.join(config.get('scripts_path'),'gpaw_MD.py')
+        elif 'gpaw_md' in file.lower():
+            file = os.path.join(config.get('scripts_path'),'gpaw_MD_db.py')
             commands += [
-                f'mpiexec -n {gpaw_cores}' + f' gpaw python {file} --config_file $1 --MLP_config_file $2 --loop_learning_count $3' + " --array_index ${SLURM_ARRAY_TASK_ID}"
+                f'mpiexec -n {gpaw_cores}' + f' gpaw python {file} $1 $2'
             ]
         elif 'restart' in file:
             commands += [
                 'REDGEN-restart --config_file $1 --MLP_config_file $2'
             ]
-
+        
         if 'array' in fname:
             gen_job_array(commands, '', slurm_config, fname=fname)
         else:

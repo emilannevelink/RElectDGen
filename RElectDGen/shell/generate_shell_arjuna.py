@@ -43,7 +43,6 @@ def shell_from_config(config):
 
         if 'train_prep' in file:
             commands += [
-                'rm results/processed*/ -r',
                 'REDGEN-combine-datasets --config_file $1 --MLP_config_file $2',
                 'REDGEN-train-prep --config_file $1 --MLP_config_file $2',
             ]

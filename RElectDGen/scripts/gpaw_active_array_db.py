@@ -15,7 +15,7 @@ def parse_command_line(argsin):
                         help='active_learning configuration file')
     parser.add_argument('MLP_config', metavar='MLP_config', type=str,
                         help='Nequip configuration file')
-    parser.add_argument('array_index', metavar='array_index', type=str,
+    parser.add_argument('array_index', metavar='array_index', type=int,
                         help='Active Learning Index')
     # parser.add_argument('--config_file', dest='config',
     #                     help='active_learning configuration file', type=str)
@@ -59,7 +59,7 @@ def main(args=None):
     if world.rank == 0:
         print(i, array_index, id)
     
-    atoms, success = calculate_atoms(atoms, config.get('dft_config'),data_directory=config.get('data_directory'))
+    atoms, success = calculate_atoms(atoms, config.get('oracle_config'),data_directory=config.get('data_directory'))
     
     db.update(id,atoms,calc=True,success=success)
     
