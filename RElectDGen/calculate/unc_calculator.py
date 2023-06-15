@@ -58,7 +58,13 @@ class UncCalculator(NequIPCalculator): # so that it passes through nequip
         # predict + extract data
         out = self.uq_module.predict_uncertainty(atoms)
         # print(out)
-        self.results = {"uncertainty": out['uncertainties'].sum(axis=-1)}
+        self.results = {
+            "uncertainties": out['uncertainties'].sum(axis=-1)
+                .detach()
+                .squeeze(-1)
+                .cpu()
+                .numpy()
+                }
         # only store results the model actually computed to avoid KeyErrors
         if AtomicDataDict.TOTAL_ENERGY_KEY in out:
             self.results["energy"] = self.energy_units_to_eV * (
@@ -91,3 +97,4 @@ class UncCalculator(NequIPCalculator): # so that it passes through nequip
             # ase wants voigt format
             stress_voigt = full_3x3_to_voigt_6_stress(stress)
             self.results["stress"] = stress_voigt
+        print(self.results.keys())

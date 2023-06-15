@@ -47,7 +47,7 @@ def md_func_fn(
         **kwargs
         ):
     md_kwargs = {
-        'timestep': timestep
+        'timestep': timestep * units.fs
     }
     if md_func_name == 'nve':
         from ase.md.verlet import VelocityVerlet as md_func
