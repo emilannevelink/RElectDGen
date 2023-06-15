@@ -3,7 +3,7 @@ from ase.stress import full_3x3_to_voigt_6_stress
 
 from nequip.data import AtomicDataDict
 from ase.calculators.singlepoint import SinglePointCalculator
-# from nequip.ase.nequip_calculator import NequIPCalculator
+from nequip.ase.nequip_calculator import NequIPCalculator
 
 from RElectDGen.uncertainty.models import uncertainty_base
 from RElectDGen.uncertainty.io import load_UQ
@@ -17,7 +17,7 @@ def load_unc_calc(config, MLP_config):
 
     return UQ, unc_calc
 
-class UncCalculator(SinglePointCalculator):
+class UncCalculator(NequIPCalculator): # so that it passes through nequip
     """NequIP ASE Calculator.
 
     .. warning::
@@ -26,7 +26,7 @@ class UncCalculator(SinglePointCalculator):
 
     """
 
-    implemented_properties = ["energy", "energies", "forces", "stress", "free_energy"]
+    implemented_properties = ["energy", "energies", "forces", "stress", "free_energy", "uncertainties"]
 
     def __init__(
         self,
@@ -53,11 +53,11 @@ class UncCalculator(SinglePointCalculator):
         """
         # call to base-class to set atoms attribute
         Calculator.calculate(self, atoms)
-        print('Uncertainty Calculator')
-        print(atoms)
+        # print('Uncertainty Calculator')
+        # print(atoms)
         # predict + extract data
         out = self.uq_module.predict_uncertainty(atoms)
-        print(out)
+        # print(out)
         self.results = {"uncertainty": out['uncertainties'].sum(axis=-1)}
         # only store results the model actually computed to avoid KeyErrors
         if AtomicDataDict.TOTAL_ENERGY_KEY in out:
