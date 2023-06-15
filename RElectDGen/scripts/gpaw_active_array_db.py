@@ -42,8 +42,11 @@ def main(args=None):
     assert os.path.isfile(db_filename)
     db = connect(db_filename)
 
-    
-    for i, row in enumerate(db.select(calc=False)):
+    ## This isn't perfect as if the calculation time is short compared to initializing
+    ## or, all the calculations aren't started at the same time, the number of db.select(calc=False)
+    ## are different between different array indexes
+    active_learning_index = config.get('active_learning_index')
+    for i, row in enumerate(db.select(active_learning_index=active_learning_index)):
         if i == array_index:
             atoms = row.toatoms()
             id = row['id']

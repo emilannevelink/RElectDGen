@@ -120,8 +120,9 @@ def main(args=None):
     )
 
     # add traj to db
+    active_learning_index = config.get('active_learning_index')
     for atoms in traj_add:
-        db.write(atoms,md_stable=0,calc=False)
+        db.write(atoms,md_stable=0,calc=False,active_learning_index=active_learning_index)
     
     print('Sampling Complete')
     ### some sort of logging
