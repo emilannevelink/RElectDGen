@@ -254,7 +254,7 @@ def get_uncertain(traj,minimum_uncertainty_cutoff):
         for atoms in traj:
             mask = np.array(atoms.get_chemical_symbols())==symbol
             all_uncertainties.append(atoms.calc.results['magmoms'][mask]) #magmoms is a hack since ase.io cannot handle arbitrary keys
-        all_uncertainties = np.concatenate(all_uncertainties)
+        all_uncertainties = np.stack(all_uncertainties)
 
         max_uncertainties = all_uncertainties.max(axis=1)
         uncertainty_indices = np.concatenate([

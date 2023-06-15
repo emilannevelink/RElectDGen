@@ -1,3 +1,4 @@
+import numpy as np
 from ase.calculators.calculator import Calculator, all_changes
 from ase.stress import full_3x3_to_voigt_6_stress
 
@@ -98,3 +99,47 @@ class UncCalculator(NequIPCalculator): # so that it passes through nequip
             stress_voigt = full_3x3_to_voigt_6_stress(stress)
             self.results["stress"] = stress_voigt
         print(self.results.keys())
+
+class FakeUncCalculator(NequIPCalculator): # so that it passes through nequip
+    """NequIP ASE Calculator.
+
+    .. warning::
+
+        If you are running MD with custom species, please make sure to set the correct masses for ASE.
+
+    """
+
+    implemented_properties = ["energy", "energies", "forces", "stress", "free_energy", "magmoms"]
+
+    def __init__(
+        self,
+        seed: int = 0,
+        energy_units_to_eV: float = 1.0,
+        length_units_to_A: float = 1.0,
+        **kwargs
+    ):
+        Calculator.__init__(self, **kwargs)
+        self.results = {}
+        np.random.seed(seed)
+        self.energy_units_to_eV = energy_units_to_eV
+        self.length_units_to_A = length_units_to_A
+
+    def calculate(self, atoms=None, properties=["energy"], system_changes=all_changes):
+        """
+        Calculate properties.
+
+        :param atoms: ase.Atoms object
+        :param properties: [str], properties to be computed, used by ASE internally
+        :param system_changes: [str], system changes since last calculation, used by ASE internally
+        :return:
+        """
+        # call to base-class to set atoms attribute
+        Calculator.calculate(self, atoms)
+        # print('Uncertainty Calculator')
+        # print(atoms)
+        # predict + extract data
+        self.results = {
+            'energy': np.random.rand(1),
+            'forces': np.random.rand(*atoms.get_positions().shape),
+            'magmoms': np.random.rand(atoms.get_positions().shape[0]),
+        }
