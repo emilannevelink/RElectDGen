@@ -91,17 +91,8 @@ def main(args=None):
     [print(line) for line in process.stderr.split(b'\n')]
 
     # print(process.stderr.decode('ascii'))
-
-    uncertainty_function = config.get('uncertainty_function')
-    if uncertainty_function in ['Nequip_ensemble']:
-        n_ensemble = config.get('n_uncertainty_ensembles',4)
-    else:
-        n_ensemble = 1
     
-    if n_ensemble>1:
-        root = train_directory + f'_{array_index}'
-    else:
-        root = train_directory
+    root = train_directory + f'_{array_index}'    
 
     mae_dict = get_mae_from_results(root,index=array_index, template=MLP_config['run_name'])
 
