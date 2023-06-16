@@ -56,7 +56,6 @@ def main(args=None):
     if 'atoms' not in locals():
         if world.rank == 0:
             print(f'Array index {array_index} too large, exiting')
-        print(atoms)
         sys.exit()
 
     if world.rank == 0:
