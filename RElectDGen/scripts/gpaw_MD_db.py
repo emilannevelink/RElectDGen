@@ -120,7 +120,7 @@ def main(args=None):
         )
         db = connect(db_filename)
         for atoms in traj:
-            db.write(atoms,md_stable=0,calc=True,success=True)
+            db.write(atoms,md_stable=0,calc=True,success=True,active_learning_index=-1)
 
 
 

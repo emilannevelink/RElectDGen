@@ -110,6 +110,7 @@ def main(args=None):
     print('minimum_uncertainty_cutoffs', minimum_uncertainty_cutoffs)
     print('maximum_uncertainty_cutoffs', maximum_uncertainty_cutoffs)
 
+    print('Length of Uncertain trajectory: ',len(traj_uncertain))
     max_samples = config.get('max_samples',10)
     traj_add = subsample_uncertain(
         UQ,
@@ -119,6 +120,7 @@ def main(args=None):
         max_add=max_samples,
         method=None
     )
+    print('Length of Add trajectory: ',len(traj_add))
 
     # add traj to db
     active_learning_index = config.get('active_learning_index')
