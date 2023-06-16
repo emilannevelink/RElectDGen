@@ -73,14 +73,14 @@ class uncertainty_base():
             if rk not in all_data.keys():
                 return False
             else:
-                setattr(self,rk,all_data[rk])
+                setattr(self,rk,all_data[rk].to(self.device))
 
-        self.train_errors = torch.linalg.norm(self.train_component_errors,axis=-1)
-        self.test_errors = torch.linalg.norm(self.test_component_errors,axis=-1)
+        self.train_errors = torch.linalg.norm(self.train_component_errors,axis=-1).to(self.device)
+        self.test_errors = torch.linalg.norm(self.test_component_errors,axis=-1).to(self.device)
 
-        self.all_embeddings = torch.cat([self.train_embeddings,self.test_embeddings])
-        self.all_component_errors = torch.cat([self.train_component_errors,self.test_component_errors])
-        self.all_errors = torch.cat([self.train_errors,self.test_errors])
+        self.all_embeddings = torch.cat([self.train_embeddings,self.test_embeddings]).to(self.device)
+        self.all_component_errors = torch.cat([self.train_component_errors,self.test_component_errors]).to(self.device)
+        self.all_errors = torch.cat([self.train_errors,self.test_errors]).to(self.device)
 
         return True
 

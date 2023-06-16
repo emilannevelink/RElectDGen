@@ -57,6 +57,6 @@ class FunctionCalculator(Calculator):
         print(forces)
         # store results
         self.results = {
-            "energy": energy.detach().cpu().numpy(),
+            "energy": float(energy.detach().cpu().numpy()),
             "forces": forces.detach().cpu().numpy(),
         }
