@@ -107,8 +107,8 @@ def main(args=None):
         minimum_uncertainty_cutoffs[symbol] = get_statistics_cutoff(nsamples,best_dict)
         maximum_uncertainty_cutoffs[symbol] = unc_out_all[symbol]['max_cutoff']
     
-    print('minimum_uncertainty_cutoffs': minimum_uncertainty_cutoffs)
-    print('maximum_uncertainty_cutoffs': maximum_uncertainty_cutoffs)
+    print('minimum_uncertainty_cutoffs', minimum_uncertainty_cutoffs)
+    print('maximum_uncertainty_cutoffs', maximum_uncertainty_cutoffs)
 
     traj_add = subsample_uncertain(
         UQ,

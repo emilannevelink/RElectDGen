@@ -6,6 +6,7 @@ import numpy as np
 import ase.data
 from ase.calculators.calculator import Calculator, all_changes
 import ase
+from ase.neighborlist import primitive_neighbor_list
 
 class FunctionCalculator(Calculator):
 
@@ -34,7 +35,7 @@ class FunctionCalculator(Calculator):
         # call to base-class to set atoms attribute
         Calculator.calculate(self, atoms)
 
-        first_index, second_index, shifts = ase.neighborlist.primitive_neighbor_list(
+        first_index, second_index, shifts = primitive_neighbor_list(
             "ijS",
             atoms.pbc,
             atoms.cell,
@@ -56,6 +57,6 @@ class FunctionCalculator(Calculator):
         print(forces)
         # store results
         self.results = {
-            "energy": energy.detach().numpy(),
-            "forces": forces.detach().numpy(),
+            "energy": energy.detach().cpu().numpy(),
+            "forces": forces.detach().cpu().numpy(),
         }
