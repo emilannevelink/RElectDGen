@@ -66,8 +66,8 @@ def main(args=None):
         
         unc_out = get_all_dists_cutoffs(
             1000, # dummy number
-            UQ.train_errors[symbol],
-            UQ.test_errors[symbol],
+            UQ.train_errors[symbol].detach().cpu(),
+            UQ.test_errors[symbol].detach().cpu(),
             dataset_train_uncertainties[symbol],
             dataset_val_uncertainties[symbol],
             max_error=unc_max_error_threshold,
