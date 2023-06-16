@@ -54,7 +54,7 @@ def main(args=None):
     db = connect(db_filename)
     nsamples = config.get('md_sampling_initial_conditions',1)
     rows_initial = sample_from_ase_db(db, nsamples)
-
+    print(f'Sampling from {len(rows_initial)} starting configurations')
     
     ### get dataset uncertainties
     dataset_train_uncertainties, dataset_val_uncertainties = get_dataset_uncertainties(UQ)
@@ -110,12 +110,13 @@ def main(args=None):
     print('minimum_uncertainty_cutoffs', minimum_uncertainty_cutoffs)
     print('maximum_uncertainty_cutoffs', maximum_uncertainty_cutoffs)
 
+    max_samples = config.get('max_samples',10)
     traj_add = subsample_uncertain(
         UQ,
         traj_uncertain,
         minimum_uncertainty_cutoffs,
         maximum_uncertainty_cutoffs,
-        max_add=10,
+        max_add=max_samples,
         method=None
     )
 

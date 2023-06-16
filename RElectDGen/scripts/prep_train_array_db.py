@@ -209,11 +209,16 @@ def main(args=None):
         # current_train_idcs = set(np.array(MLP_config.get('train_idcs')))
         # current_val_idcs = set(np.array(MLP_config.get('val_idcs')))
 
-    n_train = MLP_config_new.get('n_train')
-    n_val = MLP_config_new.get('n_val')
-    if n_train + n_val != len(traj):
-        n_train = int(config.get('train_percent',0.7)*len(traj))
-        n_val = len(traj) - n_train
+    
+    # set n_train and n_val
+    n_train = int(config.get('train_perc',0.7)*len(traj))
+    n_val = int(config.get('val_perc',0.3)*len(traj))
+    
+    if n_val < config.get('n_val_min',0):
+        n_val = config.get('n_val_min',0)
+    if n_train + n_val >= len(traj):
+        n_train = len(traj) - n_val
+    
     MLP_config_new['n_train'] = n_train
     MLP_config_new['n_val'] = n_val
 

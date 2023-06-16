@@ -45,6 +45,7 @@ def main(args = None):
     print(job_ids,flush=True)
     
     continue_al = False
+    active_learning_index = config.get('active_learning_index')
     termination_conditions = config.get('termination_conditions',{})
 
     ## check db
@@ -54,10 +55,18 @@ def main(args = None):
     )
     assert os.path.isfile(db_filename)
     db = connect(db_filename)
+    n_recalculate = len([row for row in db.select(active_learning_index=active_learning_index)])
     n_unstable = len([row for row in db.select(success=True,md_stable=0)])
     
     if n_unstable > termination_conditions.get('max_n_unstable',0):
+        print('The number of unstable samples in the dataset is: ', n_unstable)
         continue_al = True
+
+    max_samples = config.get('max_samples',10)
+    if n_recalculate < max_samples:
+        print('Updated n sample from ', config['md_sampling_initial_conditions'])
+        config['md_sampling_initial_conditions'] += max_samples - n_recalculate
+        print('to ', config['md_sampling_initial_conditions'])
 
     if config.get('restart',False) and continue_al:
         active_learning_index = config.get('active_learning_index') + 1 #Increment active learning index by one

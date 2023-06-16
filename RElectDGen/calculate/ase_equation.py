@@ -53,8 +53,8 @@ class FunctionCalculator(Calculator):
         energy = self.function(pair_distances).sum()/2.
         forces = -torch.autograd.grad(energy,positions)[0]
 
-        print(positions)
-        print(forces)
+        # print(positions)
+        # print(forces)
         # store results
         self.results = {
             "energy": float(energy.detach().cpu().numpy()),
