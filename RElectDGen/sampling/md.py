@@ -91,9 +91,9 @@ def md_from_atoms(
 
     if max_E_index < steps:
         print(f'max E index {max_E_index} of {len(MLP_log)} MLP_MD_steps', flush=True)
+        stable = False
     else:
         print(f'Total energy stable: max E index {max_E_index}', flush=True)
-        stable = False
 
     traj = Trajectory(trajectory_file)
     traj = traj[:max_E_index] # Only use E stable indices

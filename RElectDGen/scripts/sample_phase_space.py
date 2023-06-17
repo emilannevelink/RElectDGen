@@ -89,7 +89,7 @@ def main(args=None):
 
         nsamplesi = len(traj)*len(traj[0])
         nsamples += nsamplesi
-
+        
         if stable:
             md_stable = row.get('md_stable') + 1
             with connect(db_filename) as db:
