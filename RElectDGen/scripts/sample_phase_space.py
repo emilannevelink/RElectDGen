@@ -51,9 +51,9 @@ def main(args=None):
         config.get('ase_db_filename')
     )
     assert os.path.isfile(db_filename)
-    db = connect(db_filename)
     nsamples = config.get('md_sampling_initial_conditions',1)
-    rows_initial = sample_from_ase_db(db, nsamples)
+    with connect(db_filename) as db:
+        rows_initial = sample_from_ase_db(db, nsamples)
     print(f'Sampling from {len(rows_initial)} starting configurations')
     
     ### get dataset uncertainties
@@ -92,7 +92,8 @@ def main(args=None):
 
         if stable:
             md_stable = row.get('md_stable') + 1
-            db.update(row['id'],md_stable=md_stable)
+            with connect(db_filename) as db:
+                db.update(row['id'],md_stable=md_stable)
         
         ### get uncertain samples
         for symbol in MLP_config.get('chemical_symbol_to_type'):
@@ -124,8 +125,9 @@ def main(args=None):
 
     # add traj to db
     active_learning_index = config.get('active_learning_index')
-    for atoms in traj_add:
-        db.write(atoms,md_stable=0,calc=False,active_learning_index=active_learning_index)
+    with connect(db_filename) as db:
+        for atoms in traj_add:
+            db.write(atoms,md_stable=0,calc=False,active_learning_index=active_learning_index)
     
     print('Sampling Complete')
     ### some sort of logging
