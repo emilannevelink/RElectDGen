@@ -93,7 +93,9 @@ def main(args=None):
         if stable:
             md_stable = row.get('md_stable') + 1
             with connect(db_filename) as db:
+                print('updating row: ', row['id'], f' to md_stable = {md_stable}')
                 db.update(row['id'],md_stable=md_stable)
+                print(db.get(row['id'])['md_stable'])
         
         ### get uncertain samples
         for symbol in MLP_config.get('chemical_symbol_to_type'):
