@@ -1,3 +1,4 @@
+import sys
 import numpy as np
 from scipy import stats
 
@@ -175,27 +176,33 @@ def converge_args(vals,dist_name='lognorm',dataset_size_ratio=1):
         lower_bound = imin if imin > lower_bound else lower_bound+dbound
         upper_bound = imax #if imax < upper_bound else upper_bound-dbound
 
-        mask = np.logical_and(vals_flat>lower_bound,vals_flat<upper_bound)
-        if i<5:
-            converged = False
-        elif 'chi' in dist_name:
-            converged = np.all(np.abs(dist_arg_array[-5:,2:].std(axis=0)/dist_arg_array[-5:,2:].mean(axis=0))<0.01)
-        else:
-            converged = np.all(np.abs(dist_arg_array[-5:].std(axis=0)/dist_arg_array[-5:].mean(axis=0))<0.01)
-        if sum(mask) == len(vals_flat) and False:
-            # no values outside distribution
-            break
-        if converged:# and False:
-            # converged
-            best_args = dist_args
-            break
-        if res.pvalue > 0.05:
-            pmax = res.pvalue
-            best_args = dist_args
-            break
-        elif res.pvalue >= pmax:
-            pmax = res.pvalue
-            best_args = dist_args
+        try:
+            mask = np.logical_and(vals_flat>lower_bound,vals_flat<upper_bound)
+            if i<5:
+                converged = False
+            elif 'chi' in dist_name:
+                converged = np.all(np.abs(dist_arg_array[-5:,2:].std(axis=0)/dist_arg_array[-5:,2:].mean(axis=0))<0.01)
+            else:
+                converged = np.all(np.abs(dist_arg_array[-5:].std(axis=0)/dist_arg_array[-5:].mean(axis=0))<0.01)
+            # if sum(mask) == len(vals_flat) and False:
+            #     # no values outside distribution
+            #     break
+            if converged:# and False:
+                # converged
+                best_args = dist_args
+                break
+            if res.pvalue > 0.05:
+                pmax = res.pvalue
+                best_args = dist_args
+                break
+            elif res.pvalue >= pmax:
+                pmax = res.pvalue
+                best_args = dist_args
+        except Exception as e:
+            print(e)
+            print(mask)
+            print(vals_flat)
+            sys.exit()
         vals_flat = vals_flat[mask]
     
     return vals_flat, best_args
