@@ -123,8 +123,8 @@ def slurm_config_from_config(config, file):
             slurm_config['t'] = sampling_time_limit
     elif ('gpaw' in file):
         slurm_config['p'] = config.get('gpaw_queue',config.get('queue','cpu'))
-        slurm_config['n'] = config.get('gpaw_cores',config.get('cores'))
         slurm_config['N'] = config.get('gpaw_nodes',config.get('nodes',1))
+        slurm_config['n'] = config.get('gpaw_cores',config.get('cores'))*slurm_config['N']
 
         initial_time_limit = config.get('initial_time_limit')
         if 'MD' in file and initial_time_limit is not None:
