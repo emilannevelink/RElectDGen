@@ -114,7 +114,7 @@ class FakeUncCalculator(NequIPCalculator): # so that it passes through nequip
     ):
         Calculator.__init__(self, **kwargs)
         self.results = {}
-        np.random.seed(seed)
+        self.seed = seed
         self.energy_units_to_eV = energy_units_to_eV
         self.length_units_to_A = length_units_to_A
 
@@ -131,9 +131,12 @@ class FakeUncCalculator(NequIPCalculator): # so that it passes through nequip
         Calculator.calculate(self, atoms)
         # print('Uncertainty Calculator')
         # print(atoms)
+        self.seed+=1
+        np.random.seed(self.seed)
         # predict + extract data
         self.results = {
             'energy': np.random.rand(1),
             'forces': np.random.rand(*atoms.get_positions().shape),
         }
         atoms.info['uncertainties'] = np.random.rand(atoms.get_positions().shape[0])
+        print(atoms.info['uncertainties'])

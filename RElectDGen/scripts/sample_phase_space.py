@@ -12,7 +12,7 @@ from RElectDGen.sampling.utils import sample_from_ase_db
 from RElectDGen.utils.logging import write_to_tmp_dict
 from RElectDGen.calculate.unc_calculator import load_unc_calc
 from RElectDGen.sampling.md import md_from_atoms
-from RElectDGen.sampling.utils import get_uncertain
+from RElectDGen.sampling.utils import get_uncertain, sort_traj_using_cutoffs
 from RElectDGen.statistics.cutoffs import get_all_dists_cutoffs, get_statistics_cutoff, get_best_dict
 from RElectDGen.uncertainty.io import get_dataset_uncertainties
 from RElectDGen.statistics.subsample import subsample_uncertain
@@ -107,7 +107,7 @@ def main(args=None):
         traj_uncertain += get_uncertain(traj,minimum_uncertainty_cutoffs)
     
     print(f'{nstable} stable of {len(rows_initial)} md trajectories')
-    
+
     maximum_uncertainty_cutoffs = {}
     for symbol in MLP_config.get('chemical_symbol_to_type'):
         best_dict = get_best_dict(unc_out_all[symbol]['train_uncertainty_dict'],unc_out_all[symbol]['validation_uncertainty_dict'])
@@ -117,7 +117,13 @@ def main(args=None):
     print('minimum_uncertainty_cutoffs', minimum_uncertainty_cutoffs)
     print('maximum_uncertainty_cutoffs', maximum_uncertainty_cutoffs)
 
-    print('Length of Uncertain trajectory: ',len(traj_uncertain))
+    traj_uncertain = sort_traj_using_cutoffs(
+        traj_uncertain,
+        minimum_uncertainty_cutoffs,
+        maximum_uncertainty_cutoffs
+    )
+
+    print(f'{len(traj_uncertain)} uncertain samples of {nsamples} total sampled')
     max_samples = config.get('max_samples',10)
     traj_add = subsample_uncertain(
         UQ,

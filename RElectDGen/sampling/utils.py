@@ -265,3 +265,31 @@ def get_uncertain(traj,minimum_uncertainty_cutoff):
     uncertainty_indices = np.unique(uncertainty_indices)
     traj_uncertain = [traj[ind] for ind in uncertainty_indices]
     return traj_uncertain
+
+def sort_traj_using_cutoffs(
+    traj: list,
+    minimum_uncertainty_cutoffs: dict,
+    maximum_uncertainty_cutoffs: dict
+):
+    min_minimum_uncertainty = min(minimum_uncertainty_cutoffs.values())
+    max_maximum_uncertainty = max(maximum_uncertainty_cutoffs.values())
+
+    max_uncertainties = np.array([max(atoms.info['uncertainties']) for atoms in traj])
+    
+    ind_between = np.argwhere(
+        np.logical_and(
+            max_uncertainties>min_minimum_uncertainty,
+            max_uncertainties<max_maximum_uncertainty
+        )
+    ).flatten()
+    ind_between = ind_between[np.argsort(max_uncertainties[ind_between])[::-1]]
+    ind_over = np.argwhere(
+        max_uncertainties>max_maximum_uncertainty
+    ).flatten()
+    ind_over = ind_over[np.argsort(max_uncertainties[ind_over])[::-1]]
+
+    sorted_inds = np.concatenate([ind_between,ind_over])
+
+    traj_sorted = [traj[ind] for ind in sorted_inds]
+
+    return traj_sorted
