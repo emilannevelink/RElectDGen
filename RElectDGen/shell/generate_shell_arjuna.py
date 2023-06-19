@@ -26,6 +26,7 @@ def shell_from_config(config):
     python_nodes = config.get('nodes',1)
 
     conda_environment = config.get('conda_env', 'nequip2')
+    spack_environment = config.get('spack_env', '/jtezyau')
 
     for file in filenames:
         fname = os.path.join(location, file)
@@ -61,13 +62,13 @@ def shell_from_config(config):
         elif 'gpaw_array' in file.lower():
             file = os.path.join(config.get('scripts_path'),'gpaw_active_array_db.py')
             commands += [
-                'spack load /pteuooj #openmpi',
+                f'spack load {spack_environment} #py-gpaw',
                 f'srun  --mpi=pmix -n {gpaw_cores}' + f' gpaw python {file} $1 $2' + " ${SLURM_ARRAY_TASK_ID}"
             ]
         elif 'gpaw_md' in file.lower():
             file = os.path.join(config.get('scripts_path'),'gpaw_MD_db.py')
             commands += [
-                'spack load /pteuooj #openmpi',
+                f'spack load {spack_environment} #py-gpaw',
                 f'srun  --mpi=pmix -n {gpaw_cores}' + f' gpaw python {file} $1 $2'
             ]
         elif 'restart' in file:

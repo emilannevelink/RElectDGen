@@ -78,6 +78,7 @@ def main(args=None):
     traj_uncertain = []
     nsamples = 0
     minimum_uncertainty_cutoffs = {}
+    nstable = 0
     for row in rows_initial:
         atoms = row.toatoms()
         atoms.calc = unc_calc
@@ -89,8 +90,9 @@ def main(args=None):
 
         nsamplesi = len(traj)*len(traj[0])
         nsamples += nsamplesi
-        
+
         if stable:
+            nstable += 1
             md_stable = row.get('md_stable') + 1
             with connect(db_filename) as db:
                 print('updating row: ', row['id'], f' to md_stable = {md_stable}')
@@ -103,7 +105,9 @@ def main(args=None):
             minimum_uncertainty_cutoffs[symbol] = get_statistics_cutoff(nsamplesi,best_dict)
         
         traj_uncertain += get_uncertain(traj,minimum_uncertainty_cutoffs)
-
+    
+    print(f'{nstable} stable of {len(rows_initial)} md trajectories')
+    
     maximum_uncertainty_cutoffs = {}
     for symbol in MLP_config.get('chemical_symbol_to_type'):
         best_dict = get_best_dict(unc_out_all[symbol]['train_uncertainty_dict'],unc_out_all[symbol]['validation_uncertainty_dict'])

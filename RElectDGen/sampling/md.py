@@ -98,7 +98,7 @@ def md_from_atoms(
     traj = Trajectory(trajectory_file)
     traj = traj[:max_E_index] # Only use E stable indices
 
-    if delete_tmp:
+    if delete_tmp and world.rank==0:
         os.remove(dump_file)
         os.remove(trajectory_file)
 

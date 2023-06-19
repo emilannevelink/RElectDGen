@@ -82,7 +82,7 @@ def finetune_subsample(
     type_to_chemical_symbol = {}
     for (key,val) in UQ.chemical_symbol_to_type.items():
         type_to_chemical_symbol[val] = key
-        
+
     for i, atoms in enumerate(traj_uncertain):
         if len(calc_inds) >= max_add:
             break
@@ -109,7 +109,8 @@ def finetune_subsample(
                 # print(keep_embeddings[key])
                 # print(embedding_i[mask])
                 keep_embeddings[key] = torch.cat([keep_embeddings[key],embedding_i[mask]])
-
+    
+    print(f'Sampled up to {i} of Uncertain trajectory: ',len(traj_uncertain))
     print(uncertainties)
     traj_add = [traj_uncertain[ind] for ind in calc_inds]
     return traj_add
