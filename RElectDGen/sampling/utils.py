@@ -282,11 +282,11 @@ def sort_traj_using_cutoffs(
             max_uncertainties<max_maximum_uncertainty
         )
     ).flatten()
-    ind_between = ind_between[np.argsort(max_uncertainties[ind_between])[::-1]]
+    ind_between = ind_between[np.argsort(max_uncertainties[ind_between])[::-1]] # between descending
     ind_over = np.argwhere(
         max_uncertainties>max_maximum_uncertainty
     ).flatten()
-    ind_over = ind_over[np.argsort(max_uncertainties[ind_over])[::-1]]
+    ind_over = ind_over[np.argsort(max_uncertainties[ind_over])] # over ascending
 
     sorted_inds = np.concatenate([ind_between,ind_over])
 
