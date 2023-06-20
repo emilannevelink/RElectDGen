@@ -97,13 +97,14 @@ def finetune_subsample(
         symbol = type_to_chemical_symbol[atom_type]
         unc_value = uncertainty[max_ind]
 
-        if not np.isclose(unc_value,atoms.info['uncertainties'][max_ind]):
-            ndiff += 0.75
 
         if unc_value>minimum_uncertainty_cutoffs[symbol] and unc_value<maximum_uncertainty_cutoffs[symbol]:
             calc_inds.append(int(i))
             uncertainties.append(unc_value)
             append_embedding = True
+            
+            if not np.isclose(unc_value,atoms.info['uncertainties'][max_ind]):
+                ndiff += 0.75
         
         if append_embedding:
             for key in UQ.MLP_config.get('chemical_symbol_to_type'): 
