@@ -83,7 +83,7 @@ def finetune_subsample(
     for (key,val) in UQ.chemical_symbol_to_type.items():
         type_to_chemical_symbol[val] = key
 
-    ndiff = 0
+    ndiff = i = 0
     for i, atoms in enumerate(traj_uncertain):
         if len(calc_inds) >= max_add+ndiff:
             break

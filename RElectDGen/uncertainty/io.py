@@ -55,8 +55,8 @@ def get_dataset_uncertainties(UQ: uncertainty_base):
         out = UQ.predict_uncertainty(atoms)
         for symbol in UQ.MLP_config.get('chemical_symbol_to_type'):
             mask = np.array(atoms.get_chemical_symbols())==symbol
-            dataset_train_uncertainties[symbol] = np.concatenate([
-                dataset_train_uncertainties[symbol],
+            dataset_val_uncertainties[symbol] = np.concatenate([
+                dataset_val_uncertainties[symbol],
                 out['uncertainties'].sum(axis=-1)[mask].detach().cpu().numpy()
             ])
 
