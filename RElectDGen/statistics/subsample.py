@@ -83,8 +83,9 @@ def finetune_subsample(
     for (key,val) in UQ.chemical_symbol_to_type.items():
         type_to_chemical_symbol[val] = key
 
+    ndiff = 0
     for i, atoms in enumerate(traj_uncertain):
-        if len(calc_inds) >= max_add:
+        if len(calc_inds) >= max_add+ndiff:
             break
         
         out = UQ.predict_uncertainty(atoms,extra_embeddings=keep_embeddings)
@@ -95,6 +96,10 @@ def finetune_subsample(
         atom_type = int(out['atom_types'][max_ind])
         symbol = type_to_chemical_symbol[atom_type]
         unc_value = uncertainty[max_ind]
+
+        if not np.isclose(unc_value,atoms.info['uncertainties'][max_ind]):
+            ndiff += 0.75
+
         if unc_value>minimum_uncertainty_cutoffs[symbol] and unc_value<maximum_uncertainty_cutoffs[symbol]:
             calc_inds.append(int(i))
             uncertainties.append(unc_value)
@@ -112,6 +117,11 @@ def finetune_subsample(
     
     print(f'Sampled up to {i} of Uncertain trajectory: ',len(traj_uncertain))
     print(uncertainties)
+    sorted_ind = np.argsort(uncertainties)[::-1]
+    calc_inds = np.array(calc_inds)[sorted_ind][:max_add]
+    uncertainties = np.array(uncertainties)[sorted_ind][:max_add]
+    print(uncertainties)
+    print(calc_inds)
     traj_add = [traj_uncertain[ind] for ind in calc_inds]
     return traj_add
     
