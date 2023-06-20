@@ -21,6 +21,8 @@ def calculate_CI(data,dataset_size_ratio=1):
 def get_statistics_cutoff(sampled_uncertainties,dist_dict,dataset_size_ratio=1):
     if dist_dict['name'] is None:
         return 0
+    if len(dist_dict['data']) < 30:
+        return np.mean(dist_dict['data'])
     CI = calculate_CI(sampled_uncertainties,dataset_size_ratio)
     CI = 1 if CI > 1 else CI
     dist = getattr(stats,dist_dict['name'])
