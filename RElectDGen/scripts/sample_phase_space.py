@@ -14,6 +14,7 @@ from RElectDGen.calculate.unc_calculator import load_unc_calc
 from RElectDGen.sampling.md import md_from_atoms
 from RElectDGen.sampling.utils import get_uncertain, sort_traj_using_cutoffs
 from RElectDGen.statistics.cutoffs import get_all_dists_cutoffs, get_statistics_cutoff, get_best_dict
+from RElectDGen.statistics.utils import save_cutoffs_distribution_info
 from RElectDGen.uncertainty.io import get_dataset_uncertainties
 from RElectDGen.statistics.subsample import subsample_uncertain
 
@@ -73,6 +74,12 @@ def main(args=None):
             max_error=unc_max_error_threshold,
         )
         unc_out_all[symbol] = unc_out
+
+    distribution_filename = os.path.join(
+        data_directory,
+        config.get('distribution_filename')
+    )
+    save_cutoffs_distribution_info(distribution_filename, unc_out_all, str(active_learning_index))
 
     ### run MD on samples
     traj_uncertain = []

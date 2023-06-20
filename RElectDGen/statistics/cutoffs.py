@@ -65,7 +65,7 @@ def get_max_cutoff(sampled_uncertainties, errors_dict, unc_dict, max_error=1.5):
     return max_cutoff
 
 def get_base_cutoffs(dist_dict, sampling_data):
-    print(dist_dict)
+    # print(dist_dict)
     if not isinstance(dist_dict,dict):
         name, args, res = choose_distribution(dist_dict)
         dist_dict = {'data': dist_dict,'name':name,'args':args,'res': res}
