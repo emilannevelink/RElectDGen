@@ -38,6 +38,7 @@ def parse_command_line(argsin):
 def main(args=None):
     logging_dict = {}
     config, MLP_config = parse_command_line(args)
+    active_learning_index = config.get('active_learning_index')
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     if device == 'cpu':
         num_cores = config.get('cores',1)
@@ -143,7 +144,7 @@ def main(args=None):
     print('Length of Add trajectory: ',len(traj_add))
 
     # add traj to db
-    active_learning_index = config.get('active_learning_index')
+    
     with connect(db_filename) as db:
         for atoms in traj_add:
             db.write(atoms,md_stable=0,calc=False,active_learning_index=active_learning_index)
