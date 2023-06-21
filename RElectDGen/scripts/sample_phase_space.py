@@ -127,6 +127,9 @@ def main(args=None):
         best_dict = get_best_dict(unc_out_all[symbol]['train_uncertainty_dict'],unc_out_all[symbol]['validation_uncertainty_dict'])
         minimum_uncertainty_cutoffs[symbol] = get_statistics_cutoff(nsamples,best_dict)
         maximum_uncertainty_cutoffs[symbol] = unc_out_all[symbol]['max_cutoff']
+        if maximum_uncertainty_cutoffs[symbol] < minimum_uncertainty_cutoffs[symbol]:
+            print('Resetting Maximimum Cutoff')
+            maximum_uncertainty_cutoffs[symbol] = 2*minimum_uncertainty_cutoffs[symbol]
     
     print('minimum_uncertainty_cutoffs', minimum_uncertainty_cutoffs)
     print('maximum_uncertainty_cutoffs', maximum_uncertainty_cutoffs)

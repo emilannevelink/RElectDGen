@@ -1,6 +1,8 @@
 import numpy as np
 from ase.io import read
 
+from nequip.data import dataset_from_config
+
 from RElectDGen.uncertainty.models import uncertainty_base
 from RElectDGen.uncertainty import models as uncertainty_models
 from RElectDGen.calculate._MLIP import nn_from_results, nns_from_results
@@ -33,6 +35,8 @@ def load_UQ(config,MLP_config):
     
 def get_dataset_uncertainties(UQ: uncertainty_base):
 
+    dataset = dataset_from_config(UQ.MLP_config)
+
     dataset_train_uncertainties = {}
     dataset_val_uncertainties = {}
     for symbol in UQ.MLP_config.get('chemical_symbol_to_type'):
@@ -41,10 +45,10 @@ def get_dataset_uncertainties(UQ: uncertainty_base):
 
     train_idcs = np.array(UQ.MLP_config.get('train_idcs'))
     for tind in train_idcs:
-        atoms = read(UQ.MLP_config.get('dataset_file_name'),index=tind)
-        out = UQ.predict_uncertainty(atoms)
+        data = dataset[tind]
+        out = UQ.predict_uncertainty(data)
         for symbol in UQ.MLP_config.get('chemical_symbol_to_type'):
-            mask = np.array(atoms.get_chemical_symbols())==symbol
+            mask = (data['atom_types']==UQ.MLP_config.get('chemical_symbol_to_type')[symbol]).flatten()
             dataset_train_uncertainties[symbol] = np.concatenate([
                 dataset_train_uncertainties[symbol],
                 out['uncertainties'].sum(axis=-1)[mask].detach().cpu().numpy()
@@ -52,10 +56,10 @@ def get_dataset_uncertainties(UQ: uncertainty_base):
 
     val_idcs = np.array(UQ.MLP_config.get('val_idcs'))
     for vind in val_idcs:
-        atoms = read(UQ.MLP_config.get('dataset_file_name'),index=vind)
-        out = UQ.predict_uncertainty(atoms)
+        data = dataset[vind]
+        out = UQ.predict_uncertainty(data)
         for symbol in UQ.MLP_config.get('chemical_symbol_to_type'):
-            mask = np.array(atoms.get_chemical_symbols())==symbol
+            mask = (data['atom_types']==UQ.MLP_config.get('chemical_symbol_to_type')[symbol]).flatten()
             dataset_val_uncertainties[symbol] = np.concatenate([
                 dataset_val_uncertainties[symbol],
                 out['uncertainties'].sum(axis=-1)[mask].detach().cpu().numpy()
