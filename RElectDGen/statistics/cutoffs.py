@@ -318,6 +318,11 @@ def choose_distribution(vals,pthreshold=0.05,truncate_decreasing=True):
     elif np.argmax(pvalues) == 4:
         res = res_truncated
 
+    if name is None or args is None:
+        print(name, args)
+        print(res)
+        print(pvalues)
+        
     return name, args, res
     
 def truncat_mode_decreasing(vals,nbins=101):
