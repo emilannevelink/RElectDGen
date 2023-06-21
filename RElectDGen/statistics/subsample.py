@@ -83,7 +83,8 @@ def finetune_subsample(
     for (key,val) in UQ.chemical_symbol_to_type.items():
         type_to_chemical_symbol[val] = key
 
-    ndiff = i = 0
+    ndiff = 0
+    i = 0
     for i, atoms in enumerate(traj_uncertain):
         if len(calc_inds) >= max_add+ndiff:
             break
@@ -104,7 +105,7 @@ def finetune_subsample(
             append_embedding = True
             
             if not np.isclose(unc_value,atoms.info['uncertainties'][max_ind]):
-                ndiff += 0.75
+                ndiff += 1
         
         if append_embedding:
             for key in UQ.MLP_config.get('chemical_symbol_to_type'): 
