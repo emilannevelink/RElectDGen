@@ -22,7 +22,7 @@ def get_statistics_cutoff(sampled_uncertainties,dist_dict,dataset_size_ratio=1):
     if dist_dict['name'] is None:
         return 0
     if len(dist_dict['data']) < 30:
-        return np.mean(dist_dict['data'])
+        return np.min(dist_dict['data'])
     CI = calculate_CI(sampled_uncertainties,dataset_size_ratio)
     CI = 1 if CI > 1 else CI
     dist = getattr(stats,dist_dict['name'])
@@ -43,8 +43,11 @@ def get_max_dataset_ratio(target_cutoff,sampling_data,dist_dict):
     # res = optimize.minimize(loss,10)
     # print(res)
     # max_dataset_ratio = float(max([(res.x**2),1]))
-    dist = getattr(stats,dist_dict['name'])
-    mean = dist.stats(*dist_dict['args'],moments='m')
+    if len(dist_dict['data'])>30:
+        dist = getattr(stats,dist_dict['name'])
+        mean = dist.stats(*dist_dict['args'],moments='m')
+    else:
+        mean = np.mean(dist_dict['data'])
     max_dataset_ratio = (target_cutoff-mean)/(dist_dict['cutoff']-mean)
     
     max_dataset_ratio = 1 if max_dataset_ratio < 1 else max_dataset_ratio
@@ -55,7 +58,7 @@ def get_max_dataset_ratio(target_cutoff,sampling_data,dist_dict):
 def get_max_cutoff(sampled_uncertainties, errors_dict, unc_dict, max_error=1.5):
 
     if len(unc_dict['data'])<30:
-        return 2 * np.mean(unc_dict['data'])
+        return 2 * unc_dict['cutoff']
 
     error_cutoff = max_error #min([2*errors_dict['cutoff'],max_error])
     # dist = getattr(stats,errors_dict['name'])

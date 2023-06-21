@@ -66,6 +66,9 @@ def main(args=None):
     for symbol in MLP_config.get('chemical_symbol_to_type'):
         unc_max_error_threshold = config.get('unc_max_error_threshold') * Atoms(symbol).get_masses()
         
+        print(dataset_train_uncertainties[symbol].shape,dataset_train_uncertainties[symbol])
+        print(dataset_val_uncertainties[symbol].shape,dataset_val_uncertainties[symbol])
+
         unc_out = get_all_dists_cutoffs(
             1000, # dummy number
             UQ.train_errors[symbol].detach().cpu().numpy(),
@@ -75,6 +78,9 @@ def main(args=None):
             max_error=unc_max_error_threshold,
         )
         unc_out_all[symbol] = unc_out
+
+        print(unc_out['train_uncertainty_dict']['data'].shape,unc_out['train_uncertainty_dict']['data'])
+        print(unc_out['validation_uncertainty_dict']['data'].shape,unc_out['validation_uncertainty_dict']['data'])
 
     distribution_filename = os.path.join(
         data_directory,

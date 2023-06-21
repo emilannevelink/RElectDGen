@@ -33,7 +33,8 @@ def load_UQ(config,MLP_config):
     
 def get_dataset_uncertainties(UQ: uncertainty_base):
 
-    dataset_train_uncertainties = dataset_val_uncertainties = {}
+    dataset_train_uncertainties = {}
+    dataset_val_uncertainties = {}
     for symbol in UQ.MLP_config.get('chemical_symbol_to_type'):
         dataset_train_uncertainties[symbol] = np.empty(0)
         dataset_val_uncertainties[symbol] = np.empty(0)
