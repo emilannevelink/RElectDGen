@@ -152,7 +152,7 @@ def main(args=None):
         )
         print('Length of Add trajectory: ',len(traj_add))
 
-        if (traj_add) == max_samples:
+        if len(traj_add) == max_samples:
             break
 
     # add traj to db
