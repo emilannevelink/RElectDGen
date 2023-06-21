@@ -319,10 +319,10 @@ def choose_distribution(vals,pthreshold=0.05,truncate_decreasing=True):
         res = res_truncated
 
     if name is None or args is None:
-        print(name, args)
-        print(res)
-        print(pvalues)
-        
+        print('No statistical distribution found')
+        name = 'maxwell'
+        args = [0, 1e-6]
+
     return name, args, res
     
 def truncat_mode_decreasing(vals,nbins=101):
