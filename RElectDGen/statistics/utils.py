@@ -1,5 +1,6 @@
 import h5py
 from scipy.stats.stats import KstestResult
+from RElectDGen.statistics.cutoffs import FakeFitResult
 
 def save_cutoffs_distribution_info(filename, cutoff_dist_all,index=None):
     with h5py.File(filename,'a') as hf:
@@ -15,6 +16,9 @@ def save_data(hf:h5py.Group, key:str, data):
             save_data(hf,key,val)
     elif isinstance(data,KstestResult):
         save_data(hf,key,data._asdict())
+    elif isinstance(data,FakeFitResult):
+        data_dict = {'pvalue': data.pvalue}
+        save_data(hf,key,data_dict)
     else:
         hf.create_dataset(key,data=data)
 
