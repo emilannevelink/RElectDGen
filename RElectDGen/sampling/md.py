@@ -36,8 +36,6 @@ def md_from_atoms(
         MaxwellBoltzmannDistribution(atoms, temperature_K=temperature)
         ZeroRotation(atoms)
         Stationary(atoms)
-        print(atoms.get_velocities())
-        print(atoms.get_masses())
 
     print(temperature,flush=True)
 
@@ -49,7 +47,7 @@ def md_from_atoms(
     
     if dump_file is None:
         dump_file = f'MD_dump_file_{rind}.csv'
-    print(data_directory)
+    
     dump_file = os.path.join(data_directory,dump_file)
 
     #MDLogger only has append, delete log file

@@ -120,37 +120,40 @@ def main(args=None):
         
         traj_uncertain += get_uncertain(traj,minimum_uncertainty_cutoffs)
     
-    print(f'{nstable} stable of {len(rows_initial)} md trajectories')
+        print(f'{nstable} stable of {len(rows_initial)} md trajectories')
 
-    maximum_uncertainty_cutoffs = {}
-    for symbol in MLP_config.get('chemical_symbol_to_type'):
-        best_dict = get_best_dict(unc_out_all[symbol]['train_uncertainty_dict'],unc_out_all[symbol]['validation_uncertainty_dict'])
-        minimum_uncertainty_cutoffs[symbol] = get_statistics_cutoff(nsamples,best_dict)
-        maximum_uncertainty_cutoffs[symbol] = unc_out_all[symbol]['max_cutoff']
-        if maximum_uncertainty_cutoffs[symbol] < minimum_uncertainty_cutoffs[symbol]:
-            print('Resetting Maximimum Cutoff')
-            maximum_uncertainty_cutoffs[symbol] = 2*minimum_uncertainty_cutoffs[symbol]
-    
-    print('minimum_uncertainty_cutoffs', minimum_uncertainty_cutoffs)
-    print('maximum_uncertainty_cutoffs', maximum_uncertainty_cutoffs)
+        maximum_uncertainty_cutoffs = {}
+        for symbol in MLP_config.get('chemical_symbol_to_type'):
+            best_dict = get_best_dict(unc_out_all[symbol]['train_uncertainty_dict'],unc_out_all[symbol]['validation_uncertainty_dict'])
+            minimum_uncertainty_cutoffs[symbol] = get_statistics_cutoff(nsamples,best_dict)
+            maximum_uncertainty_cutoffs[symbol] = unc_out_all[symbol]['max_cutoff']
+            if maximum_uncertainty_cutoffs[symbol] < minimum_uncertainty_cutoffs[symbol]:
+                print('Resetting Maximimum Cutoff')
+                maximum_uncertainty_cutoffs[symbol] = 2*minimum_uncertainty_cutoffs[symbol]
+        
+        print('minimum_uncertainty_cutoffs', minimum_uncertainty_cutoffs)
+        print('maximum_uncertainty_cutoffs', maximum_uncertainty_cutoffs)
 
-    traj_uncertain = sort_traj_using_cutoffs(
-        traj_uncertain,
-        minimum_uncertainty_cutoffs,
-        maximum_uncertainty_cutoffs
-    )
+        traj_uncertain_sorted = sort_traj_using_cutoffs(
+            traj_uncertain,
+            minimum_uncertainty_cutoffs,
+            maximum_uncertainty_cutoffs
+        )
 
-    print(f'{len(traj_uncertain)} uncertain samples of {nsamples} total sampled')
-    max_samples = config.get('max_samples',10)
-    traj_add = subsample_uncertain(
-        UQ,
-        traj_uncertain,
-        minimum_uncertainty_cutoffs,
-        maximum_uncertainty_cutoffs,
-        max_add=max_samples,
-        method=None
-    )
-    print('Length of Add trajectory: ',len(traj_add))
+        print(f'{len(traj_uncertain_sorted)} uncertain samples of {nsamples} total sampled')
+        max_samples = config.get('max_samples',10)
+        traj_add = subsample_uncertain(
+            UQ,
+            traj_uncertain_sorted,
+            minimum_uncertainty_cutoffs,
+            maximum_uncertainty_cutoffs,
+            max_add=max_samples,
+            method=None
+        )
+        print('Length of Add trajectory: ',len(traj_add))
+
+        if (traj_add) == max_samples:
+            break
 
     # add traj to db
     
