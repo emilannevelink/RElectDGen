@@ -6,17 +6,15 @@ def save_cutoffs_distribution_info(filename, cutoff_dist_all,index=None):
         save_data(hf,index,cutoff_dist_all)
 
 def save_data(hf:h5py.Group, key:str, data):
+    if key in hf:
+        del hf[key]
     if isinstance(data, dict):
-        if key is not None and key in hf:
-            hf = hf[key]
-        elif key is not None:
+        if key is not None:
             hf = hf.create_group(key)
         for key, val in data.items():
             save_data(hf,key,val)
     elif isinstance(data,KstestResult):
         save_data(hf,key,data._asdict())
-    elif key in hf:
-        hf[key][()] = data
     else:
         hf.create_dataset(key,data=data)
 
