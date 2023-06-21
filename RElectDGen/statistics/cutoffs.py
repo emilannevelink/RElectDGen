@@ -46,11 +46,16 @@ def get_max_dataset_ratio(target_cutoff,sampling_data,dist_dict):
     dist = getattr(stats,dist_dict['name'])
     mean = dist.stats(*dist_dict['args'],moments='m')
     max_dataset_ratio = (target_cutoff-mean)/(dist_dict['cutoff']-mean)
+    
+    max_dataset_ratio = 1 if max_dataset_ratio < 1 else max_dataset_ratio
 
     print(max_dataset_ratio)
     return max_dataset_ratio
 
 def get_max_cutoff(sampled_uncertainties, errors_dict, unc_dict, max_error=1.5):
+
+    if len(unc_dict['data'])<30:
+        return 2 * np.mean(unc_dict['data'])
 
     error_cutoff = max_error #min([2*errors_dict['cutoff'],max_error])
     # dist = getattr(stats,errors_dict['name'])
