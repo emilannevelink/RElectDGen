@@ -109,11 +109,22 @@ def get_all_dists_cutoffs(
     
     train_error_dict = get_base_cutoffs(train_error_dict,sampling_data)
     validation_error_dict = get_base_cutoffs(validation_error_dict,sampling_data)
-    error_dict = validation_error_dict if validation_error_dict['res'].pvalue>train_error_dict['res'].pvalue else train_error_dict
+    if validation_error_dict['res'].pvalue > 0.05:
+        error_dict = validation_error_dict
+    elif validation_error_dict['res'].pvalue>train_error_dict['res'].pvalue:
+        error_dict = validation_error_dict
+    else:
+        error_dict = train_error_dict
     if sampling_type == 'uncertainty':
         train_uncertainty_dict = get_base_cutoffs(train_uncertainty_dict,sampling_data)
         validation_uncertainty_dict = get_base_cutoffs(validation_uncertainty_dict,sampling_data)
-        uncertainty_dict = validation_uncertainty_dict if validation_uncertainty_dict['res'].pvalue>train_uncertainty_dict['res'].pvalue else train_uncertainty_dict
+        # uncertainty_dict = validation_uncertainty_dict if validation_uncertainty_dict['res'].pvalue>train_uncertainty_dict['res'].pvalue else train_uncertainty_dict
+        if validation_uncertainty_dict['res'].pvalue > 0.05:
+            uncertainty_dict = validation_uncertainty_dict
+        elif validation_uncertainty_dict['res'].pvalue>train_uncertainty_dict['res'].pvalue:
+            uncertainty_dict = validation_uncertainty_dict
+        else:
+            uncertainty_dict = train_uncertainty_dict
     else:
         uncertainty_dict = error_dict
     
