@@ -70,7 +70,7 @@ def get_target_cutoff(sampled_uncertainties, errors_dict, unc_dict, target_error
     mean = dist.stats(*unc_dict['args'],moments='m')
     target_cutoff = max_dataset_ratio*(unc_dict['cutoff']-mean)+mean
 
-    print(target_error,target_cutoff)
+    print(mean,target_error,target_cutoff)
     return target_cutoff
 
 def get_max_cutoff(sampled_uncertainties, errors_dict, unc_dict, max_error=1.5):
