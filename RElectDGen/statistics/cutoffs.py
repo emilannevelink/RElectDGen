@@ -310,7 +310,7 @@ def choose_distribution(vals,pthreshold=0.05,truncate_decreasing=True):
     if res_lognormal.pvalue > pthreshold: # np.argmax(pvalues) == 0 and 
         return 'lognorm', lognorm_args, res_lognormal
     
-    pvalues = [res_chi.pvalue,res_gamma.pvalue,res_gengamma.pvalue,0]# remove lognorm: res_lognormal.pvalue]
+    pvalues = [res_chi.pvalue,res_gamma.pvalue,res_gengamma.pvalue,-2]# remove lognorm: res_lognormal.pvalue]
     if truncate_decreasing:
         pvalues += [res_truncated.pvalue]
     if np.argmax(pvalues) == 0:
