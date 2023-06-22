@@ -103,11 +103,10 @@ def finetune_subsample(
             calc_inds.append(int(i))
             uncertainties.append(unc_value)
             append_embedding = True
-            atoms.info['uncertainties'] = uncertainty
-            
             if not np.isclose(unc_value,atoms.info['uncertainties'][max_ind]):
                 ndiff += 1
-        
+            atoms.info['uncertainties'] = uncertainty
+
         if append_embedding:
             for key in UQ.MLP_config.get('chemical_symbol_to_type'): 
                 embedding_i = UQ.atom_embedding.detach().to(UQ.device)
