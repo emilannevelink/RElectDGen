@@ -181,6 +181,8 @@ def main(args=None):
 
         if len(traj_add) == max_samples and len(traj_target)>0:
             break
+
+        traj_uncertain = traj_add
     
     if len(traj_target)>0:
         print('Writing traj_add to db')
