@@ -50,7 +50,8 @@ def main(args=None):
         if i == array_index:
             atoms = row.toatoms()
             id = row['id']
-            print('Got atoms',atoms)
+            if world.rank == 0:
+                print('Got atoms',atoms)
             break
     
     if 'atoms' not in locals():
