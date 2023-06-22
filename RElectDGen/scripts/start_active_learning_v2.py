@@ -44,7 +44,7 @@ def main(args=None):
     MLP_config_filename = os.path.join(config.get('directory'),config.get('run_dir'),config.get('MLP_config','MLP.yaml'))
     MLP_config_base = MLP_config_filename.split('.yaml')[0]
     MLP_config_current = MLP_config_base + f'_{active_learning_index}.yaml'
-    if active_learning_index == 0:
+    if not os.path.isfile(MLP_config_current):
         with open(MLP_config_filename,'r') as fl:
             MLP_config = yaml.load(fl,yaml.FullLoader)
         MLP_config['run_name'] = MLP_config['run_name']+f'_{active_learning_index}'

@@ -221,10 +221,10 @@ def sample_from_dataset(config):
 def sample_from_ase_db(
     db,
     nsamples: int = 1,
-    md_stable_cutoff: int = 2,
+    max_md_stable: int = 1,
 ):
     rows = []
-    for row in db.select(md_stable=0):
+    for row in db.select(f'md_stable<{max_md_stable}'):
         rows.append(row)
     
     indices = np.random.permutation(len(rows))[:nsamples]
@@ -293,3 +293,23 @@ def sort_traj_using_cutoffs(
     traj_sorted = [traj[ind] for ind in sorted_inds]
 
     return traj_sorted
+
+def interpolate_T_steps(md_kwargs,row,max_md_samples):
+    md_stable = row.get('md_stable')
+    ## interpolate T
+    if 'temperature' not in md_kwargs:
+        min_T, max_T = md_kwargs.get('temperature_range')
+        if max_md_samples == 1:
+            md_kwargs['temperature'] = min_T
+        else:
+            md_kwargs['temperature'] = min_T + (max_T-min_T)*md_stable/(max_md_samples-1)
+
+    ## interpolate steps
+    if 'steps' not in md_kwargs:
+        min_steps, max_steps = md_kwargs.get('steps_range')
+        if max_md_samples == 1:
+            md_kwargs['steps'] = min_steps
+        else:
+            md_kwargs['steps'] = int(min_steps + (max_steps-min_steps)*md_stable/(max_md_samples-1))
+
+    return md_kwargs

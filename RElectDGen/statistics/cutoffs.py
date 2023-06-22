@@ -135,6 +135,9 @@ def get_all_dists_cutoffs(
         'cutoff': uncertainty_dict['cutoff'],
         'AL_cutoff': uncertainty_dict['AL_cutoff'],
         'max_cutoff': max_cutoff,
+        'error_cutoff': error_dict['cutoff'],
+        'error_AL_cutoff': error_dict['AL_cutoff'],
+        'error_max_cutoff': max_error,
     }
     if sampling_type == 'uncertainty':
         out_dict['train_uncertainty_dict'] = train_uncertainty_dict

@@ -12,7 +12,7 @@ from RElectDGen.sampling.utils import sample_from_ase_db
 from RElectDGen.utils.logging import write_to_tmp_dict
 from RElectDGen.calculate.unc_calculator import load_unc_calc
 from RElectDGen.sampling.md import md_from_atoms
-from RElectDGen.sampling.utils import get_uncertain, sort_traj_using_cutoffs
+from RElectDGen.sampling.utils import get_uncertain, sort_traj_using_cutoffs, interpolate_T_steps
 from RElectDGen.statistics.cutoffs import get_all_dists_cutoffs, get_statistics_cutoff, get_best_dict
 from RElectDGen.statistics.utils import save_cutoffs_distribution_info
 from RElectDGen.uncertainty.io import get_dataset_uncertainties
@@ -53,9 +53,10 @@ def main(args=None):
         config.get('ase_db_filename')
     )
     assert os.path.isfile(db_filename)
+    max_md_samples = config.get('max_md_samples',1)
     nsamples = config.get('md_sampling_initial_conditions',1)
     with connect(db_filename) as db:
-        rows_initial = sample_from_ase_db(db, nsamples)
+        rows_initial = sample_from_ase_db(db, nsamples, max_md_samples)
     print(f'Sampling from {len(rows_initial)} starting configurations')
     
     ### get dataset uncertainties
@@ -64,7 +65,12 @@ def main(args=None):
     # Get Uncertainty Thresholds
     unc_out_all = {}
     for symbol in MLP_config.get('chemical_symbol_to_type'):
-        unc_max_error_threshold = config.get('unc_max_error_threshold') * Atoms(symbol).get_masses()
+        max_error_dx_threshold = config.get('max_error_dx_threshold')
+        if isinstance(max_error_dx_threshold, dict):
+            unc_max_error_thresholdi = max_error_dx_threshold[symbol]
+        else:
+            unc_max_error_thresholdi = max_error_dx_threshold
+        unc_max_error_threshold_symbol = unc_max_error_thresholdi * Atoms(symbol).get_masses()/MLP_md_kwargs['timestep']
         
         # print(dataset_train_uncertainties[symbol].shape,dataset_train_uncertainties[symbol])
         # print(dataset_val_uncertainties[symbol].shape,dataset_val_uncertainties[symbol])
@@ -75,7 +81,7 @@ def main(args=None):
             UQ.test_errors[symbol].detach().cpu().numpy(),
             dataset_train_uncertainties[symbol],
             dataset_val_uncertainties[symbol],
-            max_error=unc_max_error_threshold,
+            max_error=unc_max_error_threshold_symbol,
         )
         unc_out_all[symbol] = unc_out
 
@@ -93,12 +99,18 @@ def main(args=None):
     nsamples = 0
     minimum_uncertainty_cutoffs = {}
     nstable = 0
+    
     for row in rows_initial:
         atoms = row.toatoms()
         atoms.calc = unc_calc
+        MLP_md_kwargs = config.get('MLP_md_kwargs')
+        md_stable = row.get('md_stable')
+
+        MLP_md_kwargs = interpolate_T_steps(MLP_md_kwargs,row,max_md_samples)
+
         traj, stable = md_from_atoms(
             atoms,
-            **config.get('MLP_md_kwargs'),
+            **MLP_md_kwargs,
             data_directory=data_directory
         )
 

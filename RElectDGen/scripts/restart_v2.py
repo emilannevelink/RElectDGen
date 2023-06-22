@@ -55,8 +55,9 @@ def main(args = None):
     )
     assert os.path.isfile(db_filename)
     db = connect(db_filename)
-    n_recalculate = len([row for row in db.select(active_learning_index=active_learning_index)])
-    n_unstable = len([row for row in db.select(success=True,md_stable=0)])
+    n_recalculate = db.count(active_learning_index=active_learning_index)
+    max_md_samples = config.get('max_md_samples',1)
+    n_unstable = db.count('success=True',f'md_stable<{max_md_samples}')
     
     if n_unstable > termination_conditions.get('max_n_unstable',0):
         print('The number of unstable samples in the dataset is: ', n_unstable)
