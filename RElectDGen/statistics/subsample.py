@@ -118,7 +118,7 @@ def finetune_subsample(
                 keep_embeddings[key] = torch.cat([keep_embeddings[key],embedding_i[mask]])
     
     print(f'Sampled up to {i} of Uncertain trajectory: ',len(traj_uncertain))
-    print(uncertainties)
+    # print(uncertainties)
     sorted_ind = np.argsort(uncertainties)[::-1]
     calc_inds = np.array(calc_inds)[sorted_ind][:max_add]
     uncertainties = np.array(uncertainties)[sorted_ind][:max_add]

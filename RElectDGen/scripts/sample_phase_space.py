@@ -175,6 +175,7 @@ def main(args=None):
         target_uncertainty_cutoffs = {}
         for symbol in MLP_config.get('chemical_symbol_to_type'):
             target_uncertainty_cutoffs[symbol] = unc_out_all[symbol]['target_cutoff']
+        print('Target Uncertainty: ',target_uncertainty_cutoffs)
         traj_target = get_uncertain(traj_add,target_uncertainty_cutoffs,symbols) # overwriting uncertainties in traj_add during subsample
         print(f'Length of target trajectory is {len(traj_target)}')
 
