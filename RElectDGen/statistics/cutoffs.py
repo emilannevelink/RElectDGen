@@ -62,6 +62,9 @@ def get_target_cutoff(sampled_uncertainties, errors_dict, unc_dict, target_error
 
     max_dataset_ratio = get_max_dataset_ratio(target_error,sampled_uncertainties,errors_dict)
 
+    max_ratio = 10
+    max_dataset_ratio = min([max_dataset_ratio,max_ratio])
+    print(max_dataset_ratio)
     # max_cutoff = get_statistics_cutoff(sampled_uncertainties,unc_dict,max_dataset_ratio)
     dist = getattr(stats,unc_dict['name'])
     mean = dist.stats(*unc_dict['args'],moments='m')
