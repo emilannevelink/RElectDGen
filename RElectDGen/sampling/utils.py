@@ -246,10 +246,10 @@ def sample_from_initial_structures(config):
         
     return supercell
 
-def get_uncertain(traj,minimum_uncertainty_cutoff):
+def get_uncertain(traj,minimum_uncertainty_cutoff,symbols):
     
     uncertainty_indices = np.empty(0,dtype=int)
-    for symbol in np.unique(traj[0].get_chemical_symbols()):
+    for symbol in symbols:
         all_uncertainties = []
         for atoms in traj:
             mask = np.array(atoms.get_chemical_symbols())==symbol

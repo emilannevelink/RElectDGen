@@ -55,6 +55,21 @@ def get_max_dataset_ratio(target_cutoff,sampling_data,dist_dict):
     print(max_dataset_ratio)
     return max_dataset_ratio
 
+def get_target_cutoff(sampled_uncertainties, errors_dict, unc_dict, target_error=1.5):
+
+    if len(unc_dict['data'])<30:
+        return np.min(unc_dict['data'])
+
+    max_dataset_ratio = get_max_dataset_ratio(target_error,sampled_uncertainties,errors_dict)
+
+    # max_cutoff = get_statistics_cutoff(sampled_uncertainties,unc_dict,max_dataset_ratio)
+    dist = getattr(stats,unc_dict['name'])
+    mean = dist.stats(*unc_dict['args'],moments='m')
+    target_cutoff = max_dataset_ratio*(unc_dict['cutoff']-mean)+mean
+
+    print(target_error,target_cutoff)
+    return target_cutoff
+
 def get_max_cutoff(sampled_uncertainties, errors_dict, unc_dict, max_error=1.5):
 
     if len(unc_dict['data'])<30:
@@ -103,7 +118,9 @@ def get_all_dists_cutoffs(
     train_uncertainty_dict=None,
     validation_uncertainty_dict=None,
     sampling_type = 'uncertainty',
+    target_error=None,
     max_error=1.5,
+    use_validation_uncertainty=False,
     **kwargs
     ):
     
@@ -119,7 +136,7 @@ def get_all_dists_cutoffs(
         train_uncertainty_dict = get_base_cutoffs(train_uncertainty_dict,sampling_data)
         validation_uncertainty_dict = get_base_cutoffs(validation_uncertainty_dict,sampling_data)
         # uncertainty_dict = validation_uncertainty_dict if validation_uncertainty_dict['res'].pvalue>train_uncertainty_dict['res'].pvalue else train_uncertainty_dict
-        if validation_uncertainty_dict['res'].pvalue > 0.05:
+        if validation_uncertainty_dict['res'].pvalue > 0.05 or use_validation_uncertainty:
             uncertainty_dict = validation_uncertainty_dict
         elif validation_uncertainty_dict['res'].pvalue>train_uncertainty_dict['res'].pvalue:
             uncertainty_dict = validation_uncertainty_dict
@@ -128,16 +145,21 @@ def get_all_dists_cutoffs(
     else:
         uncertainty_dict = error_dict
     
+    if target_error is None:
+        target_error = error_dict['AL_cutoff']
+    target_cutoff = get_target_cutoff(sampling_data,error_dict,uncertainty_dict,target_error)
     max_cutoff = get_max_cutoff(sampling_data,error_dict,uncertainty_dict,max_error)
     out_dict = {
         'train_error_dict': train_error_dict,
         'validation_error_dict': validation_error_dict,
         'cutoff': uncertainty_dict['cutoff'],
         'AL_cutoff': uncertainty_dict['AL_cutoff'],
+        'target_cutoff': target_cutoff,
         'max_cutoff': max_cutoff,
         'error_cutoff': error_dict['cutoff'],
         'error_AL_cutoff': error_dict['AL_cutoff'],
-        'error_max_cutoff': max_error,
+        'max_error': max_error,
+        'target_error': target_error,
     }
     if sampling_type == 'uncertainty':
         out_dict['train_uncertainty_dict'] = train_uncertainty_dict

@@ -103,6 +103,7 @@ def finetune_subsample(
             calc_inds.append(int(i))
             uncertainties.append(unc_value)
             append_embedding = True
+            atoms.info['uncertainties'] = uncertainty
             
             if not np.isclose(unc_value,atoms.info['uncertainties'][max_ind]):
                 ndiff += 1

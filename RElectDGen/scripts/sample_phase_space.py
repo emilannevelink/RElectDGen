@@ -39,6 +39,7 @@ def main(args=None):
     logging_dict = {}
     config, MLP_config = parse_command_line(args)
     active_learning_index = config.get('active_learning_index')
+    symbols = MLP_config.get('chemical_symbol_to_type')
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     if device == 'cpu':
         num_cores = config.get('cores',1)
@@ -63,6 +64,9 @@ def main(args=None):
     dataset_train_uncertainties, dataset_val_uncertainties = get_dataset_uncertainties(UQ)
 
     # Get Uncertainty Thresholds
+    uncertainty_function = config.get('uncertainty_function', 'Nequip_latent_distance')
+    use_validation_uncertainty = True if uncertainty_function in ['Nequip_latent_distance'] else False
+    target_error = config.get('target_error')
     MLP_md_kwargs = config.get('MLP_md_kwargs')
     unc_out_all = {}
     for symbol in MLP_config.get('chemical_symbol_to_type'):
@@ -82,7 +86,9 @@ def main(args=None):
             UQ.test_errors[symbol].detach().cpu().numpy(),
             dataset_train_uncertainties[symbol],
             dataset_val_uncertainties[symbol],
+            target_error = target_error,
             max_error=unc_max_error_threshold_symbol,
+            use_validation_uncertainty = use_validation_uncertainty,
         )
         unc_out_all[symbol] = unc_out
 
@@ -131,7 +137,7 @@ def main(args=None):
             best_dict = get_best_dict(unc_out_all[symbol]['train_uncertainty_dict'],unc_out_all[symbol]['validation_uncertainty_dict'])
             minimum_uncertainty_cutoffs[symbol] = get_statistics_cutoff(nsamplesi,best_dict)
         
-        traj_uncertain += get_uncertain(traj,minimum_uncertainty_cutoffs)
+        traj_uncertain += get_uncertain(traj,minimum_uncertainty_cutoffs,symbols)
     
         print(f'{nstable} stable of {len(rows_initial)} md trajectories')
 
@@ -165,14 +171,23 @@ def main(args=None):
         )
         print('Length of Add trajectory: ',len(traj_add))
 
-        if len(traj_add) == max_samples:
-            break
+        # add traj to db
+        target_uncertainty_cutoffs = {}
+        for symbol in MLP_config.get('chemical_symbol_to_type'):
+            target_uncertainty_cutoffs[symbol] = unc_out_all[symbol]['target_cutoff']
+        traj_target = get_uncertain(traj_add,target_uncertainty_cutoffs,symbols) # overwriting uncertainties in traj_add during subsample
+        print(f'Length of target trajectory is {len(traj_target)}')
 
-    # add traj to db
+        if len(traj_add) == max_samples and len(traj_target)>0:
+            break
     
-    with connect(db_filename) as db:
-        for atoms in traj_add:
-            db.write(atoms,md_stable=0,calc=False,active_learning_index=active_learning_index)
+    if len(traj_target)>0:
+        print('Writing traj_add to db')
+        with connect(db_filename) as db:
+            for atoms in traj_add:
+                db.write(atoms,md_stable=0,calc=False,active_learning_index=active_learning_index)
+    else:
+        print('No samples greater than target trajectory')
     
     print('Sampling Complete')
     ### some sort of logging
