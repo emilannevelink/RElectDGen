@@ -57,7 +57,7 @@ def main(args = None):
     db = connect(db_filename)
     n_recalculate = db.count(active_learning_index=active_learning_index)
     max_md_samples = config.get('max_md_samples',1)
-    n_unstable = db.count('success=True',f'md_stable<{max_md_samples}')
+    n_unstable = db.count(f'success=True,md_stable<{max_md_samples}')
     
     if n_unstable > termination_conditions.get('max_n_unstable',0):
         print('The number of unstable samples in the dataset is: ', n_unstable)
