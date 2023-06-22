@@ -332,8 +332,8 @@ def choose_distribution(vals,pthreshold=0.05,truncate_decreasing=True):
             res_lognormal = stats.kstest(lognorm_vals,'lognorm',args=lognorm_args)
     except stats.FitError:
         res_lognormal = FakeFitResult()
-    if res_lognormal.pvalue > pthreshold: # np.argmax(pvalues) == 0 and 
-        return 'lognorm', lognorm_args, res_lognormal
+    # if res_lognormal.pvalue > pthreshold: # np.argmax(pvalues) == 0 and 
+    #     return 'lognorm', lognorm_args, res_lognormal
     
     pvalues = [res_chi.pvalue,res_gamma.pvalue,res_gengamma.pvalue,-2]# remove lognorm: res_lognormal.pvalue]
     if truncate_decreasing:
