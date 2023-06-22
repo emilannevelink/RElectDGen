@@ -231,7 +231,8 @@ def create_slab(config):
 
     #Constrain the bottom of the slab to be fixed
     if config.get('fix_slab_atoms', True):
-        indices = range(int(len(supercell.positions)*2/config.get('supercell_size')[2]))
+        fix_n_slabs = config.get('fix_n_slabs',2)
+        indices = range(int(len(supercell.positions)*fix_n_slabs/config.get('supercell_size')[2]))
         constraints.append(FixAtoms(indices = indices))
 
         supercell.set_constraint(constraints)
