@@ -150,7 +150,9 @@ def get_all_dists_cutoffs(
     
     if target_error is None:
         target_error = error_dict['AL_cutoff']
-    target_cutoff = get_target_cutoff(sampling_data,error_dict,uncertainty_dict,target_error)
+        target_cutoff = uncertainty_dict['AL_cutoff']
+    else:
+        target_cutoff = get_target_cutoff(sampling_data,error_dict,uncertainty_dict,target_error)
     max_cutoff = get_max_cutoff(sampling_data,error_dict,uncertainty_dict,max_error)
     out_dict = {
         'train_error_dict': train_error_dict,

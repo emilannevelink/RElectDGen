@@ -184,7 +184,7 @@ def main(args=None):
 
         traj_uncertain = traj_add
     
-    if len(traj_target)>0 and len(rows_initial)<=max_samples:
+    if len(traj_target)>0 or len(rows_initial)>max_samples:
         print('Writing traj_add to db')
         with connect(db_filename) as db:
             for atoms in traj_add:
