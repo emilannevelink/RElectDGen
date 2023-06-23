@@ -254,6 +254,10 @@ def get_uncertain(traj,minimum_uncertainty_cutoff,symbols):
         for atoms in traj:
             mask = np.array(atoms.get_chemical_symbols())==symbol
             all_uncertainties.append(atoms.info['uncertainties'][mask])
+        
+        if len(all_uncertainties) == 0:
+            return []
+        
         all_uncertainties = np.stack(all_uncertainties)
 
         max_uncertainties = all_uncertainties.max(axis=1)
