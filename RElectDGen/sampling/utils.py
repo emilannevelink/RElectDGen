@@ -224,7 +224,7 @@ def sample_from_ase_db(
     max_md_stable: int = 1,
 ):
     rows = []
-    for row in db.select(f'md_stable<{max_md_stable}'):
+    for row in db.select(f'success=True,md_stable<{max_md_stable}'):
         rows.append(row)
     
     indices = np.random.permutation(len(rows))[:nsamples]
