@@ -192,7 +192,8 @@ def converge_args(vals,dist_name='lognorm',dataset_size_ratio=1):
     vals_flat = vals.flatten()
     initial_length = len(vals_flat)
     for i in range(3):
-        vals_flat = truncate_extrema(vals_flat)
+        nbins = max([101,len(vals_flat)//2])
+        vals_flat = truncate_extrema(vals_flat,nbins)
         if len(vals_flat) == 0:
             return vals_flat, None
     lower_bound = vals_flat.min()
