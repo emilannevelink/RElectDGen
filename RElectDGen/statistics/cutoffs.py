@@ -192,7 +192,7 @@ def converge_args(vals,dist_name='lognorm',dataset_size_ratio=1):
     vals_flat = vals.flatten()
     initial_length = len(vals_flat)
     for i in range(3):
-        nbins = max([101,len(vals_flat)//2])
+        nbins = max([101,len(vals_flat)//5])
         vals_flat = truncate_extrema(vals_flat,nbins)
         if len(vals_flat) == 0:
             return vals_flat, None
@@ -383,6 +383,9 @@ def truncate_extrema(vals,nbins = 101):
     upper_bound = vals_flat.max()
     if len(vals_flat)<=nbins:
         return vals_flat
+    
+    ## Truncate maxima
+    # for i in range(5):
     hist_vals,bins = np.histogram(vals_flat,nbins)
     try:
         if np.argwhere(hist_vals>2).max() != len(hist_vals)-1:
@@ -391,10 +394,12 @@ def truncate_extrema(vals,nbins = 101):
             vals_flat = vals_flat[mask]
     except:
         print(hist_vals)
-    hist_vals, bins = np.histogram(vals_flat,nbins)
-    if np.argmax(hist_vals) == 0:
+    ## Truncate minima
+    # for i in range(2):
+    hist_vals,bins = np.histogram(vals_flat,nbins)
+    if np.argmax(hist_vals) == 0 and bins[0]>5*bins[1]:
         lower_bound = bins[1]
         mask = np.logical_and(vals_flat>lower_bound,vals_flat<upper_bound)
         vals_flat = vals_flat[mask]
-    
+        
     return vals_flat
