@@ -110,8 +110,14 @@ def get_base_cutoffs(dist_dict, sampling_data):
     dist_dict['AL_cutoff'] = AL_cutoff
     return dist_dict
 
-def get_best_dict(train_dict,val_dict):
-    best_dict = val_dict if val_dict['res'].pvalue>train_dict['res'].pvalue else train_dict
+def get_best_dict(train_dict,val_dict,use_validation_uncertainty=False):
+    # best_dict = val_dict if val_dict['res'].pvalue>train_dict['res'].pvalue else train_dict
+    if val_dict['res'].pvalue > 0.05 or use_validation_uncertainty:
+        best_dict = val_dict
+    elif val_dict['res'].pvalue>train_dict['res'].pvalue:
+        best_dict = val_dict
+    else:
+        best_dict = train_dict
     return best_dict
 
 def get_all_dists_cutoffs(
@@ -129,22 +135,24 @@ def get_all_dists_cutoffs(
     
     train_error_dict = get_base_cutoffs(train_error_dict,sampling_data)
     validation_error_dict = get_base_cutoffs(validation_error_dict,sampling_data)
-    if validation_error_dict['res'].pvalue > 0.05:
-        error_dict = validation_error_dict
-    elif validation_error_dict['res'].pvalue>train_error_dict['res'].pvalue:
-        error_dict = validation_error_dict
-    else:
-        error_dict = train_error_dict
+    # if validation_error_dict['res'].pvalue > 0.05:
+    #     error_dict = validation_error_dict
+    # elif validation_error_dict['res'].pvalue>train_error_dict['res'].pvalue:
+    #     error_dict = validation_error_dict
+    # else:
+    #     error_dict = train_error_dict
+    error_dict = get_best_dict(train_error_dict,validation_error_dict)
     if sampling_type == 'uncertainty':
         train_uncertainty_dict = get_base_cutoffs(train_uncertainty_dict,sampling_data)
         validation_uncertainty_dict = get_base_cutoffs(validation_uncertainty_dict,sampling_data)
         # uncertainty_dict = validation_uncertainty_dict if validation_uncertainty_dict['res'].pvalue>train_uncertainty_dict['res'].pvalue else train_uncertainty_dict
-        if validation_uncertainty_dict['res'].pvalue > 0.05 or use_validation_uncertainty:
-            uncertainty_dict = validation_uncertainty_dict
-        elif validation_uncertainty_dict['res'].pvalue>train_uncertainty_dict['res'].pvalue:
-            uncertainty_dict = validation_uncertainty_dict
-        else:
-            uncertainty_dict = train_uncertainty_dict
+        # if validation_uncertainty_dict['res'].pvalue > 0.05 or use_validation_uncertainty:
+        #     uncertainty_dict = validation_uncertainty_dict
+        # elif validation_uncertainty_dict['res'].pvalue>train_uncertainty_dict['res'].pvalue:
+        #     uncertainty_dict = validation_uncertainty_dict
+        # else:
+        #     uncertainty_dict = train_uncertainty_dict
+        uncertainty_dict = get_best_dict(train_uncertainty_dict,validation_uncertainty_dict,use_validation_uncertainty)
     else:
         uncertainty_dict = error_dict
     
@@ -388,10 +396,16 @@ def truncate_extrema(vals,nbins = 101):
     # for i in range(5):
     hist_vals,bins = np.histogram(vals_flat,nbins)
     try:
-        if np.argwhere(hist_vals>2).max() != len(hist_vals)-1:
-            upper_bound = bins[np.argwhere(hist_vals>2).max()+1]
+        iszero = np.argwhere(hist_vals==0).flatten()
+        index = (iszero[:-1][checkConsecutive(iszero)]).max()
+        if np.sum(hist_vals[index:])<len(vals_flat)//4:
+            upper_bound = bins[index+1]
             mask = np.logical_and(vals_flat>lower_bound,vals_flat<upper_bound)
             vals_flat = vals_flat[mask]
+        # if np.argwhere(hist_vals>2).max() != len(hist_vals)-1:
+        #     upper_bound = bins[np.argwhere(hist_vals>2).max()+1]
+        #     mask = np.logical_and(vals_flat>lower_bound,vals_flat<upper_bound)
+        #     vals_flat = vals_flat[mask]
     except:
         print(hist_vals)
     ## Truncate minima
@@ -403,3 +417,7 @@ def truncate_extrema(vals,nbins = 101):
         vals_flat = vals_flat[mask]
         
     return vals_flat
+
+def checkConsecutive(l):
+    diff = l[1:]-l[:-1]
+    return diff == 1

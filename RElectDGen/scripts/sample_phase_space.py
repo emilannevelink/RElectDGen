@@ -134,7 +134,7 @@ def main(args=None):
         
         ### get uncertain samples
         for symbol in MLP_config.get('chemical_symbol_to_type'):
-            best_dict = get_best_dict(unc_out_all[symbol]['train_uncertainty_dict'],unc_out_all[symbol]['validation_uncertainty_dict'])
+            best_dict = get_best_dict(unc_out_all[symbol]['train_uncertainty_dict'],unc_out_all[symbol]['validation_uncertainty_dict'],use_validation_uncertainty)
             minimum_uncertainty_cutoffs[symbol] = get_statistics_cutoff(nsamplesi,best_dict)
         
         traj_uncertain += get_uncertain(traj,minimum_uncertainty_cutoffs,symbols)
@@ -143,7 +143,7 @@ def main(args=None):
 
         maximum_uncertainty_cutoffs = {}
         for symbol in MLP_config.get('chemical_symbol_to_type'):
-            best_dict = get_best_dict(unc_out_all[symbol]['train_uncertainty_dict'],unc_out_all[symbol]['validation_uncertainty_dict'])
+            best_dict = get_best_dict(unc_out_all[symbol]['train_uncertainty_dict'],unc_out_all[symbol]['validation_uncertainty_dict'],use_validation_uncertainty)
             minimum_uncertainty_cutoffs[symbol] = get_statistics_cutoff(nsamples,best_dict)
             maximum_uncertainty_cutoffs[symbol] = unc_out_all[symbol]['max_cutoff']
             if maximum_uncertainty_cutoffs[symbol] < minimum_uncertainty_cutoffs[symbol]:
