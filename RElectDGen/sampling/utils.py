@@ -302,7 +302,7 @@ def interpolate_T_steps(md_kwargs,row,max_md_samples):
     print(row, md_kwargs, max_md_samples)
     md_stable = row.get('md_stable')
     ## interpolate T
-    if 'temperature' not in md_kwargs:
+    if 'temperature_range' in md_kwargs:
         min_T, max_T = md_kwargs.get('temperature_range')
         if max_md_samples == 1:
             md_kwargs['temperature'] = min_T
@@ -310,7 +310,7 @@ def interpolate_T_steps(md_kwargs,row,max_md_samples):
             md_kwargs['temperature'] = min_T + (max_T-min_T)*md_stable/(max_md_samples-1)
 
     ## interpolate steps
-    if 'steps' not in md_kwargs:
+    if 'steps_range' in md_kwargs:
         min_steps, max_steps = md_kwargs.get('steps_range')
         if max_md_samples == 1:
             md_kwargs['steps'] = min_steps
