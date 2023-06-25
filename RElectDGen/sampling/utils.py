@@ -299,6 +299,7 @@ def sort_traj_using_cutoffs(
     return traj_sorted
 
 def interpolate_T_steps(md_kwargs,row,max_md_samples):
+    print(row, md_kwargs, max_md_samples)
     md_stable = row.get('md_stable')
     ## interpolate T
     if 'temperature' not in md_kwargs:

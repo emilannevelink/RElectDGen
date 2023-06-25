@@ -114,7 +114,8 @@ def main(args=None):
         md_stable = row.get('md_stable')
 
         MLP_md_kwargs = interpolate_T_steps(MLP_md_kwargs,row,max_md_samples)
-
+        print(row)
+        print(MLP_md_kwargs)
         traj, stable = md_from_atoms(
             atoms,
             **MLP_md_kwargs,
