@@ -78,7 +78,7 @@ def md_from_atoms(
     tmp0 = tmp1
 
     # print('Done with MD', flush = True)
-    # Check temperature stability
+    # Check energy stability
     MLP_log = pd.read_csv(dump_file,delim_whitespace=True)
     try:
         MD_energies = MLP_log['Etot[eV]'].values
@@ -93,8 +93,27 @@ def md_from_atoms(
     else:
         print(f'Total energy stable: max E index {max_E_index}', flush=True)
 
+    # Check temperature stability
+    if 'temperature' in md_kwargs:
+        try:
+            MD_temperature = MLP_log['T[K]'].values
+            MD_T0 = md_kwargs.get('temperature')
+            max_T_index = int(np.argwhere(np.abs((MD_temperature-MD_T0)/MD_T0)>2)[0])
+        except IndexError:
+            max_T_index = int(steps+1)
+
+        if max_T_index < steps:
+            print(f'max T index {max_T_index} of {len(MLP_log)} MLP_MD_steps', flush=True)
+            stable = False
+        else:
+            print(f'Temperature stable: max T index {max_T_index}', flush=True)
+
+        max_index = min([max_E_index,max_T_index])
+    else:
+        max_index = max_E_index
+
     traj = Trajectory(trajectory_file)
-    traj = traj[:max_E_index] # Only use E stable indices
+    traj = traj[:max_index] # Only use E stable indices
 
     if delete_tmp and world.rank==0:
         os.remove(dump_file)
