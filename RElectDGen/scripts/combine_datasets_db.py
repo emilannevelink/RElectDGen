@@ -3,7 +3,7 @@ import yaml, os
 from ase.io import read, Trajectory
 from ase.db import connect
 from ..utils.save import update_config_trainval
-from ..utils.data import reduce_traj_finite, reduce_traj_isolated, reduce_traj_free_H
+from ..utils.data import reduce_trajectory
 
 from RElectDGen.utils.logging import write_to_tmp_dict
 
@@ -18,11 +18,15 @@ def parse_command_line(argsin):
     with open(args.config,'r') as fl:
         config = yaml.load(fl,yaml.FullLoader)
 
-    return config, args.MLP_config
+    with open(filename_MLP_config,'r') as fl:
+        MLP_config = yaml.load(fl,yaml.FullLoader)
+
+    return config, MLP_config, args.MLP_config
 
 def main(args=None):
 
-    config, filename_MLP_config = parse_command_line(args)
+    config, MLP_config, filename_MLP_config = parse_command_line(args)
+
     ase_db_file = os.path.join(
         config.get('data_directory'),
         config.get('ase_db_filename')
@@ -61,24 +65,8 @@ def main(args=None):
             print('ASE DB could not be appended', flush=True)
             print(ase_db_file, flush=True)
     
-    reduce_traj_type = config.get('reduce_traj_type','finite_isolated')
     combined_size = len(traj)
-    if 'finite' in reduce_traj_type:
-        traj_reduced = reduce_traj_finite(traj)
-        print('Reduce finite ', len(traj), len(traj_reduced),flush=True)
-    else:
-        traj_reduced = traj
-
-    with open(filename_MLP_config,'r') as fl:
-        MLP_config = yaml.load(fl,yaml.FullLoader)
-    
-    if 'isolated' in reduce_traj_type:
-        _, traj_reduced = reduce_traj_isolated(traj_reduced,MLP_config.get('r_max'))
-        print('Reduce isolated ', len(traj), len(traj_reduced),flush=True)
-    
-    if 'free_H' in reduce_traj_type:
-        _, traj_reduced = reduce_traj_free_H(traj_reduced)
-        print('Reduce free Hydrogen ', len(traj), len(traj_reduced),flush=True)
+    traj_reduced = reduce_trajectory(traj,config,MLP_config)
     reduced_size = len(traj_reduced)
 
     print(combined_trajectory,flush=True)

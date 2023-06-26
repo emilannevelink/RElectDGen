@@ -17,6 +17,7 @@ from RElectDGen.statistics.cutoffs import get_all_dists_cutoffs, get_statistics_
 from RElectDGen.statistics.utils import save_cutoffs_distribution_info
 from RElectDGen.uncertainty.io import get_dataset_uncertainties
 from RElectDGen.statistics.subsample import subsample_uncertain
+from RElectDGen.utils.data import reduce_trajectory
 
 def parse_command_line(argsin):
     parser = argparse.ArgumentParser()
@@ -133,13 +134,16 @@ def main(args=None):
                 db.update(row['id'],md_stable=md_stable)
                 print(db.get(row['id'])['md_stable'])
         
+        ### Reduce trajectory
+        traj_reduced = reduce_trajectory(traj,config,MLP_config)
+
         ### get uncertain samples
         for symbol in MLP_config.get('chemical_symbol_to_type'):
             best_dict = get_best_dict(unc_out_all[symbol]['train_uncertainty_dict'],unc_out_all[symbol]['validation_uncertainty_dict'],use_validation_uncertainty)
             minimum_uncertainty_cutoffs[symbol] = get_statistics_cutoff(nsamplesi,best_dict)
-        
-        traj_uncertain += get_uncertain(traj,minimum_uncertainty_cutoffs,symbols)
-    
+
+        traj_uncertain += get_uncertain(traj_reduced,minimum_uncertainty_cutoffs,symbols)
+
         print(f'{nstable} stable of {len(rows_initial)} md trajectories')
 
         maximum_uncertainty_cutoffs = {}
