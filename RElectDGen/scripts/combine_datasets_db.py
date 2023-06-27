@@ -18,7 +18,7 @@ def parse_command_line(argsin):
     with open(args.config,'r') as fl:
         config = yaml.load(fl,yaml.FullLoader)
 
-    with open(filename_MLP_config,'r') as fl:
+    with open(args.MLP_config,'r') as fl:
         MLP_config = yaml.load(fl,yaml.FullLoader)
 
     return config, MLP_config, args.MLP_config
