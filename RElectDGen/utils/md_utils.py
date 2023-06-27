@@ -52,13 +52,21 @@ def md_func_fn(
     if md_func_name == 'nve':
         from ase.md.verlet import VelocityVerlet as md_func
     elif md_func_name == 'nvt':
-        from ase.md.nvtberendsen import NVTBerendsen as md_func
-        taut = kwargs.get('NVT_taut')
-        if taut is None:
-            md_kwargs['taut'] = timestep*500
+        # from ase.md.nvtberendsen import NVTBerendsen as md_func
+        # taut = kwargs.get('NVT_taut')
+        # if taut is None:
+        #     md_kwargs['taut'] = timestep*500
+        # else:
+        #     md_kwargs['taut'] = taut*units.fs
+        # md_kwargs['temperature'] = temperature
+        from ase.md.npt import NPT as md_func
+        md_kwargs['temperature_K'] = temperature
+        ttime = kwargs.get('NVT_ttime')
+        if ttime is None:
+            md_kwargs['ttime'] = md_kwargs['timestep']*500
         else:
-            md_kwargs['taut'] = taut*units.fs
-        md_kwargs['temperature'] = temperature
+            md_kwargs['ttime'] = ttime*units.fs
+        
     elif md_func_name == 'npt':
         from ase.md.npt import NPT as md_func
         md_kwargs['temperature_K'] = temperature

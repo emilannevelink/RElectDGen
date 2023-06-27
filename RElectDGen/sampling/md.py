@@ -94,23 +94,25 @@ def md_from_atoms(
         print(f'Total energy stable: max E index {max_E_index}', flush=True)
 
     # Check temperature stability
-    if 'temperature' in md_kwargs:
-        try:
-            MD_temperature = MLP_log['T[K]'].values
-            MD_T0 = md_kwargs.get('temperature')
-            max_T_index = int(np.argwhere(np.abs((MD_temperature-MD_T0)/MD_T0)>2)[0])
-        except IndexError:
-            max_T_index = int(steps+1)
+    # TODO: Add better discontinuity detection for temperature
+    # if 'temperature' in md_kwargs:
+    #     try:
+    #         MD_temperature = MLP_log['T[K]'].values
+    #         MD_T0 = max([md_kwargs.get('temperature'),MD_temperature[0]])
+    #         max_T_index = int(np.argwhere(np.abs((MD_temperature-MD_T0)/MD_T0)>2)[0])
+    #     except IndexError:
+    #         max_T_index = int(steps+1)
 
-        if max_T_index < steps:
-            print(f'max T index {max_T_index} of {len(MLP_log)} MLP_MD_steps', flush=True)
-            stable = False
-        else:
-            print(f'Temperature stable: max T index {max_T_index}', flush=True)
+    #     if max_T_index < steps:
+    #         print(f'max T index {max_T_index} of {len(MLP_log)} MLP_MD_steps', flush=True)
+    #         stable = False
+    #     else:
+    #         print(f'Temperature stable: max T index {max_T_index}', flush=True)
 
-        max_index = min([max_E_index,max_T_index])
-    else:
-        max_index = max_E_index
+    #     max_index = min([max_E_index,max_T_index])
+    # else:
+    #     max_index = max_E_index
+    max_index = max_E_index
 
     traj = Trajectory(trajectory_file)
     traj = traj[:max_index] # Only use E stable indices
