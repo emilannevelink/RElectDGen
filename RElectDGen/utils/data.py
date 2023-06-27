@@ -70,8 +70,8 @@ def reduce_traj_free_H(traj, H_cutoff=1.5, test=False):
         unique, counts = np.unique(src, return_counts=True)
         H_indices = np.where(np.array(atoms.get_chemical_symbols())=='H')[0]
         H_attached = np.intersect1d(unique,H_indices)#,return_indices=True)
-        print(H_indices)
-        print(H_attached)
+        # print(H_indices)
+        # print(H_attached)
         if len(H_attached) == len(H_indices):
             ind_reduced.append(i)
             traj_reduced.append(atoms)
