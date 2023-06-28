@@ -318,3 +318,15 @@ def interpolate_T_steps(md_kwargs,row,max_md_samples):
             md_kwargs['steps'] = int(min_steps + (max_steps-min_steps)*md_stable/(max_md_samples-1))
 
     return md_kwargs
+
+def get_discontinuity(data,nave=10):
+    for i, true in enumerate(data):
+        if i>nave:
+            fit = np.polyfit(np.arange(nave),data[i-nave:i],3)
+            pred = np.poly1d(fit)(nave)
+            std = np.std(data[:i])
+            error = np.abs((true-pred)/std)
+            if error>4:
+                return i
+    
+    return len(data)

@@ -123,21 +123,29 @@ def MD_sampling(config, loop_learning_count=1):
     # print('Done with MD', flush = True)
     # Check temperature stability
     MLP_log = pd.read_csv(MLP_MD_dump_file,delim_whitespace=True)
-    try:
-        MD_energies = MLP_log['Etot[eV]'].values
-        MD_e0 = MD_energies[0]
-        max_E_index = int(np.argwhere(np.abs((MD_energies-MD_e0)/MD_e0)>1)[0])
-    except IndexError:
-        max_E_index = int(config.get('MLP_MD_steps')+1)
+    MD_energies = MLP_log['Etot[eV]'].values
+    max_E_index = get_discontinuity(MD_energies)
 
     if max_E_index < config.get('MLP_MD_steps'):
         print(f'max E index {max_E_index} of {len(MLP_log)} MLP_MD_steps', flush=True)
+        max_E_index -= 10
     else:
         print(f'Total energy stable: max E index {max_E_index}', flush=True)
 
+    MD_temperatures = MLP_log['T[K]'].values
+    max_T_index = get_discontinuity(MD_temperatures)
+
+    if max_T_index < config.get('MLP_MD_steps'):
+        print(f'max T index {max_T_index} of {len(MLP_log)} MLP_MD_steps', flush=True)
+        max_T_index -= 10
+    else:
+        print(f'Temperature stable: max T index {max_T_index}', flush=True)
+
+    max_index = min([max_E_index,max_T_index])
+
     traj = Trajectory(trajectory_file)
     final_supercell = copy.deepcopy(traj[-1])
-    traj = traj[:max_E_index] # Only use E stable indices
+    traj = traj[:max_index] # Only use stable indices
     MLP_dict['MLP_MD_steps'] = len(traj)
 
     max_samples = int(config.get('max_samples'))

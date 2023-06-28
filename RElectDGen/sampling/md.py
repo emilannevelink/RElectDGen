@@ -10,6 +10,7 @@ from ase.io import Trajectory
 from ase.parallel import world
 
 from ..utils.md_utils import md_func_fn
+from ..sampling.utils import get_discontinuity
 
 def md_from_atoms(
     atoms: Atoms,
@@ -80,18 +81,39 @@ def md_from_atoms(
     # print('Done with MD', flush = True)
     # Check energy stability
     MLP_log = pd.read_csv(dump_file,delim_whitespace=True)
-    try:
-        MD_energies = MLP_log['Etot[eV]'].values
-        MD_e0 = MD_energies[0]
-        max_E_index = int(np.argwhere(np.abs((MD_energies-MD_e0)/MD_e0)>1)[0])
-    except IndexError:
-        max_E_index = int(steps+1)
+    # try:
+    #     MD_energies = MLP_log['Etot[eV]'].values
+    #     MD_e0 = MD_energies[0]
+    #     max_E_index = int(np.argwhere(np.abs((MD_energies-MD_e0)/MD_e0)>1)[0])
+    # except IndexError:
+    #     max_E_index = int(steps+1)
+
+    # if max_E_index < steps:
+    #     print(f'max E index {max_E_index} of {len(MLP_log)} MLP_MD_steps', flush=True)
+    #     stable = False
+    # else:
+    #     print(f'Total energy stable: max E index {max_E_index}', flush=True)
+
+    MD_energies = MLP_log['Etot[eV]'].values
+    max_E_index = get_discontinuity(MD_energies)
 
     if max_E_index < steps:
         print(f'max E index {max_E_index} of {len(MLP_log)} MLP_MD_steps', flush=True)
-        stable = False
+        max_E_index -= 10
     else:
         print(f'Total energy stable: max E index {max_E_index}', flush=True)
+
+    MD_temperatures = MLP_log['T[K]'].values
+    max_T_index = get_discontinuity(MD_temperatures)
+
+    if max_T_index < steps:
+        print(f'max T index {max_T_index} of {len(MLP_log)} MLP_MD_steps', flush=True)
+        max_T_index -= 10
+    else:
+        print(f'Temperature stable: max T index {max_T_index}', flush=True)
+
+    max_index = min([max_E_index,max_T_index])
+    max_index = max([max_index,0])
 
     # Check temperature stability
     # TODO: Add better discontinuity detection for temperature
@@ -112,7 +134,7 @@ def md_from_atoms(
     #     max_index = min([max_E_index,max_T_index])
     # else:
     #     max_index = max_E_index
-    max_index = max_E_index
+    # max_index = max_E_index
 
     traj = Trajectory(trajectory_file)
     traj = traj[:max_index] # Only use E stable indices
