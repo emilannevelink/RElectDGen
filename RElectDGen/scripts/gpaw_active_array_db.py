@@ -62,6 +62,7 @@ def main(args=None):
     if world.rank == 0:
         print(i, array_index, id)
     
+    atoms = extend_cell(atoms,config)
     atoms, success = calculate_atoms(atoms, config.get('oracle_config'),data_directory=config.get('data_directory'))
     
     db.update(id,atoms,calc=True,success=success)

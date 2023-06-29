@@ -33,7 +33,7 @@ def recalculate_traj_energies(traj,calc=None,config=None,writer=None,rewrite_pbc
 				print(e)
 			if recalculate:
 				atoms_re = deepcopy(atoms)
-				atoms.positions += np.array([0.1,0.1,0.])
+				atoms.positions += np.array([0.1,0.1,-1.])
 				recalculate_traj_energies([atoms],calc,config,writer,rewrite_pbc,recalculate=False)
 		except gpaw.KohnShamConvergenceError:
 			if world.rank == 0:
