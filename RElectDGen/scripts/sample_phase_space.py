@@ -7,6 +7,8 @@ from nequip.utils import Config
 from ase import Atoms
 from ase.io import Trajectory
 from ase.db import connect
+import pandas as pd
+import h5py
 
 from RElectDGen.sampling.utils import sample_from_ase_db
 from RElectDGen.utils.logging import write_to_tmp_dict
@@ -18,6 +20,7 @@ from RElectDGen.statistics.utils import save_cutoffs_distribution_info
 from RElectDGen.uncertainty.io import get_dataset_uncertainties
 from RElectDGen.statistics.subsample import subsample_uncertain
 from RElectDGen.utils.data import reduce_trajectory
+from RElectDGen.utils.md_utils import save_log_to_hdf5
 
 def parse_command_line(argsin):
     parser = argparse.ArgumentParser()
@@ -122,6 +125,16 @@ def main(args=None):
             **MLP_md_kwargs,
             data_directory=data_directory
         )
+
+        
+        dump_file = MLP_md_kwargs.get('dump_file')
+        if dump_file is not None:
+            dump_file = os.path.join(data_directory,dump_file)
+        dump_hdf5 = os.path.join(
+            data_directory,
+            config.get('MLP_dump_hdf5_file','dumps/energies_temperatures.hdf5')
+        )
+        save_log_to_hdf5(dump_file,dump_hdf5,stable)
 
         nsamplesi = len(traj)*len(traj[0])
         nsamples += nsamplesi

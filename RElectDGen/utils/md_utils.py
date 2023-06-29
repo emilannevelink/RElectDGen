@@ -1,3 +1,6 @@
+import os
+import pandas as pd
+import h5py
 import numpy as np
 from ase import units
 
@@ -86,3 +89,14 @@ def md_func_fn(
         md_kwargs['mask'] = np.eye(3) # only cell vectors to change magnitude; disallow shear
 
     return md_func, md_kwargs
+
+def save_log_to_hdf5(dump_filename,dump_hdf5_filename,stable):
+    if not stable and os.path.isfile(dump_filename):
+        MLP_log = pd.read_csv(dump_filename,delim_whitespace=True)
+        
+        with h5py.File(dump_hdf5_filename,'a') as hf:
+            id = str(len(hf.keys())+1)
+            gr = hf.create_group(id)
+            gr.create_dataset('time',data=MLP_log['Time[ps]'].values)
+            gr.create_dataset('energies',data=MLP_log['Etot[eV]'].values)
+            gr.create_dataset('temperatures',data=MLP_log['T[K]'].values)
