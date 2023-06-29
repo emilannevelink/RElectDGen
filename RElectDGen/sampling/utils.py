@@ -324,7 +324,7 @@ def get_discontinuity(data,nave=10):
         if i>nave:
             fit = np.polyfit(np.arange(nave),data[i-nave:i],3)
             pred = np.poly1d(fit)(nave)
-            std = np.std(data[:i])
+            std = max([np.std(data[:i]),1e-2])
             error = np.abs((true-pred)/std)
             if error>4:
                 return i

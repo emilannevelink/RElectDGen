@@ -99,6 +99,7 @@ def md_from_atoms(
 
     if max_E_index < steps:
         print(f'max E index {max_E_index} of {len(MLP_log)} MLP_MD_steps', flush=True)
+        stable = False
         max_E_index -= 10
     else:
         print(f'Total energy stable: max E index {max_E_index}', flush=True)
@@ -108,6 +109,7 @@ def md_from_atoms(
 
     if max_T_index < steps:
         print(f'max T index {max_T_index} of {len(MLP_log)} MLP_MD_steps', flush=True)
+        stable = False
         max_T_index -= 10
     else:
         print(f'Temperature stable: max T index {max_T_index}', flush=True)
