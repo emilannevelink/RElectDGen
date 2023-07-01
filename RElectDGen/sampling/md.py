@@ -6,18 +6,20 @@ from ase import Atoms
 from ase.md.velocitydistribution import MaxwellBoltzmannDistribution, ZeroRotation, Stationary
 from ase import units
 from ase.md import MDLogger
-from ase.io import Trajectory
+from ase.io import Trajectory, read
 from ase.parallel import world
+import multiprocessing as mp
 
 from ..utils.md_utils import md_func_fn
 from ..sampling.utils import get_discontinuity
+from ..utils.multiprocessing import starmap_with_kwargs
 
 def md_from_atoms(
     atoms: Atoms,
     md_func_name: str = 'nvt',
     temperature: float = 300.,
     steps: int = 1000,
-    timestep: float = 0.001,
+    timestep: float = 1,
     initialize_velocity: bool = False,
     md_func_dict: dict = {},
     dump_file: str = None,
@@ -25,7 +27,8 @@ def md_from_atoms(
     delete_tmp: bool = True,
     data_directory: str = '',
     **kwargs
-):  
+):
+    print(atoms,md_func_name,temperature)
     print('Starting timer', flush=True)
     start = time.time()
     stable = True
@@ -138,11 +141,23 @@ def md_from_atoms(
     #     max_index = max_E_index
     # max_index = max_E_index
 
-    traj = Trajectory(trajectory_file)
+    traj = read(trajectory_file,index=':')
     traj = traj[:max_index] # Only use E stable indices
 
     if delete_tmp and world.rank==0:
         os.remove(dump_file)
         os.remove(trajectory_file)
 
-    return traj, stable
+    return traj, MLP_log, stable
+
+def sample_md_parallel(md_kwargs: list[dict],npool:int):
+    trajs = []
+    logs = []
+    stables = []
+    with mp.Pool(npool) as p:
+        for res in starmap_with_kwargs(p,md_from_atoms,md_kwargs):
+            trajs.append(res[0])
+            logs.append(res[1])
+            stables.append(res[2])
+    
+    return trajs, logs, stables

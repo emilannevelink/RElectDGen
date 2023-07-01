@@ -44,11 +44,11 @@ def md_func_from_config(config,temperature=None,prefix='MLP'):
     return md_func, md_kwargs
 
 def md_func_fn(
-        md_func_name,
-        temperature,
-        timestep,
-        **kwargs
-        ):
+    md_func_name,
+    temperature,
+    timestep,
+    **kwargs
+    ):
     md_kwargs = {
         'timestep': timestep * units.fs
     }
@@ -90,9 +90,8 @@ def md_func_fn(
 
     return md_func, md_kwargs
 
-def save_log_to_hdf5(dump_filename,dump_hdf5_filename,stable):
-    if not stable and os.path.isfile(dump_filename):
-        MLP_log = pd.read_csv(dump_filename,delim_whitespace=True)
+def save_log_to_hdf5(MLP_log,dump_hdf5_filename,stable):
+    if not stable:
         
         with h5py.File(dump_hdf5_filename,'a') as hf:
             id = str(len(hf.keys())+1)

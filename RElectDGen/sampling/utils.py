@@ -2,8 +2,11 @@ from genericpath import isfile
 import os
 import numpy as np
 import torch
+import copy
 
 from ase.io import read
+from ase.db.row import AtomsRow
+from ase import Atoms
 from nequip.data import AtomicData
 from ase.io.formats import UnknownFileTypeError
 from RElectDGen.structure.build import get_initial_structure
@@ -299,7 +302,8 @@ def sort_traj_using_cutoffs(
     return traj_sorted
 
 def interpolate_T_steps(md_kwargs,row,max_md_samples):
-    print(row, md_kwargs, max_md_samples)
+    md_kwargs = copy.deepcopy(md_kwargs)
+    # print(row, md_kwargs, max_md_samples)
     md_stable = row.get('md_stable')
     ## interpolate T
     if 'temperature_range' in md_kwargs:
@@ -330,3 +334,24 @@ def get_discontinuity(data,nave=10):
                 return i
     
     return len(data)
+
+def assemble_md_kwargs(rows: list[AtomsRow],unc_calc,MLP_md_kwargs,max_md_samples):
+    md_kwargs_a = []
+    for i, row in enumerate(rows):
+        atoms = row.toatoms()
+        atoms.calc = unc_calc
+        kwargs = interpolate_T_steps(MLP_md_kwargs,row,max_md_samples)
+        kwargs['atoms'] = atoms
+        dump_file = kwargs.get('dump_file')
+        trajectory_file = kwargs.get('trajectory_file')
+        if max_md_samples > 1 and dump_file is not None:
+            prefix, suffix = dump_file.split('.')
+            kwargs['dump_file'] = prefix + f'_{i}.' + suffix
+        if max_md_samples > 1 and trajectory_file is not None:
+            prefix, suffix = trajectory_file.split('.')
+            kwargs['trajectory_file'] = prefix + f'_{i}.' + suffix
+            
+        md_kwargs_a.append(kwargs)
+
+    return md_kwargs_a
+        
