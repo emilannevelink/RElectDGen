@@ -345,11 +345,13 @@ def assemble_md_kwargs(rows: list[AtomsRow],unc_calc,MLP_md_kwargs,max_md_sample
         dump_file = kwargs.get('dump_file')
         trajectory_file = kwargs.get('trajectory_file')
         if dump_file is not None:
-            prefix, suffix = dump_file.split('.')
-            kwargs['dump_file'] = prefix + f'_{i}.' + suffix
+            args = dump_file.split('.')
+            args[-2] += f'_{i}'
+            kwargs['dump_file'] = '.'.join(args)
         if trajectory_file is not None:
-            prefix, suffix = trajectory_file.split('.')
-            kwargs['trajectory_file'] = prefix + f'_{i}.' + suffix
+            args = trajectory_file.split('.')
+            args[-2] += f'_{i}'
+            kwargs['trajectory_file'] = '.'.join(args)
             
         md_kwargs_a.append(kwargs)
 
