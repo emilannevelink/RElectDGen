@@ -182,7 +182,7 @@ def main(args=None):
 
         print(f'{len(traj_uncertain_sorted)} uncertain samples of {nsamples} total sampled')
         max_samples = config.get('max_samples',10)
-        if 'traj_add' not in locals() or len(traj_add) >= len(traj_uncertain):
+        if 'traj_add' not in locals() or len(traj_add) < len(traj_uncertain):
             traj_add = subsample_uncertain(
                 UQ,
                 traj_uncertain_sorted,
