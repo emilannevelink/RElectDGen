@@ -182,7 +182,8 @@ def main(args=None):
 
         print(f'{len(traj_uncertain_sorted)} uncertain samples of {nsamples} total sampled')
         max_samples = config.get('max_samples',10)
-        if 'traj_add' not in locals() or len(traj_add) < len(traj_uncertain):
+        if 'traj_add' not in locals() or len(traj_add) < len(traj_uncertain_sorted):
+            print(f'Recalculating traj_add: {len(traj_add)}')
             traj_add = subsample_uncertain(
                 UQ,
                 traj_uncertain_sorted,
@@ -191,6 +192,8 @@ def main(args=None):
                 max_add=max_samples,
                 method=None
             )
+        else:
+            print('Not recalculating traj_add')
         print('Length of Add trajectory: ',len(traj_add))
 
         # add traj to db
