@@ -122,6 +122,7 @@ def main(args=None):
         # md_kwargs_list = assemble_md_kwargs(rows,unc_calc,MLP_md_kwargs,max_md_samples)
         
         atoms = row.toatoms()
+        atoms.calc = unc_calc
         traj, log, stable = md_from_atoms(
             atoms,
             **MLP_md_kwargs
