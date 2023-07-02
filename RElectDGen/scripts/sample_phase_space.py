@@ -123,6 +123,7 @@ def main(args=None):
         
         atoms = row.toatoms()
         atoms.calc = unc_calc
+        MLP_md_kwargs = interpolate_T_steps(MLP_md_kwargs,row,max_md_samples)
         traj, log, stable = md_from_atoms(
             atoms,
             **MLP_md_kwargs
