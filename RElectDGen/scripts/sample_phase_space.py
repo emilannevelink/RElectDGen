@@ -2,6 +2,7 @@ import argparse
 import os
 import yaml
 import torch
+import copy
 import numpy as np
 from nequip.utils import Config
 from ase import Atoms
@@ -207,7 +208,7 @@ def main(args=None):
         if len(traj_add) == max_samples and len(traj_target)>0:
             break
 
-        traj_uncertain = traj_add
+        traj_uncertain = copy.deepcopy(traj_add)
     
     if len(traj_target)>0 or len(rows_initial)>max_samples:
         print('Writing traj_add to db')
