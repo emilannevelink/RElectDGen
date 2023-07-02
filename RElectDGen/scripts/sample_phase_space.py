@@ -124,8 +124,7 @@ def main(args=None):
         atoms = row.toatoms()
         traj, log, stable = md_from_atoms(
             atoms,
-            **MLP_md_kwargs,
-            data_directory=data_directory
+            **MLP_md_kwargs
         )
         # trajs, logs, stables = sample_md_parallel(md_kwargs_list,nbatch_sample)
 
