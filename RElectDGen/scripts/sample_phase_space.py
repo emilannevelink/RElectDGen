@@ -116,50 +116,55 @@ def main(args=None):
 
     nbatch_sample = config.get('sample_n_parallel',1)
 
-    # rows_batched = batch_list(rows_initial,nbatch_sample)
+    unc_calc_mp = {
+        'module': 'RElectDGen.calculate.unc_calculator',
+        'calculator_type': 'UncCalculator',
+        'calculator_kwargs': {'uq_module': {'config': config, 'MLP_config': MLP_config}}
+    } 
+    rows_batched = batch_list(rows_initial,nbatch_sample)
     MLP_md_kwargs['data_directory'] = data_directory
-    for row in rows_initial:#rows_batched:
-
-        # md_kwargs_list = assemble_md_kwargs(rows,unc_calc,MLP_md_kwargs,max_md_samples)
+    # for row in rows_initial:
+    for rows in rows_batched:
+        md_kwargs_list = assemble_md_kwargs(rows,unc_calc_mp,MLP_md_kwargs,max_md_samples)
         
-        atoms = row.toatoms()
-        atoms.calc = unc_calc
-        MLP_md_kwargs = interpolate_T_steps(MLP_md_kwargs,row,max_md_samples)
-        traj, log, stable = md_from_atoms(
-            atoms,
-            **MLP_md_kwargs
-        )
-        # trajs, logs, stables = sample_md_parallel(md_kwargs_list,nbatch_sample)
+        # atoms = row.toatoms()
+        # atoms.calc = unc_calc
+        # MLP_md_kwargs = interpolate_T_steps(MLP_md_kwargs,row,max_md_samples)
+        # traj, log, stable = md_from_atoms(
+        #     atoms,
+        #     **MLP_md_kwargs
+        # )
+        trajs, logs, stables = sample_md_parallel(md_kwargs_list,nbatch_sample)
 
-        # all_sampled = []
-        # for (row, traj, log, stable) in zip(rows, trajs, logs, stables):
-        dump_hdf5 = os.path.join(
-            data_directory,
-            config.get('MLP_dump_hdf5_file','dumps/energies_temperatures.hdf5')
-        )
-        save_log_to_hdf5(log,dump_hdf5,stable)
+        all_sampled = []
+        for (row, traj, log, stable) in zip(rows, trajs, logs, stables):
+            dump_hdf5 = os.path.join(
+                data_directory,
+                config.get('MLP_dump_hdf5_file','dumps/energies_temperatures.hdf5')
+            )
+            save_log_to_hdf5(log,dump_hdf5,stable)
 
-        nsamplesi = len(traj)*len(traj[0])
-        nsamples += nsamplesi
+            nsamplesi = len(traj)*len(traj[0])
+            nsamples += nsamplesi
 
-        if stable:
-            nstable += 1
-            md_stable = row.get('md_stable') + 1
-            with connect(db_filename) as db:
-                print('updating row: ', row['id'], f' to md_stable = {md_stable}')
-                db.update(row['id'],md_stable=md_stable)
-                print(db.get(row['id'])['md_stable'])
-    
-        ### Reduce trajectory
-        traj_reduced = reduce_trajectory(traj,config,MLP_config)
-        # all_sampled += traj_reduced
+            if stable:
+                nstable += 1
+                md_stable = row.get('md_stable') + 1
+                with connect(db_filename) as db:
+                    print('updating row: ', row['id'], f' to md_stable = {md_stable}')
+                    db.update(row['id'],md_stable=md_stable)
+                    print(db.get(row['id'])['md_stable'])
+        
+            ### Reduce trajectory
+            traj_reduced = reduce_trajectory(traj,config,MLP_config)
+            all_sampled += traj_reduced
 
         ### get uncertain samples
         for symbol in MLP_config.get('chemical_symbol_to_type'):
             best_dict = get_best_dict(unc_out_all[symbol]['train_uncertainty_dict'],unc_out_all[symbol]['validation_uncertainty_dict'],use_validation_uncertainty)
             minimum_uncertainty_cutoffs[symbol] = get_statistics_cutoff(nsamplesi,best_dict)
 
-        traj_uncertain += get_uncertain(traj_reduced,minimum_uncertainty_cutoffs,symbols)
+        traj_uncertain += get_uncertain(all_sampled,minimum_uncertainty_cutoffs,symbols)
 
         print(f'{nstable} stable of {len(rows_initial)} md trajectories')
 
