@@ -84,6 +84,9 @@ class uncertainty_base():
 
         return True
 
+    def calibrate(self, debug=False):
+        pass
+
     def save_parsed_data(self):
 
         data = {}
@@ -386,9 +389,9 @@ class Nequip_latent_distance(uncertainty_base):
 
             self.save_parsed_data()
 
-    def calibrate(self, debug=False):
+    def calibrate(self, debug=False, print_params=True):
         
-        fail = self.load_params()
+        fail = self.load_params(print_params)
 
         self.parse_data()
 
@@ -414,7 +417,7 @@ class Nequip_latent_distance(uncertainty_base):
                 self.min_distances = min_distances
                 self.min_vectors = min_vectors
 
-    def load_params(self):
+    def load_params(self,print_params=True):
         fail = True
 
         if os.path.isfile(self.params_file):
@@ -433,7 +436,8 @@ class Nequip_latent_distance(uncertainty_base):
             self.params = params
             for key in params:
                 for i, p in enumerate(params[key]):
-                    print(key, i, p, flush=True)
+                    if print_params:
+                        print(key, i, p, flush=True)
 
         return fail
                         

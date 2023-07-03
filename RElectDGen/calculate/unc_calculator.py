@@ -41,7 +41,7 @@ class UncCalculator(NequIPCalculator): # so that it passes through nequip
         if isinstance(uq_module,dict):
             # load UQ from dict
             uq_module = load_UQ(uq_module.get('config'),uq_module.get('MLP_config'))
-            uq_module.calibrate()
+            uq_module.calibrate(print_params=False)
         assert isinstance(uq_module, uncertainty_base)
         self.uq_module = uq_module
         
