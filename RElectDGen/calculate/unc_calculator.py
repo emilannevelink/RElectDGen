@@ -38,7 +38,13 @@ class UncCalculator(NequIPCalculator): # so that it passes through nequip
     ):
         Calculator.__init__(self, **kwargs)
         self.results = {}
+        if isinstance(uq_module,dict):
+            # load UQ from dict
+            uq_module = load_UQ(uq_module.get('config'),uq_module.get('MLP_config'))
+            uq_module.calibrate()
+        assert isinstance(uq_module, uncertainty_base)
         self.uq_module = uq_module
+        
         
         self.energy_units_to_eV = energy_units_to_eV
         self.length_units_to_A = length_units_to_A

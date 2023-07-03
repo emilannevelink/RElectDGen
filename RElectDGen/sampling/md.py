@@ -2,12 +2,14 @@ import os
 import time
 import numpy as np
 import pandas as pd
+import importlib
 from ase import Atoms
 from ase.md.velocitydistribution import MaxwellBoltzmannDistribution, ZeroRotation, Stationary
 from ase import units
 from ase.md import MDLogger
 from ase.io import Trajectory, read
 from ase.parallel import world
+from ase.calculators.calculator import Calculator
 import multiprocessing as mp
 
 from ..utils.md_utils import md_func_fn
@@ -29,6 +31,12 @@ def md_from_atoms(
     **kwargs
 ):
     print(atoms,md_func_name,temperature)
+    if isinstance(atoms.calc,dict):
+        mod = importlib.import_module(atoms.calc.get('module'))
+        calc_class = getattr(mod,atoms.calc.get('calculator_type'))
+        calc = calc_class(**atoms.calc.get('calculator_kwargs',{}))
+        atoms.calc = calc
+    assert isinstance(atoms.calc,Calculator)
     print('Starting timer', flush=True)
     start = time.time()
     stable = True
