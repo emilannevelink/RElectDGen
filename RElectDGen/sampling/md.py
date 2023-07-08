@@ -93,43 +93,43 @@ def md_from_atoms(
 
     # print('Done with MD', flush = True)
     # Check energy stability
-    if world.rank == 0:
-        MLP_log = pd.read_csv(dump_file,delim_whitespace=True)
     
-        MD_energies = MLP_log['Etot[eV]'].values
-        max_E_index = get_discontinuity(MD_energies)
+    MLP_log = pd.read_csv(dump_file,delim_whitespace=True)
 
-        if max_E_index < steps:
-            if world.rank == 0:
-                print(f'max E index {max_E_index} of {len(MLP_log)} MLP_MD_steps', flush=True)
-            stable = False
-            max_E_index -= 10
-        else:
-            if world.rank == 0:
-                print(f'Total energy stable: max E index {max_E_index}', flush=True)
+    MD_energies = MLP_log['Etot[eV]'].values
+    max_E_index = get_discontinuity(MD_energies)
 
-        MD_temperatures = MLP_log['T[K]'].values
-        max_T_index = get_discontinuity(MD_temperatures)
+    if max_E_index < steps:
+        if world.rank == 0:
+            print(f'max E index {max_E_index} of {len(MLP_log)} MLP_MD_steps', flush=True)
+        stable = False
+        max_E_index -= 10
+    else:
+        if world.rank == 0:
+            print(f'Total energy stable: max E index {max_E_index}', flush=True)
 
-        if max_T_index < steps:
-            if world.rank == 0:
-                print(f'max T index {max_T_index} of {len(MLP_log)} MLP_MD_steps', flush=True)
-            stable = False
-            max_T_index -= 10
-        else:
-            if world.rank == 0:
-                print(f'Temperature stable: max T index {max_T_index}', flush=True)
+    MD_temperatures = MLP_log['T[K]'].values
+    max_T_index = get_discontinuity(MD_temperatures)
 
-        max_index = min([max_E_index,max_T_index])
-        max_index = max([max_index,0])
+    if max_T_index < steps:
+        if world.rank == 0:
+            print(f'max T index {max_T_index} of {len(MLP_log)} MLP_MD_steps', flush=True)
+        stable = False
+        max_T_index -= 10
+    else:
+        if world.rank == 0:
+            print(f'Temperature stable: max T index {max_T_index}', flush=True)
 
-    
-        traj = read(trajectory_file,index=':')
-        traj = traj[:max_index] # Only use E stable indices
+    max_index = min([max_E_index,max_T_index])
+    max_index = max([max_index,0])
 
-        if delete_tmp:
-            os.remove(dump_file)
-            os.remove(trajectory_file)
+
+    traj = read(trajectory_file,index=':')
+    traj = traj[:max_index] # Only use E stable indices
+
+    if delete_tmp and world.rank == 0:
+        os.remove(dump_file)
+        os.remove(trajectory_file)
 
     return traj, MLP_log, stable
 
