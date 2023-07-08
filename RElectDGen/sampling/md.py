@@ -30,7 +30,8 @@ def md_from_atoms(
     data_directory: str = '',
     **kwargs
 ):
-    print(atoms,md_func_name,temperature)
+    if world.rank == 0:
+        print(atoms,md_func_name,temperature)
     if isinstance(atoms.calc,dict):
         mod = importlib.import_module(atoms.calc.get('module'))
         calc_class = getattr(mod,atoms.calc.get('calculator_type'))
@@ -48,8 +49,8 @@ def md_from_atoms(
         MaxwellBoltzmannDistribution(atoms, temperature_K=temperature)
         ZeroRotation(atoms)
         Stationary(atoms)
-
-    print(temperature,flush=True)
+    if world.rank == 0:
+        print(temperature,flush=True)
 
     md_func, md_kwargs = md_func_fn(md_func_name, temperature,timestep,**md_func_dict)
 
@@ -86,75 +87,49 @@ def md_from_atoms(
     traj.close()
 
     tmp1 = time.time()
-    print('Time to run MD', tmp1-tmp0, 'Elapsed time ', tmp1-start, flush=True)
+    if world.rank == 0:
+        print('Time to run MD', tmp1-tmp0, 'Elapsed time ', tmp1-start, flush=True)
     tmp0 = tmp1
 
     # print('Done with MD', flush = True)
     # Check energy stability
-    MLP_log = pd.read_csv(dump_file,delim_whitespace=True)
-    # try:
-    #     MD_energies = MLP_log['Etot[eV]'].values
-    #     MD_e0 = MD_energies[0]
-    #     max_E_index = int(np.argwhere(np.abs((MD_energies-MD_e0)/MD_e0)>1)[0])
-    # except IndexError:
-    #     max_E_index = int(steps+1)
+    if world.rank == 0:
+        MLP_log = pd.read_csv(dump_file,delim_whitespace=True)
+    
+        MD_energies = MLP_log['Etot[eV]'].values
+        max_E_index = get_discontinuity(MD_energies)
 
-    # if max_E_index < steps:
-    #     print(f'max E index {max_E_index} of {len(MLP_log)} MLP_MD_steps', flush=True)
-    #     stable = False
-    # else:
-    #     print(f'Total energy stable: max E index {max_E_index}', flush=True)
+        if max_E_index < steps:
+            if world.rank == 0:
+                print(f'max E index {max_E_index} of {len(MLP_log)} MLP_MD_steps', flush=True)
+            stable = False
+            max_E_index -= 10
+        else:
+            if world.rank == 0:
+                print(f'Total energy stable: max E index {max_E_index}', flush=True)
 
-    MD_energies = MLP_log['Etot[eV]'].values
-    max_E_index = get_discontinuity(MD_energies)
+        MD_temperatures = MLP_log['T[K]'].values
+        max_T_index = get_discontinuity(MD_temperatures)
 
-    if max_E_index < steps:
-        print(f'max E index {max_E_index} of {len(MLP_log)} MLP_MD_steps', flush=True)
-        stable = False
-        max_E_index -= 10
-    else:
-        print(f'Total energy stable: max E index {max_E_index}', flush=True)
+        if max_T_index < steps:
+            if world.rank == 0:
+                print(f'max T index {max_T_index} of {len(MLP_log)} MLP_MD_steps', flush=True)
+            stable = False
+            max_T_index -= 10
+        else:
+            if world.rank == 0:
+                print(f'Temperature stable: max T index {max_T_index}', flush=True)
 
-    MD_temperatures = MLP_log['T[K]'].values
-    max_T_index = get_discontinuity(MD_temperatures)
+        max_index = min([max_E_index,max_T_index])
+        max_index = max([max_index,0])
 
-    if max_T_index < steps:
-        print(f'max T index {max_T_index} of {len(MLP_log)} MLP_MD_steps', flush=True)
-        stable = False
-        max_T_index -= 10
-    else:
-        print(f'Temperature stable: max T index {max_T_index}', flush=True)
+    
+        traj = read(trajectory_file,index=':')
+        traj = traj[:max_index] # Only use E stable indices
 
-    max_index = min([max_E_index,max_T_index])
-    max_index = max([max_index,0])
-
-    # Check temperature stability
-    # TODO: Add better discontinuity detection for temperature
-    # if 'temperature' in md_kwargs:
-    #     try:
-    #         MD_temperature = MLP_log['T[K]'].values
-    #         MD_T0 = max([md_kwargs.get('temperature'),MD_temperature[0]])
-    #         max_T_index = int(np.argwhere(np.abs((MD_temperature-MD_T0)/MD_T0)>2)[0])
-    #     except IndexError:
-    #         max_T_index = int(steps+1)
-
-    #     if max_T_index < steps:
-    #         print(f'max T index {max_T_index} of {len(MLP_log)} MLP_MD_steps', flush=True)
-    #         stable = False
-    #     else:
-    #         print(f'Temperature stable: max T index {max_T_index}', flush=True)
-
-    #     max_index = min([max_E_index,max_T_index])
-    # else:
-    #     max_index = max_E_index
-    # max_index = max_E_index
-
-    traj = read(trajectory_file,index=':')
-    traj = traj[:max_index] # Only use E stable indices
-
-    if delete_tmp and world.rank==0:
-        os.remove(dump_file)
-        os.remove(trajectory_file)
+        if delete_tmp:
+            os.remove(dump_file)
+            os.remove(trajectory_file)
 
     return traj, MLP_log, stable
 
