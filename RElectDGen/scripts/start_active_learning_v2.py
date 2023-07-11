@@ -27,7 +27,7 @@ def main(args=None):
     dir_root = os.environ.get('HOME')
     if data_root not in config.get('data_directory',''):
         config['data_directory'] = os.path.join(data_root,config.get('directory'))    
-    if dir_root not in config.get('directory'):
+    if dir_root not in config.get('directory') or data_root not in config.get('directory'):
         config['directory'] = os.path.join(dir_root,config.get('directory'))
     
     

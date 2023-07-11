@@ -42,6 +42,7 @@ def md_from_atoms(
     start = time.time()
     stable = True
     ## set random seed for multiprocessing
+    ## this works well for multiprocessing but breaks GPAW
     np.random.seed(int.from_bytes(os.urandom(4), byteorder='little'))
     rind = int(np.random.rand(1)*1e6)
 
