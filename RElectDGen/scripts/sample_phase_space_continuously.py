@@ -187,19 +187,19 @@ def main(args=None):
 
         traj_uncertain = copy.deepcopy(traj_add)
     
-    tmp_db_filename = os.path.join(
-        data_directory,
-        config.get('tmp_ase_db_filename')
-    )
-    if os.path.isfile(tmp_db_filename):
-        os.remove(tmp_db_filename)
-    if len(traj_add)>0:
-        print('Writing traj_add to db')
-        with connect(tmp_db_filename) as db:
-            for atoms in traj_add:
-                db.write(atoms)
-    else:
-        print('traj_add is of length ', len(traj_add))
+        tmp_db_filename = os.path.join(
+            data_directory,
+            config.get('tmp_ase_db_filename')
+        )
+        if os.path.isfile(tmp_db_filename):
+            os.remove(tmp_db_filename)
+        if len(traj_add)>0:
+            print('Writing traj_add to db')
+            with connect(tmp_db_filename) as db:
+                for atoms in traj_add:
+                    db.write(atoms)
+        else:
+            print('traj_add is of length ', len(traj_add))
     
     print('Sampling Complete')
     ### some sort of logging
