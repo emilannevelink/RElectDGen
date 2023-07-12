@@ -54,6 +54,10 @@ def shell_from_config(config):
             commands += [
                 'REDGEN-calibrate-UQ --config_file $1 --MLP_config_file $2'
             ]
+        elif 'sample_continuously' in file:
+            commands += [
+                'REDGEN-sample-continuously --config_file $1 --MLP_config_file $2'
+            ]
         elif 'sample' in file:
             commands += [
                 'REDGEN-sample --config_file $1 --MLP_config_file $2'

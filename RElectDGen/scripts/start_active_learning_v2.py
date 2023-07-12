@@ -2,6 +2,7 @@ import argparse
 import subprocess
 import os, yaml
 from RElectDGen.scripts.gpaw_MD_db import check_oracle_steps
+from ase.db import connect
 
 def parse_command_line(args):
     parser = argparse.ArgumentParser()
@@ -72,6 +73,16 @@ def main(args=None):
         config.get('gpaw_cores',config.get('cores',1)))
     # config.get('gpaw_nodes',config.get('nodes',1)))
 
+    if config.get('max_samples_percent') is not None:
+        db_filename = os.path.join(
+            config.get('data_directory'),
+            config.get('ase_db_filename')
+        )
+        if os.path.isfile(db_filename):
+            db = connect(db_filename)
+            config['max_samples'] = int(config.get('max_samples_percent')*db.count('success=True'))
+            print('Reset max samples to: ', config['max_samples'])
+
     # for i in range(1,1+config.get('n_temperature_sweep')):
     i = 0
     location = config.get('dir_shell', 'submits')
@@ -101,6 +112,12 @@ def main(args=None):
                 commands = ['sbatch', f'--dependency=afterok:{job_ids[-1]}', f'--array=0-{n_ensemble-1}', shell_file, active_learning_config, MLP_config_current, str(i)]
             else:
                 commands = ['sbatch', f'--array=0-{n_ensemble-1}', shell_file,active_learning_config, MLP_config_current, str(i)]      
+        elif 'sample_continuously' in shell_file:
+            sample_id = config['sample_id']
+            if len(job_ids)>0:
+                commands = ['sbatch', f'--dependency=afterok:{sample_id}', shell_file, active_learning_config, MLP_config_current, str(i)]
+            else:
+                commands = ['sbatch', shell_file, active_learning_config, MLP_config_current, str(i)]
         else:
             if len(job_ids)>0:
                 commands = ['sbatch', f'--dependency=afterok:{job_ids[-1]}', shell_file, active_learning_config, MLP_config_current, str(i)]
@@ -112,6 +129,8 @@ def main(args=None):
             process = subprocess.run(command_string, capture_output=True, shell=True)
             job_ids.append(int(process.stdout.split(b' ')[-1]))
             job_types.append(shell_file)
+            if 'sample.sh' in shell_file:
+                config['sample_id'] = job_ids[-1]
         
         if 'restart' in shell_file:
             restart_ids = config.get('restart_ids',[])

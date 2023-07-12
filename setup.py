@@ -25,6 +25,7 @@ setup(
             "REDGEN-train-prep = RElectDGen.scripts.prep_train_array_db:main",
             "REDGEN-train-array = RElectDGen.scripts.train_array_db:main",
             "REDGEN-sample = RElectDGen.scripts.sample_phase_space:main",
+            "REDGEN-sample-continuously = RElectDGen.scripts.sample_phase_space_continuously:main",
             "REDGEN-MLP-MD = RElectDGen.scripts.MLP_MD:main",
             "REDGEN-MLP-MD-run = RElectDGen.scripts.MD_run:main",
             "REDGEN-sample-adv = RElectDGen.scripts.adv_sampling:main",

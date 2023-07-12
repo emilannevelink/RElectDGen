@@ -4,7 +4,12 @@ Tools for using slurm in python scripts
 import os
 import glob
 
-
+def check_if_job_running(id):
+    command = f"squeue | grep '{id}.*R'"
+    if os.system(command)==0:
+        return True
+    
+    return False
 def _gen_sbatch_config(config):
     '''
     Helper to write sbatch config
