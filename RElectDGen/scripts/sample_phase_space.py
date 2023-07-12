@@ -6,7 +6,7 @@ import copy
 import numpy as np
 from nequip.utils import Config
 from ase import Atoms
-from ase.io import Trajectory
+from ase.io import read
 from ase.db import connect
 import pandas as pd
 import h5py
@@ -109,7 +109,14 @@ def main(args=None):
     save_cutoffs_distribution_info(distribution_filename, unc_out_all, str(active_learning_index))
 
     ### run MD on samples
-    traj_uncertain = []
+    tmp_db_filename = os.path.join(
+            data_directory,
+            config.get('tmp_ase_db_filename','')
+        )
+    if os.path.isfile(tmp_db_filename):
+        traj_uncertain = read(tmp_db_filename,index=':')
+    else:
+        traj_uncertain = []
     nsamples = 0
     minimum_uncertainty_cutoffs = {}
     nstable = 0
