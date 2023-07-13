@@ -101,7 +101,7 @@ def finetune_subsample(
                 uncertainty[mask]<maximum_uncertainty_cutoffs[symbol],
             )
             if sum(between_threshold)>0:
-                max_ind_between = np.argmax(uncertainty[mask][between_threshold])
+                max_ind_between = np.argwhere(between_threshold).flatten()[np.argmax(uncertainty[mask][between_threshold])]
                 max_ind = np.argwhere(mask).flatten()[max_ind_between]
                 max_inds.append(max_ind)
 
