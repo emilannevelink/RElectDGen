@@ -89,17 +89,33 @@ def finetune_subsample(
         if len(calc_inds) >= max_add+ndiff:
             break
         
+        append_embedding = False
         out = UQ.predict_uncertainty(atoms,extra_embeddings=keep_embeddings)
         uncertainty = out['uncertainties'].detach().cpu().numpy().sum(axis=-1)
-        append_embedding = False
+        
+        max_inds = []
+        for symbol, type_id in UQ.chemical_symbol_to_type.items():
+            mask = out['atom_types']==type_id
+            between_threshold = np.logical_and(
+                uncertainty[mask]>minimum_uncertainty_cutoffs[symbol],
+                uncertainty[mask]<maximum_uncertainty_cutoffs[symbol],
+            )
+            if sum(between_threshold)>0:
+                max_ind_between = np.argmax(uncertainty[mask][between_threshold])
+                max_ind = np.argwhere(mask).flatten()[max_ind_between]
+                max_inds.append(max_ind)
 
-        max_ind = np.argmax(uncertainty)
-        atom_type = int(out['atom_types'][max_ind])
-        symbol = type_to_chemical_symbol[atom_type]
-        unc_value = uncertainty[max_ind]
+
+        # max_ind = np.argmax(uncertainty)
+        # atom_type = int(out['atom_types'][max_ind])
+        # symbol = type_to_chemical_symbol[atom_type]
+        # unc_value = uncertainty[max_ind]
 
 
-        if unc_value>minimum_uncertainty_cutoffs[symbol] and unc_value<maximum_uncertainty_cutoffs[symbol]:
+        # if unc_value>minimum_uncertainty_cutoffs[symbol] and unc_value<maximum_uncertainty_cutoffs[symbol]:
+        if len(max_inds) > 0:
+            max_ind = max_inds[np.argmax(uncertainty[max_inds])]
+            unc_value = uncertainty[max_ind]
             calc_inds.append(int(i))
             uncertainties.append(unc_value)
             append_embedding = True
