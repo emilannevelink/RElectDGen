@@ -95,7 +95,7 @@ def finetune_subsample(
         
         max_inds = []
         for symbol, type_id in UQ.chemical_symbol_to_type.items():
-            mask = out['atom_types']==type_id
+            mask = (out['atom_types']==type_id).flatten()
             between_threshold = np.logical_and(
                 uncertainty[mask]>minimum_uncertainty_cutoffs[symbol],
                 uncertainty[mask]<maximum_uncertainty_cutoffs[symbol],
