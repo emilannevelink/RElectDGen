@@ -259,15 +259,15 @@ def get_uncertain(traj,minimum_uncertainty_cutoff,symbols):
         if len(all_uncertainties) == 0:
             return []
         
-        all_uncertainties = np.stack(all_uncertainties)
-
-        try:
-            max_uncertainties = all_uncertainties.max(axis=1)
-        except Exception as e:
-            print(symbol, len(traj))
-            print(e)
-            print(all_uncertainties)
-            print(all_uncertainties.shape)
+        # all_uncertainties = np.stack(all_uncertainties)
+        max_uncertainties = np.array([unc.max() for unc in all_uncertainties])
+        # try:
+        #     max_uncertainties = all_uncertainties.max(axis=1)
+        # except Exception as e:
+        #     print(symbol, len(traj))
+        #     print(e)
+        #     print(all_uncertainties)
+        #     print(all_uncertainties.shape)
         uncertainty_indices = np.concatenate([
             uncertainty_indices,
             np.argwhere(max_uncertainties>minimum_uncertainty_cutoff[symbol]).flatten()

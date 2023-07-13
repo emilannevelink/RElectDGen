@@ -145,4 +145,4 @@ class FakeUncCalculator(NequIPCalculator): # so that it passes through nequip
             'forces': np.random.rand(*atoms.get_positions().shape),
         }
         atoms.info['uncertainties'] = np.random.rand(atoms.get_positions().shape[0])
-        print(atoms.info['uncertainties'])
+        # print(atoms.info['uncertainties'])
