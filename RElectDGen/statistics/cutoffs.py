@@ -112,9 +112,11 @@ def get_base_cutoffs(dist_dict, sampling_data):
 
 def get_best_dict(train_dict,val_dict,use_validation_uncertainty=False):
     # best_dict = val_dict if val_dict['res'].pvalue>train_dict['res'].pvalue else train_dict
-    if val_dict['res'].pvalue > 0.05 or use_validation_uncertainty:
+    train_pvalue = train_dict['res']['pvalue'] if isinstance(train_dict['res'],dict) else  train_dict['res'].pvalue
+    val_pvalue = val_dict['res']['pvalue'] if isinstance(val_dict['res'],dict) else  val_dict['res'].pvalue
+    if val_pvalue > 0.05 or use_validation_uncertainty:
         best_dict = val_dict
-    elif val_dict['res'].pvalue>train_dict['res'].pvalue:
+    elif val_pvalue>train_pvalue:
         best_dict = val_dict
     else:
         best_dict = train_dict

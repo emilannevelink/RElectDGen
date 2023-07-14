@@ -40,7 +40,7 @@ def parse_command_line(argsin):
     with open(args.MLP_config,'r') as fl:
             MLP_config = yaml.load(fl,yaml.FullLoader)
 
-    return config, config_filename, MLP_config
+    return config, args.config, MLP_config
 
 def main(args=None):
     logging_dict = {}
@@ -87,6 +87,9 @@ def main(args=None):
     #     'calculator_kwargs': {'uq_module': {'config': config, 'MLP_config': MLP_config}}
     # } 
     # rows_batched = batch_list(rows_initial,nbatch_sample)
+    uncertainty_function = config.get('uncertainty_function', 'Nequip_latent_distance')
+    use_validation_uncertainty = True if uncertainty_function in ['Nequip_latent_distance'] else False
+    MLP_md_kwargs = config.get('MLP_md_kwargs')
     MLP_md_kwargs['data_directory'] = data_directory
     for row in rows_initial:
         # for rows in rows_batched:
@@ -182,7 +185,7 @@ def main(args=None):
         if os.path.isfile(next_config_filename):
             with open(next_config_filename,'r') as fl:
                 config_next = yaml.load(fl,yaml.FullLoader)
-            if check_if_job_running(config_next['sampling_id']):
+            if check_if_job_running(config_next['sample_id']):
                 break
 
         traj_uncertain = copy.deepcopy(traj_add)

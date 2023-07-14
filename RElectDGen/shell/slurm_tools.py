@@ -5,7 +5,7 @@ import os
 import glob
 
 def check_if_job_running(id):
-    command = f"squeue | grep '{id}.*R'"
+    command = f"squeue | grep '{id}.* R '"
     if os.system(command)==0:
         return True
     

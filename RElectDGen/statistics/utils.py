@@ -37,4 +37,6 @@ def read_data(hf:h5py.Group, key:str = None):
             data[k] = read_data(hf,k)
     elif isinstance(hf,h5py.Dataset):
         data = hf[()]
+    if isinstance(data,bytes):
+        data = data.decode()
     return data
