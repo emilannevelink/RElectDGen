@@ -359,7 +359,7 @@ class Nequip_latent_distance(uncertainty_base):
             for data in dataset[self.MLP_config.train_idcs]:
                 out = self.model(self.transform_data_input(data))
                 error = torch.absolute(out['forces'] - data.forces)
-                train_total_energy_errors = torch.cat([train_total_energy_errors,(data['total_energy'].squeeze()-out['total_energy'].detach().squeeze())])
+                train_total_energy_errors = torch.cat([train_total_energy_errors,(data['total_energy'].squeeze()-out['total_energy'].detach().squeeze()).unsqueeze(0)])
 
                 for key in self.MLP_config.get('chemical_symbol_to_type'):
                     mask = (data['atom_types']==self.MLP_config.get('chemical_symbol_to_type')[key]).flatten()
@@ -378,7 +378,7 @@ class Nequip_latent_distance(uncertainty_base):
             for data in dataset[self.MLP_config.val_idcs]:
                 out = self.model(self.transform_data_input(data))
                 error = torch.absolute(out['forces'] - data.forces)
-                test_total_energy_errors = torch.cat([test_total_energy_errors,(data['total_energy'].squeeze()-out['total_energy'].detach().squeeze())])
+                test_total_energy_errors = torch.cat([test_total_energy_errors,(data['total_energy'].squeeze()-out['total_energy'].detach().squeeze()).unsqueeze(0)])
 
                 for key in self.MLP_config.get('chemical_symbol_to_type'):
                     mask = (data['atom_types']==self.MLP_config.get('chemical_symbol_to_type')[key]).flatten()
