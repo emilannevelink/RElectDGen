@@ -109,12 +109,12 @@ def main(args=None):
     save_cutoffs_distribution_info(distribution_filename, unc_out_all, str(active_learning_index))
 
     ### run MD on samples
-    tmp_db_filename = os.path.join(
+    tmp_ase_traj_filename = os.path.join(
             data_directory,
-            config.get('tmp_ase_db_filename','')
+            config.get('tmp_ase_traj_filename','')
         )
-    if os.path.isfile(tmp_db_filename):
-        traj_uncertain = read(tmp_db_filename,index=':')
+    if os.path.isfile(tmp_ase_traj_filename):
+        traj_uncertain = read(tmp_ase_traj_filename,index=':')
     else:
         traj_uncertain = []
     nsamples = 0

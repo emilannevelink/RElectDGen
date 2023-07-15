@@ -94,7 +94,7 @@ def main(args=None):
     for row in rows_initial:
         # for rows in rows_batched:
         # md_kwargs_list = assemble_md_kwargs(rows,unc_calc_mp,MLP_md_kwargs,max_md_samples)
-        
+        print('Sampling from row: ', row['id'])
         atoms = row.toatoms()
         atoms.calc = unc_calc
         MLP_md_kwargs = interpolate_T_steps(MLP_md_kwargs,row,max_md_samples)

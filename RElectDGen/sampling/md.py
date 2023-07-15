@@ -57,7 +57,7 @@ def md_from_atoms(
 
     dyn = md_func(atoms, **md_kwargs)
     
-    tmp0 = time.time()
+    
     
     if dump_file is None:
         dump_file = f'MD_dump_file_{rind}.csv'
@@ -75,7 +75,7 @@ def md_from_atoms(
 
     traj = Trajectory(trajectory_file, 'w', atoms)
     dyn.attach(traj.write, interval=1)
-    
+    tmp0 = time.time()
     if 'npt' in str(type(dyn)).lower():
         steps += 1 # Fix different number of steps between NVE / NVT and NPT
     try:
