@@ -420,9 +420,17 @@ class Nequip_latent_distance(uncertainty_base):
 
             self.params = params
             self.save_params()
+            self.copy_params_to_tensor(params)
             if debug:  
                 self.min_distances = min_distances
                 self.min_vectors = min_vectors
+
+    def copy_params_to_tensor(self,params):
+        self.params = {}
+        for key, val in params.items():
+            self.params[key] = []
+            for i, p in enumerate(val):
+                self.params[key].append(torch.tensor(p,device=self.device).abs())
 
     def load_params(self,print_params=True):
         fail = True
@@ -440,11 +448,7 @@ class Nequip_latent_distance(uncertainty_base):
             fail = not np.all(key_pass)
 
         if not fail:
-            self.params = params
-            for key in params:
-                for i, p in enumerate(params[key]):
-                    if print_params:
-                        print(key, i, p, flush=True)
+            self.copy_params_to_tensor(params)
 
         return fail
                         
@@ -495,7 +499,7 @@ class Nequip_latent_distance(uncertainty_base):
         atom_types = data['atom_types']
         uncertainties = torch.zeros(atom_embedding.shape[0],2, device=self.device)
 
-        self.test_distances = {}
+        # self.test_distances = {}
         self.min_vectors = {}
         for key in self.MLP_config.get('chemical_symbol_to_type'):
             if distances == 'train_val':
@@ -517,28 +521,28 @@ class Nequip_latent_distance(uncertainty_base):
 
                 inds = torch.argmin(latent_force_distances,axis=0)
             
-                min_distance = torch.tensor([latent_force_distances[ind,i] for i, ind in enumerate(inds)])
+                # min_distance = torch.tensor([latent_force_distances[ind,i] for i, ind in enumerate(inds)])
                 min_vectors = torch.vstack([embeddings[ind]-atom_embedding[mask][i] for i, ind in enumerate(inds)])
 
-                self.test_distances[key] = min_distance.detach().cpu().numpy()
-                self.min_vectors[key] = min_vectors.detach().cpu().numpy()
+                # self.test_distances[key] = min_distance.detach().cpu().numpy()
+                self.min_vectors[key] = min_vectors
             
                 uncertainties[mask] = self.uncertainty_from_vector(min_vectors, key, type=type)
         out['uncertainties'] = uncertainties
         return out
 
-    def uncertainty_from_vector(self, vector, key, type='full'):
+    def uncertainty_from_vector(self, vector:torch.Tensor, key, type='full'):
         if len(self.params[key]) == 2:
             distance = torch.linalg.norm(vector,axis=1).reshape(-1,1)
         else:
-            distance = torch.abs(vector)
+            distance = vector.abs()
 
         
         if not self.separate_unc:
             uncertainty_raw = torch.zeros(self.n_ensemble,distance.shape[0], device=self.device)
             for i in range(self.n_ensemble):
-                sig_1 = torch.tensor(self.params[key][i][0]).abs().type_as(distance)
-                sig_2 = torch.tensor(self.params[key][i][1:]).abs().type_as(distance)
+                sig_1 = self.params[key][i][0].type_as(distance)
+                sig_2 = self.params[key][i][1:].type_as(distance)
                 
                 if type == 'full':
                     uncertainty = sig_1 + torch.sum(distance*sig_2,axis=1)
