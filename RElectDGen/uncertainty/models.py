@@ -14,6 +14,7 @@ import scipy.stats as stats
 import matplotlib.pyplot as plt
 import multiprocessing as mp
 from ase.io import Trajectory
+from typing import Dict
 
 from nequip.data import AtomicData, dataset_from_config, DataLoader, ASEDataset
 from nequip.data.transforms import TypeMapper
@@ -23,7 +24,7 @@ from .optimization_functions import uncertainty_NN, uncertaintydistance_NN, unce
 from .utils import load_from_hdf5, save_to_hdf5
 
 class uncertainty_base():
-    def __init__(self, model, config:dict, MLP_config:dict):
+    def __init__(self, model, config: Dict, MLP_config: Dict):
         self.model = model
         self.config = config
         self.MLP_config = MLP_config
