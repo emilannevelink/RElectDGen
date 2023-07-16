@@ -1,7 +1,9 @@
 import numpy as np
+from ase import Atoms
 from ase.calculators.calculator import Calculator, all_changes
 from ase.stress import full_3x3_to_voigt_6_stress
 
+import torch
 from nequip.data import AtomicDataDict
 from ase.calculators.singlepoint import SinglePointCalculator
 from nequip.ase.nequip_calculator import NequIPCalculator
@@ -17,6 +19,11 @@ def load_unc_calc(config, MLP_config):
     unc_calc = UncCalculator(UQ)
 
     return UQ, unc_calc
+
+@torch.jit.script
+def scripted_model(uq_module:uncertainty_base,atoms:Atoms):
+    out = uq_module.predict_uncertainty(atoms)
+    return out
 
 class UncCalculator(NequIPCalculator): # so that it passes through nequip
     """NequIP ASE Calculator.
@@ -63,7 +70,8 @@ class UncCalculator(NequIPCalculator): # so that it passes through nequip
         # print('Uncertainty Calculator')
         # print(atoms)
         # predict + extract data
-        out = self.uq_module.predict_uncertainty(atoms)
+        # out = self.uq_module.predict_uncertainty(atoms)
+        out = scripted_model(self.uq_module,atoms)
         # print(out)
         self.results = {}
         atoms.info['uncertainties'] = out['uncertainties'].sum(axis=-1).detach().squeeze(-1).cpu().numpy() #doesn't save in results

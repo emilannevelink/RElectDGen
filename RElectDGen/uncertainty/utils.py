@@ -26,6 +26,8 @@ def save_to_hdf5(filename,data):
 
 def write_all_keys(hf,data):
     for key in data.keys():
+        if key in hf:
+            del hf[key]
         if isinstance(data[key], dict):
             hf.create_group(key)
             write_all_keys(hf[key],data[key])
