@@ -14,7 +14,7 @@ import scipy.stats as stats
 import matplotlib.pyplot as plt
 import multiprocessing as mp
 from ase.io import Trajectory
-from typing import Dict
+from typing import Dict, List
 
 from nequip.data import AtomicData, dataset_from_config, DataLoader, ASEDataset
 from nequip.data.transforms import TypeMapper
@@ -504,12 +504,13 @@ class Nequip_latent_distance(uncertainty_base):
             if distances == 'train_val':
                 embeddings[key] = torch.cat([self.train_embeddings[key],self.test_embeddings[key]],device=self.device)
             elif distances == 'train':
-                embeddings[key] = self.train_embeddings[key]
+                embeddings[key] = self.train_embeddings[key].to(self.device)
             if extra_embeddings is not None:
                 tmp = extra_embeddings[key].to(device=self.device)
                 embeddings[key] = torch.cat([embeddings[key],tmp])
 
-        uncertainties = predict_distance_uncertainty(out,self.params,embeddings,self.MLP_config.get('chemical_symbol_to_type'),self.n_ensemble)
+
+        uncertainties = predict_distance_uncertainty(out,self.params,embeddings,self.MLP_config.get('chemical_symbol_to_type'),self.n_ensemble,self.device)
         out['uncertainties'] = uncertainties
         return out
 
@@ -614,14 +615,43 @@ class Nequip_latent_distance(uncertainty_base):
     #         uncertainty = uncertainty_sep[max_index]
     #     return uncertainty
 
+@torch.jit.script
+def distance_uncertainty_from_distance(
+        distance: torch.Tensor, 
+        params: Dict[str,List[torch.Tensor]],
+        chemical_symbol: str,
+        n_ensemble: int,
+        uncertainty_factor: int = 1,
+    ):
+    uncertainty_raw = torch.zeros(n_ensemble,distance.shape[0], device=distance.device)
+    for i in range(n_ensemble):
+        sig_1 = params[chemical_symbol][i][0].type_as(distance)
+        sig_2 = params[chemical_symbol][i][1:].type_as(distance)
+        
+        uncertainty = sig_1 + torch.sum(distance*sig_2,dim=1)
+        
+        uncertainty_raw[i] = uncertainty
+    uncertainties_mean = torch.mean(uncertainty_raw,dim=0)
+    
+    if n_ensemble == 1:
+        uncertainties_std = torch.zeros_like(uncertainties_mean)
+    else:
+        uncertainties_std = torch.std(uncertainty_raw,dim=0)
+
+    uncertainty = torch.vstack([uncertainties_mean,uncertainties_std]).T
+    uncertainty *= uncertainty_factor ### for NLL to choose confidence level
+    
+    return uncertainty
+
 def predict_distance_uncertainty(
         out: Dict[str,torch.Tensor],
-        params: Dict[str,torch.Tensor],
+        params: Dict[str,List[torch.Tensor]],
         embeddings: Dict[str,torch.Tensor],
         chemical_symbol_to_type: Dict[str, int],
-        n_ensemble: int
+        n_ensemble: int,
+        device: str,
     ):
-    uncertainties = torch.zeros(out['node_features'].shape[0],2, device=self.device)
+    uncertainties = torch.zeros(out['node_features'].shape[0],2, device=device)
     atom_embedding = out['node_features']
     # self.test_distances = {}
     # self.min_vectors = {}
@@ -632,12 +662,13 @@ def predict_distance_uncertainty(
 
         if torch.any(mask):
             
-            latent_force_distances = torch.cdist(embeddings,atom_embedding[mask],p=2)
+            latent_force_distances = torch.cdist(embeddingsi,atom_embedding[mask],p=2.)
 
-            inds = torch.argmin(latent_force_distances,axis=0)
+            inds = torch.argmin(latent_force_distances,dim=0)
         
             # min_distance = torch.tensor([latent_force_distances[ind,i] for i, ind in enumerate(inds)])
-            min_vectors = torch.vstack([embeddings[ind]-atom_embedding[mask][i] for i, ind in enumerate(inds)]).abs()
+            # min_vectors = torch.vstack([embeddingsi[ind]-atom_embedding[mask][i] for i, ind in enumerate(inds)]).abs()
+            min_vectors = (embeddings[inds]-atom_embedding).abs()
 
             # self.test_distances[key] = min_distance.detach().cpu().numpy()
             # min_vectors[chemical_symbol] = min_vectorsi
@@ -646,32 +677,7 @@ def predict_distance_uncertainty(
 
     return uncertainties
 
-def distance_uncertainty_from_distance(
-        distance: torch.Tensor, 
-        params: Dict[str,torch.Tensor],
-        chemical_symbol: str,
-        n_ensemble: int,
-        uncertainty_factor: int = 1,
-    ):
-    uncertainty_raw = torch.zeros(n_ensemble,distance.shape[0], device=distance.device)
-    for i in range(n_ensemble):
-        sig_1 = params[chemical_symbol][i][0].type_as(distance)
-        sig_2 = params[chemical_symbol][i][1:].type_as(distance)
-        
-        uncertainty = sig_1 + torch.sum(distance*sig_2,axis=1)
-        
-        uncertainty_raw[i] = uncertainty
-    uncertainties_mean = torch.mean(uncertainty_raw,axis=0)
-    
-    if n_ensemble == 1:
-        uncertainties_std = torch.zeros_like(uncertainties_mean)
-    else:
-        uncertainties_std = torch.std(uncertainty_raw,axis=0)
 
-    uncertainty = torch.vstack([uncertainties_mean,uncertainties_std]).T
-    uncertainty *= uncertainty_factor ### for NLL to choose confidence level
-    
-    return uncertainty
 class Nequip_error_NN(uncertainty_base):
     def __init__(self, model, config, MLP_config):
         super().__init__(model, config, MLP_config)
