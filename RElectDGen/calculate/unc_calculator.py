@@ -21,7 +21,7 @@ def load_unc_calc(config, MLP_config):
     return UQ, unc_calc
 
 @torch.jit.script
-def scripted_model(uq_module,atoms):
+def scripted_model(uq_module:uncertainty_base,atoms:Atoms):
     out = uq_module.predict_uncertainty(atoms)
     return out
 

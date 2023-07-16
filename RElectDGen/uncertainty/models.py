@@ -23,11 +23,11 @@ from .optimization_functions import uncertainty_NN, uncertaintydistance_NN, unce
 from .utils import load_from_hdf5, save_to_hdf5
 
 class uncertainty_base():
-    def __init__(self, model, config, MLP_config):
+    def __init__(self, model, config:dict, MLP_config:dict):
         self.model = model
         self.config = config
         self.MLP_config = MLP_config
-        self.r_max = MLP_config.r_max
+        self.r_max = MLP_config['r_max']
         self.latent_size = int(self.MLP_config['conv_to_output_hidden_irreps_out'].split('x')[0])
 
         self.chemical_symbol_to_type = MLP_config.get('chemical_symbol_to_type')
