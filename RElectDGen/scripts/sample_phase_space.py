@@ -23,7 +23,7 @@ from RElectDGen.statistics.subsample import subsample_uncertain
 from RElectDGen.utils.data import reduce_trajectory
 from RElectDGen.utils.md_utils import save_log_to_hdf5
 from RElectDGen.utils.multiprocessing import batch_list
-
+from RElectDGen.shell.slurm_tools import check_if_job_running
 
 def parse_command_line(argsin):
     parser = argparse.ArgumentParser()
@@ -116,6 +116,11 @@ def main(args=None):
     if os.path.isfile(tmp_ase_traj_filename):
         traj_uncertain = read(tmp_ase_traj_filename,index=':')
         print('Loaded trajectory of size: ', len(traj_uncertain))
+        kill_id = config.get('last_sample_continously_id')
+        if kill_id is not None:
+            if check_if_job_running(kill_id):
+                command = f'scancel {kill_id}'
+                os.system(command)
     else:
         traj_uncertain = []
     

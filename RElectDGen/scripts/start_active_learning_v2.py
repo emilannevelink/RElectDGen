@@ -131,6 +131,8 @@ def main(args=None):
             job_types.append(shell_file)
             if 'sample.sh' in shell_file:
                 config['sample_id'] = job_ids[-1]
+            if 'sample_continuously.sh' in shell_file:
+                config['sample_continuously_id'] = job_ids[-1]
         
         if 'restart' in shell_file:
             restart_ids = config.get('restart_ids',[])

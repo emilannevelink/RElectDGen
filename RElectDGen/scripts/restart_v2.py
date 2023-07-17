@@ -63,6 +63,9 @@ def main(args = None):
         print('The number of unstable samples in the dataset is: ', n_unstable)
         continue_al = True
 
+    if config.get('sample_continuously_id') is not None:
+        config['last_sample_continously_id'] = config.get('sample_continuously_id')
+
     max_samples = config.get('max_samples',10)
     if n_recalculate < max_samples:
         print('Updated n sample from ', config['md_sampling_initial_conditions'])
@@ -85,6 +88,7 @@ def main(args = None):
             config.get('run_dir'),
             eval(config.get('run_config_filename_func')) #this uses active_learning_index
         )
+
 
         with open(active_learning_config,'w') as fl:
             yaml.dump(config,fl)
