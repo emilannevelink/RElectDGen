@@ -668,7 +668,7 @@ def predict_distance_uncertainty(
         
             # min_distance = torch.tensor([latent_force_distances[ind,i] for i, ind in enumerate(inds)])
             # min_vectors = torch.vstack([embeddingsi[ind]-atom_embedding[mask][i] for i, ind in enumerate(inds)]).abs()
-            min_vectors = (embeddings[inds]-atom_embedding).abs()
+            min_vectors = (embeddingsi[inds]-atom_embedding[mask]).abs()
 
             # self.test_distances[key] = min_distance.detach().cpu().numpy()
             # min_vectors[chemical_symbol] = min_vectorsi

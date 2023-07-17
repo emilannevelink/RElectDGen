@@ -115,8 +115,10 @@ def main(args=None):
         )
     if os.path.isfile(tmp_ase_traj_filename):
         traj_uncertain = read(tmp_ase_traj_filename,index=':')
+        print('Loaded trajectory of size: ', len(traj_uncertain))
     else:
         traj_uncertain = []
+    
     nsamples = 0
     minimum_uncertainty_cutoffs = {}
     nstable = 0
