@@ -116,7 +116,7 @@ def main(args=None):
     if os.path.isfile(tmp_ase_traj_filename):
         traj_uncertain = read(tmp_ase_traj_filename,index=':')
         print('Loaded trajectory of size: ', len(traj_uncertain))
-        kill_id = config.get('last_sample_continously_id')
+        kill_id = config.get('last_sample_continuously_id')
         if kill_id is not None:
             if check_if_job_running(kill_id):
                 command = f'scancel {kill_id}'

@@ -64,7 +64,7 @@ def main(args = None):
         continue_al = True
 
     if config.get('sample_continuously_id') is not None:
-        config['last_sample_continously_id'] = config.get('sample_continuously_id')
+        config['last_sample_continuously_id'] = config.get('sample_continuously_id')
 
     max_samples = config.get('max_samples',10)
     if n_recalculate < max_samples:
