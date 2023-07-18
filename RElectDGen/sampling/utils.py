@@ -228,7 +228,7 @@ def sample_from_ase_db(
 ):
     rows_DFT = [row for row in db.select(f'success=True,md_stable<{max_md_stable}')]
 
-    if db.count('md_stable=0') == 0:
+    if db.count('success=True,md_stable=0') == 0:
         rows_complex = [row for row in db.select(f'initial_structure=True,md_stable=0')]
     else:
         rows_complex = []
