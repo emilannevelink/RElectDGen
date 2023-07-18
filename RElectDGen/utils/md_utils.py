@@ -43,10 +43,16 @@ def md_func_from_config(config,temperature=None,prefix='MLP'):
 
     return md_func, md_kwargs
 
+def is_upper_diagonal(cell:np.ndarray):
+    if np.all(np.isclose(np.tril(cell,-1),cell)):
+        return True
+    return False
+
 def md_func_fn(
     md_func_name,
     temperature,
     timestep,
+    cell = None,
     **kwargs
     ):
     md_kwargs = {
@@ -55,22 +61,24 @@ def md_func_fn(
     if md_func_name == 'nve':
         from ase.md.verlet import VelocityVerlet as md_func
     elif md_func_name == 'nvt':
-        # from ase.md.nvtberendsen import NVTBerendsen as md_func
-        # taut = kwargs.get('NVT_taut')
-        # if taut is None:
-        #     md_kwargs['taut'] = timestep*500
-        # else:
-        #     md_kwargs['taut'] = taut*units.fs
-        # md_kwargs['temperature'] = temperature
-        from ase.md.npt import NPT as md_func
-        md_kwargs['temperature_K'] = temperature
-        ttime = kwargs.get('NVT_ttime')
-        if ttime is None:
-            md_kwargs['ttime'] = md_kwargs['timestep']*500
+        if cell is not None and is_upper_diagonal(cell):
+            from ase.md.nvtberendsen import NVTBerendsen as md_func
+            taut = kwargs.get('NVT_taut')
+            if taut is None:
+                md_kwargs['taut'] = timestep*500
+            else:
+                md_kwargs['taut'] = taut*units.fs
+            md_kwargs['temperature'] = temperature
         else:
-            md_kwargs['ttime'] = ttime*units.fs
-        md_kwargs['externalstress'] = 0
-        # print(md_kwargs)
+            from ase.md.npt import NPT as md_func
+            md_kwargs['temperature_K'] = temperature
+            ttime = kwargs.get('NVT_ttime')
+            if ttime is None:
+                md_kwargs['ttime'] = md_kwargs['timestep']*500
+            else:
+                md_kwargs['ttime'] = ttime*units.fs
+            md_kwargs['externalstress'] = 0
+            # print(md_kwargs)
         
     elif md_func_name == 'npt':
         from ase.md.npt import NPT as md_func

@@ -53,7 +53,7 @@ def md_from_atoms(
     if world.rank == 0:
         print(temperature,flush=True)
 
-    md_func, md_kwargs = md_func_fn(md_func_name, temperature,timestep,**md_func_dict)
+    md_func, md_kwargs = md_func_fn(md_func_name, temperature,timestep,cell=atoms.get_cell(),**md_func_dict)
 
     dyn = md_func(atoms, **md_kwargs)
     
