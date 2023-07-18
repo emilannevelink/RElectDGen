@@ -61,7 +61,7 @@ def md_func_fn(
     if md_func_name == 'nve':
         from ase.md.verlet import VelocityVerlet as md_func
     elif md_func_name == 'nvt':
-        if cell is not None and is_upper_diagonal(cell):
+        if cell is not None and not is_upper_diagonal(cell):
             from ase.md.nvtberendsen import NVTBerendsen as md_func
             taut = kwargs.get('NVT_taut')
             if taut is None:
