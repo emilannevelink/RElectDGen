@@ -10,7 +10,7 @@ from ase.md import MDLogger
 from ase.io import Trajectory, read
 from ase.parallel import world
 from ase.calculators.calculator import Calculator
-import multiprocessing as mp
+import torch.multiprocessing as mp
 
 from ..utils.md_utils import md_func_fn
 from ..sampling.utils import get_discontinuity
