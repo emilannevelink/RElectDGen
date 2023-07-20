@@ -121,8 +121,8 @@ def main(args=None):
             minimum_uncertainty_cutoffs[symbol] = get_statistics_cutoff(nsamples,best_dict)
             maximum_uncertainty_cutoffs[symbol] = unc_out_all[symbol]['max_cutoff']
             if maximum_uncertainty_cutoffs[symbol] < minimum_uncertainty_cutoffs[symbol]:
-                print(f'Resetting Maximimum Cutoff for {symbol}')
-                maximum_uncertainty_cutoffs[symbol] = 2*minimum_uncertainty_cutoffs[symbol]
+                print(f'Resetting Minimum Cutoff for {symbol}')
+                minimum_uncertainty_cutoffs[symbol] = 0.5*maximum_uncertainty_cutoffs[symbol]
         
         ### Reduce trajectory
         traj_truncated = truncate_using_cutoffs(traj,maximum_uncertainty_cutoffs)
