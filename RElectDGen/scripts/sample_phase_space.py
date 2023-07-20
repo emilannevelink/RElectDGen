@@ -15,7 +15,7 @@ from RElectDGen.sampling.utils import sample_from_ase_db
 from RElectDGen.utils.logging import write_to_tmp_dict
 from RElectDGen.calculate.unc_calculator import load_unc_calc
 from RElectDGen.sampling.md import md_from_atoms, sample_md_parallel
-from RElectDGen.sampling.utils import get_uncertain, sort_traj_using_cutoffs, interpolate_T_steps, assemble_md_kwargs
+from RElectDGen.sampling.utils import get_uncertain, sort_traj_using_cutoffs, interpolate_T_steps, assemble_md_kwargs, truncate_using_cutoffs
 from RElectDGen.statistics.cutoffs import get_all_dists_cutoffs, get_statistics_cutoff, get_best_dict
 from RElectDGen.statistics.utils import save_cutoffs_distribution_info
 from RElectDGen.uncertainty.io import get_dataset_uncertainties
@@ -140,7 +140,7 @@ def main(args=None):
     for row in rows_initial:
         # for rows in rows_batched:
         # md_kwargs_list = assemble_md_kwargs(rows,unc_calc_mp,MLP_md_kwargs,max_md_samples)
-        
+        print('Sampling from row: ', row['id'])
         atoms = row.toatoms()
         atoms.calc = unc_calc
         MLP_md_kwargs = interpolate_T_steps(MLP_md_kwargs,row,max_md_samples)
@@ -161,27 +161,6 @@ def main(args=None):
         nsamplesi = len(traj)*len(traj[0])
         nsamples += nsamplesi
 
-        if stable:
-            nstable += 1
-            md_stable = row.get('md_stable') + 1
-            with connect(db_filename) as db:
-                print('updating row: ', row['id'], f' to md_stable = {md_stable}')
-                db.update(row['id'],md_stable=md_stable)
-                print(db.get(row['id'])['md_stable'])
-    
-        ### Reduce trajectory
-        traj_reduced = reduce_trajectory(traj,config,MLP_config)
-        # all_sampled += traj_reduced
-
-        ### get uncertain samples
-        for symbol in MLP_config.get('chemical_symbol_to_type'):
-            best_dict = get_best_dict(unc_out_all[symbol]['train_uncertainty_dict'],unc_out_all[symbol]['validation_uncertainty_dict'],use_validation_uncertainty)
-            minimum_uncertainty_cutoffs[symbol] = get_statistics_cutoff(nsamplesi,best_dict)
-
-        traj_uncertain += get_uncertain(traj_reduced,minimum_uncertainty_cutoffs,symbols)
-
-        print(f'{nstable} stable of {len(rows_initial)} md trajectories')
-
         maximum_uncertainty_cutoffs = {}
         for symbol in MLP_config.get('chemical_symbol_to_type'):
             best_dict = get_best_dict(unc_out_all[symbol]['train_uncertainty_dict'],unc_out_all[symbol]['validation_uncertainty_dict'],use_validation_uncertainty)
@@ -191,9 +170,43 @@ def main(args=None):
                 print(f'Resetting Maximimum Cutoff for {symbol}')
                 maximum_uncertainty_cutoffs[symbol] = 2*minimum_uncertainty_cutoffs[symbol]
         
+        ### Reduce trajectory
+        traj_truncated = truncate_using_cutoffs(traj,maximum_uncertainty_cutoffs)
+        print('Length of traj_truncated: ', len(traj_truncated))
+        
+        traj_reduced = reduce_trajectory(traj_truncated,config,MLP_config)
+        # all_sampled += traj_reduced
+
+        if len(traj_reduced) < len(traj):
+            print('Resetting stable to false, traj reduced shorter than length of traj')
+            stable = False
+
+        if stable:
+            nstable += 1
+            md_stable = row.get('md_stable') + 1
+            with connect(db_filename) as db:
+                print('updating row: ', row['id'], f' to md_stable = {md_stable}')
+                db.update(row['id'],md_stable=md_stable)
+                print(db.get(row['id'])['md_stable'])
+
+        ### get uncertain samples
+        for symbol in MLP_config.get('chemical_symbol_to_type'):
+            best_dict = get_best_dict(unc_out_all[symbol]['train_uncertainty_dict'],unc_out_all[symbol]['validation_uncertainty_dict'],use_validation_uncertainty)
+            minimum_uncertainty_cutoffs[symbol] = get_statistics_cutoff(nsamplesi,best_dict)
+
+        traj_uncertaini = get_uncertain(traj_reduced,minimum_uncertainty_cutoffs,symbols)
+        print(f'{len(traj_uncertaini)} uncertain samples')
+        traj_uncertain += traj_uncertaini
+
+        print(f'{nstable} stable of {len(rows_initial)} md trajectories')
+
+        
         print('minimum_uncertainty_cutoffs', minimum_uncertainty_cutoffs)
         print('maximum_uncertainty_cutoffs', maximum_uncertainty_cutoffs)
-
+        
+        # this function is a bit too complicated as it really just needs to sort now.
+        # tuncate removes maximum
+        # get uncertain removes less than minimum
         traj_uncertain_sorted = sort_traj_using_cutoffs(
             traj_uncertain,
             minimum_uncertainty_cutoffs,

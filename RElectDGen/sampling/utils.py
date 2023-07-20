@@ -264,26 +264,54 @@ def get_uncertain(traj,minimum_uncertainty_cutoff,symbols):
             if sum(mask) > 0:
                 all_uncertainties.append(atoms.info['uncertainties'][mask])
         
-        if len(all_uncertainties) == 0:
-            return []
+        if len(all_uncertainties) > 0:
+            # return []
         
-        # all_uncertainties = np.stack(all_uncertainties)
-        max_uncertainties = np.array([unc.max() for unc in all_uncertainties])
-        # try:
-        #     max_uncertainties = all_uncertainties.max(axis=1)
-        # except Exception as e:
-        #     print(symbol, len(traj))
-        #     print(e)
-        #     print(all_uncertainties)
-        #     print(all_uncertainties.shape)
-        uncertainty_indices = np.concatenate([
-            uncertainty_indices,
-            np.argwhere(max_uncertainties>minimum_uncertainty_cutoff[symbol]).flatten()
-        ])
-            
+            # all_uncertainties = np.stack(all_uncertainties)
+            max_uncertainties = np.array([unc.max() for unc in all_uncertainties])
+            # try:
+            #     max_uncertainties = all_uncertainties.max(axis=1)
+            # except Exception as e:
+            #     print(symbol, len(traj))
+            #     print(e)
+            #     print(all_uncertainties)
+            #     print(all_uncertainties.shape)
+            uncertainty_indices = np.concatenate([
+                uncertainty_indices,
+                np.argwhere(max_uncertainties>minimum_uncertainty_cutoff[symbol]).flatten()
+            ])
+    
+    if len(uncertainty_indices) == 0:
+        return []
+    
     uncertainty_indices = np.unique(uncertainty_indices)
     traj_uncertain = [traj[ind] for ind in uncertainty_indices]
     return traj_uncertain
+
+def truncate_using_cutoffs(
+    traj: list,
+    maximum_uncertainty_cutoffs: dict
+):
+    max_indices = []
+    for symbol, cutoff in maximum_uncertainty_cutoffs.items():
+        all_uncertainties = []
+        for atoms in traj:
+            mask = np.array(atoms.get_chemical_symbols())==symbol
+            if sum(mask) > 0:
+                all_uncertainties.append(atoms.info['uncertainties'][mask])
+            else:
+                all_uncertainties.append(np.zeros(1))
+        if len(all_uncertainties) > 0:
+            
+            max_uncertainties = np.array([unc.max() for unc in all_uncertainties])
+
+            indices_greater_cutoff = np.argwhere(max_uncertainties>cutoff)
+            max_index = indices_greater_cutoff.min() if len(indices_greater_cutoff)>0 else len(traj)
+            max_indices.append(max_index)
+            
+    max_index = np.min(max_indices)
+    traj_truncated = traj[:max_index]
+    return traj_truncated
 
 def sort_traj_using_cutoffs(
     traj: list,
