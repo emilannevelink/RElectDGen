@@ -6,7 +6,7 @@ import copy
 import numpy as np
 from nequip.utils import Config
 from ase import Atoms
-from ase.io import read
+from ase.io import read, write
 from ase.db import connect
 import pandas as pd
 import h5py
@@ -241,6 +241,15 @@ def main(args=None):
             break
 
         traj_uncertain = copy.deepcopy(traj_add)
+        tmp_traj_filename = os.path.join(
+            data_directory,
+            config.get('tmp_ase_traj_filename','')
+        )
+        if os.path.isfile(tmp_traj_filename):
+            os.remove(tmp_traj_filename)
+        if len(traj_add)>0:
+            print('Writing traj_add to db')
+            write(tmp_traj_filename,traj_add)
     
     if len(traj_target)>0 or len(rows_initial)>max_samples:
         print('Writing traj_add to db')
