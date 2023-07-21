@@ -130,11 +130,11 @@ def main(args=None):
 
     nbatch_sample = config.get('sample_n_parallel',1)
 
-    # unc_calc_mp = {
-    #     'module': 'RElectDGen.calculate.unc_calculator',
-    #     'calculator_type': 'UncCalculator',
-    #     'calculator_kwargs': {'uq_module': {'config': config, 'MLP_config': MLP_config}}
-    # } 
+    unc_calc_mp = {
+        'module': 'RElectDGen.calculate.unc_calculator',
+        'calculator_type': 'UncCalculator',
+        'calculator_kwargs': {'uq_module': {'config': config, 'MLP_config': MLP_config}}
+    } 
     # rows_batched = batch_list(rows_initial,nbatch_sample)
     MLP_md_kwargs['data_directory'] = data_directory
     for row in rows_initial:
@@ -142,7 +142,7 @@ def main(args=None):
         # md_kwargs_list = assemble_md_kwargs(rows,unc_calc_mp,MLP_md_kwargs,max_md_samples)
         print('Sampling from row: ', row['id'])
         atoms = row.toatoms()
-        atoms.calc = unc_calc
+        atoms.calc = unc_calc_mp
         MLP_md_kwargs = interpolate_T_steps(MLP_md_kwargs,row,max_md_samples)
         traj, log, stable = md_from_atoms(
             atoms,
@@ -172,7 +172,7 @@ def main(args=None):
         
         print('minimum_uncertainty_cutoffs', minimum_uncertainty_cutoffs)
         print('maximum_uncertainty_cutoffs', maximum_uncertainty_cutoffs)
-        
+
         ### Reduce trajectory
         traj_truncated = truncate_using_cutoffs(traj,maximum_uncertainty_cutoffs)
         print('Length of traj_truncated: ', len(traj_truncated))
