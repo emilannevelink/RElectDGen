@@ -170,6 +170,9 @@ def main(args=None):
                 print(f'Resetting Minimum Cutoff for {symbol}')
                 minimum_uncertainty_cutoffs[symbol] = 0.5*maximum_uncertainty_cutoffs[symbol]
         
+        print('minimum_uncertainty_cutoffs', minimum_uncertainty_cutoffs)
+        print('maximum_uncertainty_cutoffs', maximum_uncertainty_cutoffs)
+        
         ### Reduce trajectory
         traj_truncated = truncate_using_cutoffs(traj,maximum_uncertainty_cutoffs)
         print('Length of traj_truncated: ', len(traj_truncated))
@@ -189,20 +192,12 @@ def main(args=None):
                 db.update(row['id'],md_stable=md_stable)
                 print(db.get(row['id'])['md_stable'])
 
-        ### get uncertain samples
-        for symbol in MLP_config.get('chemical_symbol_to_type'):
-            best_dict = get_best_dict(unc_out_all[symbol]['train_uncertainty_dict'],unc_out_all[symbol]['validation_uncertainty_dict'],use_validation_uncertainty)
-            minimum_uncertainty_cutoffs[symbol] = get_statistics_cutoff(nsamplesi,best_dict)
-
         traj_uncertaini = get_uncertain(traj_reduced,minimum_uncertainty_cutoffs,symbols)
         print(f'{len(traj_uncertaini)} uncertain samples')
         traj_uncertain += traj_uncertaini
 
         print(f'{nstable} stable of {len(rows_initial)} md trajectories')
 
-        
-        print('minimum_uncertainty_cutoffs', minimum_uncertainty_cutoffs)
-        print('maximum_uncertainty_cutoffs', maximum_uncertainty_cutoffs)
         
         # this function is a bit too complicated as it really just needs to sort now.
         # tuncate removes maximum
