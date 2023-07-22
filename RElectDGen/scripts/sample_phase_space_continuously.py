@@ -23,7 +23,7 @@ from RElectDGen.statistics.subsample import subsample_uncertain
 from RElectDGen.utils.data import reduce_trajectory
 from RElectDGen.utils.md_utils import save_log_to_hdf5
 from RElectDGen.utils.multiprocessing import batch_list
-from RElectDGen.shell.slurm_tools import check_if_job_running
+from RElectDGen.shell.slurm_tools import check_if_job_running, get_runtime, get_timelimit
 
 def parse_command_line(argsin):
     parser = argparse.ArgumentParser()
@@ -191,6 +191,7 @@ def main(args=None):
                 config_next = yaml.load(fl,yaml.FullLoader)
             if check_if_job_running(config_next['sample_id']):
                 break
+        
 
         traj_uncertain = copy.deepcopy(traj_add)
     

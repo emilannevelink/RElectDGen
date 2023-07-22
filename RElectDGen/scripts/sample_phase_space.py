@@ -23,7 +23,7 @@ from RElectDGen.statistics.subsample import subsample_uncertain
 from RElectDGen.utils.data import reduce_trajectory
 from RElectDGen.utils.md_utils import save_log_to_hdf5
 from RElectDGen.utils.multiprocessing import batch_list
-from RElectDGen.shell.slurm_tools import check_if_job_running
+from RElectDGen.shell.slurm_tools import check_if_job_running, get_runtime, get_timelimit
 
 def parse_command_line(argsin):
     parser = argparse.ArgumentParser()
@@ -143,6 +143,7 @@ def main(args=None):
         print('Sampling from row: ', row['id'])
         atoms = row.toatoms()
         atoms.calc = unc_calc
+        # atoms.calc = unc_calc_mp gave memory error
         MLP_md_kwargs = interpolate_T_steps(MLP_md_kwargs,row,max_md_samples)
         traj, log, stable = md_from_atoms(
             atoms,
@@ -233,6 +234,9 @@ def main(args=None):
         print(f'Length of target trajectory is {len(traj_target)}')
 
         if len(traj_add) == max_samples and len(traj_target)>0:
+            break
+        sample_id = config.get('sample_id')
+        if get_timelimit(sample_id) - get_runtime(sample_id) < 60:
             break
 
         traj_uncertain = copy.deepcopy(traj_add)

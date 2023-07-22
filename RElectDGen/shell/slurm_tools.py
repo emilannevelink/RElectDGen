@@ -3,6 +3,7 @@ Tools for using slurm in python scripts
 '''
 import os
 import glob
+import subprocess
 
 def check_if_job_running(id):
     command = f"squeue | grep '{id}.* R '"
@@ -10,6 +11,29 @@ def check_if_job_running(id):
         return True
     
     return False
+
+def stringtime_to_minutes(strtime):
+    time = 0
+    if '-' in strtime:
+        days, strtime = strtime.split('-')
+        time += int(days)*24*60
+    hours, minutes, seconds = strtime.split(':')
+    time += 60*int(hours)
+    time += int(minutes)
+    return time
+
+def get_runtime(id):
+    out = subprocess.run(f'scontrol show job {id} | grep RunTime',shell=True,capture_output=True)
+    timestr = out.stdout.decode().split('RunTime=')[1].split(' ')[0]
+    runtime = stringtime_to_minutes(timestr)
+    return runtime
+
+def get_timelimit(id):
+    out = subprocess.run(f'scontrol show job {id} | grep TimeLimit',shell=True,capture_output=True)
+    timestr = out.stdout.decode().split('TimeLimit=')[1].split(' ')[0]
+    runtime = stringtime_to_minutes(timestr)
+    return runtime
+
 def _gen_sbatch_config(config):
     '''
     Helper to write sbatch config
