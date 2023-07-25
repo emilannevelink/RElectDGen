@@ -142,7 +142,14 @@ def main(args=None):
         # md_kwargs_list = assemble_md_kwargs(rows,unc_calc_mp,MLP_md_kwargs,max_md_samples)
         print('Sampling from row: ', row['id'])
         atoms = row.toatoms()
+        traj_check = reduce_trajectory([atoms],config,MLP_config)
+        if len(traj_check) == 0:
+            # set md_stable to max
+            db.update(row['id'],md_stable=max_md_samples)
+            continue
+        
         atoms.calc = unc_calc
+
         # atoms.calc = unc_calc_mp gave memory error
         MLP_md_kwargs = interpolate_T_steps(MLP_md_kwargs,row,max_md_samples)
         traj, log, stable = md_from_atoms(
