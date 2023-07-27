@@ -92,13 +92,13 @@ def get_max_cutoff(sampled_uncertainties, errors_dict, unc_dict, max_error=1.5):
     print(error_cutoff,max_cutoff)
     return max_cutoff
 
-def get_base_cutoffs(dist_dict, sampling_data):
+def get_base_cutoffs(dist_dict, sampling_data, force_maxwell=False):
     # print(dist_dict)
     if not isinstance(dist_dict,dict):
-        name, args, res = choose_distribution(dist_dict)
+        name, args, res = choose_distribution(dist_dict,force_maxwell=force_maxwell)
         dist_dict = {'data': dist_dict,'name':name,'args':args,'res': res}
     elif 'name' not in dist_dict:
-        name, args, res = choose_distribution(dist_dict['data'])
+        name, args, res = choose_distribution(dist_dict['data'],force_maxwell=force_maxwell)
         dist_dict['name'] = name
         dist_dict['args'] = args
         dist_dict['res'] = res
@@ -132,11 +132,12 @@ def get_all_dists_cutoffs(
     target_error=None,
     max_error=1.5,
     use_validation_uncertainty=False,
+    force_maxwell=False,
     **kwargs
     ):
     
-    train_error_dict = get_base_cutoffs(train_error_dict,sampling_data)
-    validation_error_dict = get_base_cutoffs(validation_error_dict,sampling_data)
+    train_error_dict = get_base_cutoffs(train_error_dict,sampling_data,force_maxwell)
+    validation_error_dict = get_base_cutoffs(validation_error_dict,sampling_data,force_maxwell)
     # if validation_error_dict['res'].pvalue > 0.05:
     #     error_dict = validation_error_dict
     # elif validation_error_dict['res'].pvalue>train_error_dict['res'].pvalue:
@@ -145,8 +146,8 @@ def get_all_dists_cutoffs(
     #     error_dict = train_error_dict
     error_dict = get_best_dict(train_error_dict,validation_error_dict)
     if sampling_type == 'uncertainty':
-        train_uncertainty_dict = get_base_cutoffs(train_uncertainty_dict,sampling_data)
-        validation_uncertainty_dict = get_base_cutoffs(validation_uncertainty_dict,sampling_data)
+        train_uncertainty_dict = get_base_cutoffs(train_uncertainty_dict,sampling_data,force_maxwell)
+        validation_uncertainty_dict = get_base_cutoffs(validation_uncertainty_dict,sampling_data,force_maxwell)
         # uncertainty_dict = validation_uncertainty_dict if validation_uncertainty_dict['res'].pvalue>train_uncertainty_dict['res'].pvalue else train_uncertainty_dict
         # if validation_uncertainty_dict['res'].pvalue > 0.05 or use_validation_uncertainty:
         #     uncertainty_dict = validation_uncertainty_dict
@@ -220,6 +221,8 @@ def converge_args(vals,dist_name='lognorm',dataset_size_ratio=1):
             break
         if 'chi' in dist_name:
             dist_args = dist.fit(vals_flat,fdf=3,floc=0)
+        elif 'maxwell' in dist_name:
+            dist_args = dist.fit(vals_flat,floc=0)
         elif 'gamma' == dist_name:
             dist_args = dist.fit(vals_flat,3)
         else:
@@ -289,7 +292,7 @@ def truncate_by_probability(vals, dist, args, nbins=101):
 class FakeFitResult():
     pvalue = -1
 
-def choose_distribution(vals,pthreshold=0.05,truncate_decreasing=True):
+def choose_distribution(vals,pthreshold=0.05,truncate_decreasing=True,force_maxwell=False):
     # print(len(vals))
     # pvalues = [
     #     res_lognormal.pvalue,
@@ -297,6 +300,10 @@ def choose_distribution(vals,pthreshold=0.05,truncate_decreasing=True):
     #     res_gamma.pvalue,
     #     res_gengamma.pvalue,
     # ]
+    if force_maxwell:
+        args = stats.maxwell.fit(vals.flatten(),floc=0)
+        res = stats.kstest(vals.flatten(),'maxwell',args=args)
+        return 'maxwell', args, res
     
     try:
         chi_vals, chi_args = converge_args(vals,'maxwell')

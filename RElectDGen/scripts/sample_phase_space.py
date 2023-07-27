@@ -73,6 +73,7 @@ def main(args=None):
     # Get Uncertainty Thresholds
     uncertainty_function = config.get('uncertainty_function', 'Nequip_latent_distance')
     use_validation_uncertainty = True if uncertainty_function in ['Nequip_latent_distance'] else False
+    force_maxwell = config.get('force_maxwell',False)
     target_error = config.get('target_error')
     MLP_md_kwargs = config.get('MLP_md_kwargs')
     unc_out_all = {}
@@ -96,6 +97,7 @@ def main(args=None):
             target_error = target_error,
             max_error=unc_max_error_threshold_symbol,
             use_validation_uncertainty = use_validation_uncertainty,
+            force_maxwell = force_maxwell,
         )
         unc_out_all[symbol] = unc_out
 
