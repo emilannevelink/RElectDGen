@@ -78,12 +78,14 @@ def main(args=None):
     MLP_md_kwargs = config.get('MLP_md_kwargs')
     unc_out_all = {}
     for symbol in MLP_config.get('chemical_symbol_to_type'):
-        max_error_dx_threshold = config.get('max_error_dx_threshold')
-        if isinstance(max_error_dx_threshold, dict):
-            unc_max_error_thresholdi = max_error_dx_threshold[symbol]
-        else:
-            unc_max_error_thresholdi = max_error_dx_threshold
-        unc_max_error_threshold_symbol = unc_max_error_thresholdi * Atoms(symbol).get_masses()/MLP_md_kwargs.get('timestep',1)
+        unc_max_error_threshold_symbol = config.get('unc_max_error_threshold_symbol')
+        if unc_max_error_threshold_symbol is None:
+            max_error_dx_threshold = config.get('max_error_dx_threshold')
+            if isinstance(max_error_dx_threshold, dict):
+                unc_max_error_thresholdi = max_error_dx_threshold[symbol]
+            else:
+                unc_max_error_thresholdi = max_error_dx_threshold
+            unc_max_error_threshold_symbol = unc_max_error_thresholdi * Atoms(symbol).get_masses()/MLP_md_kwargs.get('timestep',1)
         
         # print(dataset_train_uncertainties[symbol].shape,dataset_train_uncertainties[symbol])
         # print(dataset_val_uncertainties[symbol].shape,dataset_val_uncertainties[symbol])
