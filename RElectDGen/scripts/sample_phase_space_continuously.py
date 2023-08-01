@@ -187,6 +187,18 @@ def main(args=None):
         traj_target = get_uncertain(traj_add,target_uncertainty_cutoffs,symbols) # overwriting uncertainties in traj_add during subsample
         print(f'Length of target trajectory is {len(traj_target)}')
 
+        tmp_traj_filename = os.path.join(
+            data_directory,
+            config.get('tmp_ase_traj_filename')
+        )
+        if os.path.isfile(tmp_traj_filename):
+            os.remove(tmp_traj_filename)
+        if len(traj_add)>0:
+            print('Writing traj_add to db')
+            write(tmp_traj_filename,traj_add)
+        else:
+            print('traj_add is of length ', len(traj_add))
+            
         if len(traj_add) == max_samples and len(traj_target)>0:
             break
         
@@ -199,18 +211,6 @@ def main(args=None):
         
 
         traj_uncertain = copy.deepcopy(traj_add)
-    
-        tmp_traj_filename = os.path.join(
-            data_directory,
-            config.get('tmp_ase_traj_filename')
-        )
-        if os.path.isfile(tmp_traj_filename):
-            os.remove(tmp_traj_filename)
-        if len(traj_add)>0:
-            print('Writing traj_add to db')
-            write(tmp_traj_filename,traj_add)
-        else:
-            print('traj_add is of length ', len(traj_add))
     
     print('Sampling Complete')
     ### some sort of logging
