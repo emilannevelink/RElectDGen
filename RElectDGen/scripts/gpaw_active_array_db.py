@@ -7,6 +7,7 @@ from ase.parallel import world
 
 from RElectDGen.calculate.recalculate import calculate_atoms
 from RElectDGen.structure.utils import extend_cell
+from RElectDGen.statistics.energy_range import check_energy_range
 
 
 def parse_command_line(argsin):
@@ -69,6 +70,16 @@ def main(args=None):
             print(e)
     atoms, success = calculate_atoms(atoms, config.get('oracle_config'),data_directory=config.get('data_directory'))
     
+    if success:
+        MD_kwargs = config.get('MLP_md_kwargs')
+        if 'temperature' in MD_kwargs:
+            temperature = MD_kwargs['temperature']
+        elif 'temperature_range' in MD_kwargs:
+            temperature = max(MD_kwargs['temperature_range'])
+        else:
+            raise KeyError('Temperature not in MD kwargs')
+        temperature *= config.get('energy_range_factor',2)
+        success = check_energy_range(db,atoms,temperature)
     db.update(id,atoms,calc=True,success=success)
     
 if __name__ == '__main__':

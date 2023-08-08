@@ -107,6 +107,8 @@ def main(args=None):
             atoms,
             **MLP_md_kwargs
         )
+        for atoms_i in traj:
+            atoms_i.info['start_row_id'] = row['id']
         # trajs, logs, stables = sample_md_parallel(md_kwargs_list,nbatch_sample)
 
         # all_sampled = []

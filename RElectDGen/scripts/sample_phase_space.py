@@ -160,6 +160,8 @@ def main(args=None):
             atoms,
             **MLP_md_kwargs
         )
+        for atoms_i in traj:
+            atoms_i.info['start_row_id'] = row['id']
         # trajs, logs, stables = sample_md_parallel(md_kwargs_list,nbatch_sample)
 
         # all_sampled = []
@@ -268,7 +270,7 @@ def main(args=None):
         print('Writing traj_add to db')
         with connect(db_filename) as db:
             for atoms in traj_add:
-                db.write(atoms,md_stable=0,calc=False,active_learning_index=active_learning_index)
+                db.write(atoms,md_stable=0,calc=False,active_learning_index=active_learning_index,start_row_id=atoms.info['start_row_id'])
     else:
         print('No samples greater than target trajectory')
     
