@@ -266,7 +266,7 @@ def main(args=None):
             print('Writing traj_add to db')
             write(tmp_traj_filename,traj_add)
     
-    if len(traj_target)>0 or len(rows_initial)>max_samples:
+    if len(traj_target)>0 or len(rows_initial)>max_samples or active_learning_index < max_md_samples:
         print('Writing traj_add to db')
         with connect(db_filename) as db:
             for atoms in traj_add:
