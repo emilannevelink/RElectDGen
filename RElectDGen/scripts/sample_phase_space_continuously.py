@@ -134,6 +134,20 @@ def main(args=None):
         print('minimum_uncertainty_cutoffs', minimum_uncertainty_cutoffs)
         print('maximum_uncertainty_cutoffs', maximum_uncertainty_cutoffs)
 
+        target_uncertainty_cutoffs = {}
+        for symbol in MLP_config.get('chemical_symbol_to_type'):
+            target_uncertainty_cutoffs[symbol] = unc_out_all[symbol]['target_cutoff']
+            if maximum_uncertainty_cutoffs[symbol]*0.9 < target_uncertainty_cutoffs[symbol]:
+                print(f'Resetting Target Cutoff for {symbol}')
+                target_uncertainty_cutoffs[symbol] = 0.5*maximum_uncertainty_cutoffs[symbol]
+        print('Target Uncertainty: ',target_uncertainty_cutoffs)
+
+        for symbol in MLP_config.get('chemical_symbol_to_type'):
+            minimum_uncertainty_cutoffs[symbol] = min([
+                minimum_uncertainty_cutoffs[symbol],
+                target_uncertainty_cutoffs[symbol]
+            ])
+
         ### Reduce trajectory
         traj_truncated = truncate_using_cutoffs(traj,maximum_uncertainty_cutoffs)
         print('Length of traj_truncated: ', len(traj_truncated))
@@ -144,18 +158,18 @@ def main(args=None):
         if len(traj_reduced) < len(traj):
             print('Resetting stable to false, traj reduced shorter than length of traj')
             stable = False
+    
+        traj_uncertaini = get_uncertain(traj_reduced,minimum_uncertainty_cutoffs,symbols)
+        print(f'{len(traj_uncertaini)} uncertain samples')
+        traj_uncertain += traj_uncertaini
 
-        if stable:
+        if stable and len(traj_uncertaini)==0:
             nstable += 1
             md_stable = row.get('md_stable') + 1
             with connect(db_filename) as db:
                 print('updating row: ', row['id'], f' to md_stable = {md_stable}')
                 db.update(row['id'],md_stable=md_stable)
                 print(db.get(row['id'])['md_stable'])
-    
-        traj_uncertaini = get_uncertain(traj_reduced,minimum_uncertainty_cutoffs,symbols)
-        print(f'{len(traj_uncertaini)} uncertain samples')
-        traj_uncertain += traj_uncertaini
 
         print(f'{nstable} stable of {len(rows_initial)} md trajectories')
 
@@ -182,12 +196,8 @@ def main(args=None):
         print('Length of Add trajectory: ',len(traj_add))
 
         # add traj to db
-        target_uncertainty_cutoffs = {}
-        for symbol in MLP_config.get('chemical_symbol_to_type'):
-            target_uncertainty_cutoffs[symbol] = unc_out_all[symbol]['target_cutoff']
-        print('Target Uncertainty: ',target_uncertainty_cutoffs)
-        traj_target = get_uncertain(traj_add,target_uncertainty_cutoffs,symbols) # overwriting uncertainties in traj_add during subsample
-        print(f'Length of target trajectory is {len(traj_target)}')
+        # traj_target = get_uncertain(traj_add,target_uncertainty_cutoffs,symbols) # overwriting uncertainties in traj_add during subsample
+        # print(f'Length of target trajectory is {len(traj_target)}')
 
         tmp_traj_filename = os.path.join(
             data_directory,
@@ -201,7 +211,7 @@ def main(args=None):
         else:
             print('traj_add is of length ', len(traj_add))
             
-        if len(traj_add) == max_samples and len(traj_target)>0:
+        if len(traj_add) == max_samples:
             break
         
         next_config_filename = f'{active_learning_index+1}.'.join(config_filename.split(f'{active_learning_index}.'))
