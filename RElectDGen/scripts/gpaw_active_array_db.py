@@ -79,7 +79,7 @@ def main(args=None):
         else:
             raise KeyError('Temperature not in MD kwargs')
         temperature *= config.get('energy_range_factor',2)
-        success = check_energy_range(db,atoms,temperature)
+        success = check_energy_range(db,row,temperature)
     db.update(id,atoms,calc=True,success=success)
     
 if __name__ == '__main__':
