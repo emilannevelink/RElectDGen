@@ -52,7 +52,7 @@ def main(args=None):
     nsample_parallel = config.get('md_sampling_parallel',1)
     
     UQ, unc_calc = load_unc_calc(config,MLP_config)
-    
+
     nsamples = 0
     traj_add = []
     for array_index in range(nsample_parallel):
@@ -62,7 +62,7 @@ def main(args=None):
             config.get('ase_db_filename').split('.db')[0]+f'_{array_index}.traj'
         )
         if os.path.isfile(tmp_db_filename):
-            traj_addi = read(tmp_db_filename)
+            traj_addi = read(tmp_db_filename,index=':')
             nsamples+= traj_addi[0].info['nsamples']
             traj_add += traj_addi
     
