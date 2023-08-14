@@ -111,7 +111,14 @@ def main(args=None):
             if len(job_ids)>0:
                 commands = ['sbatch', f'--dependency=afterok:{job_ids[-1]}', f'--array=0-{n_ensemble-1}', shell_file, active_learning_config, MLP_config_current, str(i)]
             else:
-                commands = ['sbatch', f'--array=0-{n_ensemble-1}', shell_file,active_learning_config, MLP_config_current, str(i)]      
+                commands = ['sbatch', f'--array=0-{n_ensemble-1}', shell_file,active_learning_config, MLP_config_current, str(i)]
+        elif 'sample_array' in shell_file:
+            config['md_sampling_parallel'] = config['max_samples']/config.get('samples_per_batch',10)
+            nsample_parallel = config.get('md_sampling_parallel')
+            if len(job_ids)>0:
+                commands = ['sbatch', f'--dependency=afterok:{job_ids[-1]}', f'--array=0-{nsample_parallel-1}', shell_file, active_learning_config, MLP_config_current, str(i)]
+            else:
+                commands = ['sbatch', f'--array=0-{nsample_parallel-1}', shell_file,active_learning_config, MLP_config_current, str(i)]   
         elif 'sample_continuously' in shell_file:
             sample_id = config['sample_id']
             if len(job_ids)>0:

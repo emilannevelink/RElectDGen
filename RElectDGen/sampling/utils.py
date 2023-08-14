@@ -225,6 +225,7 @@ def sample_from_ase_db(
     db,
     nsamples: int = 1,
     max_md_stable: int = 1,
+    seed: int=0,
 ):
     rows_DFT = [row for row in db.select(f'success=True,md_stable<{max_md_stable}')]
 
@@ -235,6 +236,7 @@ def sample_from_ase_db(
         rows_complex = []
     rows = rows_DFT + rows_complex
     
+    np.random.seed(seed)
     indices = np.random.permutation(len(rows))[:nsamples]
     rows = [rows[i] for i in indices]
     

@@ -202,25 +202,13 @@ def main(args=None):
     active_learning_index = config.get('active_learning_index')
     symbols = MLP_config.get('chemical_symbol_to_type')
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    data_directory = config.get('data_directory')
     if device == 'cpu':
         num_cores = config.get('cores',1)
         torch.set_num_threads(num_cores)
     
     UQ, unc_calc = load_unc_calc(config,MLP_config)
 
-    ### get atoms objects
-    data_directory = config.get('data_directory')
-    db_filename = os.path.join(
-        data_directory,
-        config.get('ase_db_filename')
-    )
-    assert os.path.isfile(db_filename)
-    max_md_samples = config.get('max_md_samples',1)
-    nsamples = config.get('md_sampling_initial_conditions',1)
-    with connect(db_filename) as db:
-        rows_initial = sample_from_ase_db(db, nsamples, max_md_samples)
-    print(f'Sampling from {len(rows_initial)} starting configurations')
-    
     ### get dataset uncertainties
     dataset_train_uncertainties, dataset_val_uncertainties = get_dataset_uncertainties(UQ)
 
@@ -265,44 +253,3 @@ def main(args=None):
         config.get('distribution_filename')
     )
     save_cutoffs_distribution_info(distribution_filename, unc_out_all, str(active_learning_index))
-
-    ### run MD on samples
-    tmp_ase_traj_filename = os.path.join(
-            data_directory,
-            config.get('tmp_ase_traj_filename','')
-        )
-    if os.path.isfile(tmp_ase_traj_filename):
-        traj_uncertain = read(tmp_ase_traj_filename,index=':')
-        print('Loaded trajectory of size: ', len(traj_uncertain))
-        kill_id = config.get('last_sample_continuously_id')
-        if kill_id is not None:
-            if check_if_job_running(kill_id):
-                command = f'scancel {kill_id}'
-                os.system(command)
-    else:
-        traj_uncertain = []
-    
-    
-    nbatch_sample = config.get('sample_n_parallel',1)
-
-    # unc_calc_mp = {
-    #     'module': 'RElectDGen.calculate.unc_calculator',
-    #     'calculator_type': 'UncCalculator',
-    #     'calculator_kwargs': {'uq_module': {'config': config, 'MLP_config': MLP_config}}
-    # } 
-    # rows_batched = batch_list(rows_initial,nbatch_sample)
-    MLP_md_kwargs['data_directory'] = data_directory
-    traj_add, nsamples = sample_from_rows(
-        rows_initial,traj_uncertain, config,MLP_config,UQ,unc_calc,unc_out_all,True
-    )
-    
-    if len(traj_add)>0:
-        print('Writing traj_add to db')
-        with connect(db_filename) as db:
-            for atoms in traj_add:
-                db.write(atoms,md_stable=0,calc=False,active_learning_index=active_learning_index,start_row_id=atoms.info['start_row_id'])
-    else:
-        print('No samples greater than target trajectory')
-    
-    print('Sampling Complete')
-    ### some sort of logging

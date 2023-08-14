@@ -16,5 +16,6 @@ def check_energy_range(db,row,temperature):
 
     if (energy_end-energy_start)/len(atoms) < kB*temperature:
         return True
-    
+    if world.rank == 0:
+        print('Energy not close enough')
     return False

@@ -58,6 +58,14 @@ def shell_from_config(config):
             commands += [
                 'REDGEN-sample-continuously --config_file $1 --MLP_config_file $2'
             ]
+        elif 'sample_array' in file:
+            commands += [
+                'REDGEN-sample-array --config_file $1 --MLP_config_file $2' + " --array_index ${SLURM_ARRAY_TASK_ID}"
+            ]
+        elif 'summarize_sample_array' in file:
+            commands += [
+                'REDGEN-summarize-sample --config_file $1 --MLP_config_file $2'
+            ]
         elif 'sample' in file:
             commands += [
                 'REDGEN-sample --config_file $1 --MLP_config_file $2'
