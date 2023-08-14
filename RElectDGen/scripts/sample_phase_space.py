@@ -62,6 +62,9 @@ def sample_from_rows(
     max_md_samples = config.get('max_md_samples',1)
     nstable = 0
     nsamples = 0
+    uncertainty_function = config.get('uncertainty_function', 'Nequip_latent_distance')
+    use_validation_uncertainty = True if uncertainty_function in ['Nequip_latent_distance'] else False
+    
     for row in rows_initial:
         # for rows in rows_batched:
         # md_kwargs_list = assemble_md_kwargs(rows,unc_calc_mp,MLP_md_kwargs,max_md_samples)
