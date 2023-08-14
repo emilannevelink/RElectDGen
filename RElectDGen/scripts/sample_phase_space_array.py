@@ -94,6 +94,17 @@ def main(args=None):
     else:
         traj_uncertain = []
     
+    MLP_md_kwargs = config.get('MLP_md_kwargs')
+    dump_file = MLP_md_kwargs['dump_file']
+    if dump_file is not None:
+        dump_file = dump_file.split('.log')[0] + f'_{array_index}.log'
+        MLP_md_kwargs['dump_file'] = dump_file
+    traj_file = MLP_md_kwargs.get('trajectory_file')
+    if traj_file is not None:
+        traj_file = traj_file.split('.traj')[0] + f'_{array_index}.traj'
+        MLP_md_kwargs['trajectory_file'] = traj_file
+    
+    config['MLP_md_kwargs'] = MLP_md_kwargs
     traj_add, nsamples = sample_from_rows(
         rows_initial,traj_uncertain,config,MLP_config,UQ,unc_calc,unc_out_all,True
     )
