@@ -72,6 +72,9 @@ def main(args=None):
     )
     unc_out_all = load_cutoffs_distribution_info(distribution_filename,str(active_learning_index))
 
+    uncertainty_function = config.get('uncertainty_function', 'Nequip_latent_distance')
+    use_validation_uncertainty = True if uncertainty_function in ['Nequip_latent_distance'] else False
+
     minimum_uncertainty_cutoffs = {}
     maximum_uncertainty_cutoffs = {}
     for symbol in MLP_config.get('chemical_symbol_to_type'):
@@ -106,12 +109,26 @@ def main(args=None):
     )
 
     max_samples = config.get('max_samples',10)
-    if 'traj_add' not in locals() or len(traj_add) < len(traj_uncertain_sorted):
-        traj_add = subsample_uncertain(
-            UQ,
-            traj_uncertain_sorted,
-            minimum_uncertainty_cutoffs,
-            maximum_uncertainty_cutoffs,
-            max_add=max_samples,
-            method=None
-        )
+    
+    traj_add = subsample_uncertain(
+        UQ,
+        traj_uncertain_sorted,
+        minimum_uncertainty_cutoffs,
+        maximum_uncertainty_cutoffs,
+        max_add=max_samples,
+        method=None
+    )
+    db_filename = os.path.join(
+        data_directory,
+        config.get('ase_db_filename')
+    )
+    if len(traj_add)>0:
+        print('Writing traj_add to db')
+        with connect(db_filename) as db:
+            for atoms in traj_add:
+                db.write(atoms,md_stable=0,calc=False,active_learning_index=active_learning_index,start_row_id=atoms.info['start_row_id'])
+    else:
+        print('No samples greater than target trajectory')
+    
+    print('Sampling Complete')
+    ### some sort of logging
