@@ -36,6 +36,7 @@ setup(
             "REDGEN-log = RElectDGen.scripts.write_to_log:main",
             "REDGEN-restart = RElectDGen.scripts.restart_v2:main",
             "REDGEN-plot-UQ = RElectDGen.scripts.plot_UQ:main",
+            "REDGEN-calibrate-UQ = RElectDGen.scripts.calibrate_UQ_statistics:main"
         ]
     },
     install_requires=[
