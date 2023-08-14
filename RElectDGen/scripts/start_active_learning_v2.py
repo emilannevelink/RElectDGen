@@ -112,7 +112,7 @@ def main(args=None):
                 commands = ['sbatch', f'--dependency=afterok:{job_ids[-1]}', f'--array=0-{n_ensemble-1}', shell_file, active_learning_config, MLP_config_current, str(i)]
             else:
                 commands = ['sbatch', f'--array=0-{n_ensemble-1}', shell_file,active_learning_config, MLP_config_current, str(i)]
-        elif 'sample_array' in shell_file:
+        elif 'sample_array' in shell_file and 'summarize' not in shell_file:
             max_md_samples = config.get('max_md_samples',1)
             n_unsampled = db.count(f'success=True,md_stable<{max_md_samples}')
             config['md_sampling_parallel'] = int(n_unsampled/config.get('samples_per_batch',10))
