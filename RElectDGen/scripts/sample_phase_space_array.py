@@ -67,8 +67,10 @@ def main(args=None):
     max_md_samples = config.get('max_md_samples',1)
     nsamples = config.get('md_sampling_initial_conditions',1)
     nsample_parallel = config.get('md_sampling_parallel',1)
+    row_ids = config['sample_row_ids']
+    
     with connect(db_filename) as db:
-        rows_initial = sample_from_ase_db(db, nsamples, max_md_samples)[array_index::nsample_parallel]
+        rows_initial = [db[id] for id in row_ids][array_index::nsample_parallel]
     print(f'Sampling from {len(rows_initial)} starting configurations')
     
     # Load Uncertainty Thresholds

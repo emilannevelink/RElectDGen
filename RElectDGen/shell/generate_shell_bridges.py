@@ -50,9 +50,9 @@ def shell_from_config(config):
                 'REDGEN-train-array --config_file $1 --MLP_config_file $2' +
                 " --array_index ${SLURM_ARRAY_TASK_ID}"
             ]
-        elif 'calibrate' in file:
+        elif 'prepare_sample_array' in file:
             commands += [
-                'REDGEN-calibrate-UQ --config_file $1 --MLP_config_file $2'
+                'REDGEN-prepare-sample-array --config_file $1 --MLP_config_file $2'
             ]
         elif 'sample_continuously' in file:
             commands += [
