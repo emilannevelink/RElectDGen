@@ -32,6 +32,8 @@ def parse_command_line(argsin):
                         help='active_learning configuration file', type=str)
     parser.add_argument('--MLP_config_file', dest='MLP_config',
                         help='Nequip configuration file', type=str)
+    parser.add_argument('--array_index', dest='array_index',
+                        help='active_learning_loop', type=int)
     args = parser.parse_args(argsin)
 
     with open(args.config,'r') as fl:
@@ -41,7 +43,7 @@ def parse_command_line(argsin):
     with open(args.MLP_config,'r') as fl:
             MLP_config = yaml.load(fl,yaml.FullLoader)
 
-    return config, MLP_config, array_index
+    return config, MLP_config, args.array_index
 
 def main(args=None):
     logging_dict = {}
@@ -99,7 +101,7 @@ def main(args=None):
     )
     
     if len(traj_add)>0:
-        traj_add[0].info{'nsamples'}=nsamples
+        traj_add[0].info['nsamples']=nsamples
         print('Writing traj_add to tmp db')
         tmp_db_filename = os.path.join(
             data_directory,
