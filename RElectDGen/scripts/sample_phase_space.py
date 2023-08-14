@@ -185,8 +185,11 @@ def sample_from_rows(
         if len(traj_add) == max_samples:
             break
         sample_id = config.get('sample_id')
-        if get_timelimit(sample_id) - get_runtime(sample_id) < 60:
-            break
+        try:
+            if get_timelimit(sample_id) - get_runtime(sample_id) < 60:
+                break
+        except:
+            print('Time limit doesnt work')
 
         traj_uncertain = copy.deepcopy(traj_add)
         tmp_traj_filename = os.path.join(
