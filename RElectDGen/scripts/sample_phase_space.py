@@ -75,6 +75,8 @@ def sample_from_rows(
         
         atoms.calc = unc_calc
 
+        MLP_md_kwargs = config.get('MLP_md_kwargs')
+        MLP_md_kwargs['data_directory'] = data_directory
         # atoms.calc = unc_calc_mp gave memory error
         MLP_md_kwargs = interpolate_T_steps(MLP_md_kwargs,row,max_md_samples)
         traj, log, stable = md_from_atoms(

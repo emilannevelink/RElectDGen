@@ -94,8 +94,6 @@ def main(args=None):
     else:
         traj_uncertain = []
     
-    MLP_md_kwargs = config.get('MLP_md_kwargs')
-    MLP_md_kwargs['data_directory'] = data_directory
     traj_add, nsamples = sample_from_rows(
         rows_initial,traj_uncertain,config,MLP_config,UQ,unc_calc,unc_out_all,True
     )
